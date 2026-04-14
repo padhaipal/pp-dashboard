@@ -9,20 +9,29 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        const res = await fetch(
-          `${process.env.PP_SKETCH_INTERNAL_URL}/users/login`,
-          {
+        const url = `${process.env.PP_SKETCH_INTERNAL_URL}/users/login`;
+        console.log(`[auth] login attempt phone=${credentials.phone} url=${url}`);
+        try {
+          const res = await fetch(url, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               phone: credentials.phone,
               password: credentials.password,
             }),
-          },
-        );
-        if (!res.ok) return null;
-        const user = await res.json();
-        return { id: user.id, name: user.external_id, role: user.role };
+          });
+          if (!res.ok) {
+            const body = await res.text();
+            console.error(`[auth] login failed status=${res.status} body=${body}`);
+            return null;
+          }
+          const user = await res.json();
+          console.log(`[auth] login success id=${user.id} role=${user.role}`);
+          return { id: user.id, name: user.external_id, role: user.role };
+        } catch (err) {
+          console.error(`[auth] login fetch error:`, err);
+          return null;
+        }
       },
     }),
   ],
