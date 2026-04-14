@@ -23,8 +23,9 @@ export default function LoginPage() {
 
     setLoading(false);
 
+    console.log("[auth] signIn result:", JSON.stringify(res));
     if (res?.error) {
-      setError("Invalid phone number or password");
+      setError(`Login failed: ${res.error} (status ${res.status})`);
     } else {
       router.push("/dashboard");
     }
