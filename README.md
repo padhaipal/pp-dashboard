@@ -19,7 +19,7 @@ Admin/dev dashboard for PadhaiPal. Next.js 16, Tailwind, NextAuth.
 
 ## First-time setup
 
-1. In pp-sketch, run `npm run seed` to create bootstrap dev user (`0000000000` / `admin123`).
+1. In pp-sketch, run `npm run seed` to create bootstrap dev user (`919000000000` / `admin123`).
 2. Log in to dashboard with those creds.
 3. Use Swagger UI to promote real users via `PATCH /users/:id/role`.
 4. Delete the seed user via `DELETE /users/:id`.
