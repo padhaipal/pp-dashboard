@@ -1,36 +1,31 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# pp-dashboard
 
-## Getting Started
+Admin/dev dashboard for PadhaiPal. Next.js 16, Tailwind, NextAuth.
 
-First, run the development server:
+## Env vars
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+| Variable | Description |
+|---|---|
+| `NEXTAUTH_SECRET` | Random secret for JWT signing |
+| `NEXTAUTH_URL` | Public URL (`https://dashboard.padhaipal.com`) |
+| `PP_SKETCH_INTERNAL_URL` | pp-sketch internal URL via Railway private networking |
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Deploy (Railway)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. Set env vars above in Railway service settings.
+2. Build command: `npm run build`
+3. Start command: `npm run start`
+4. Custom domain: `dashboard.padhaipal.com`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## First-time setup
 
-## Learn More
+1. In pp-sketch, run `npm run seed` to create bootstrap dev user (`0000000000` / `admin123`).
+2. Log in to dashboard with those creds.
+3. Use Swagger UI to promote real users via `PATCH /users/:id/role`.
+4. Delete the seed user via `DELETE /users/:id`.
 
-To learn more about Next.js, take a look at the following resources:
+## Pages
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `/login` — phone + password
+- `/dashboard` — admin + dev
+- `/swagger` — dev only, embedded Swagger UI pointing at pp-sketch
