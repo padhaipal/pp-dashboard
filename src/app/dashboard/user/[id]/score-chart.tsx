@@ -64,14 +64,6 @@ export function ScoreChart({ userId }: { userId: string }) {
         color: COLORS[i % COLORS.length],
       }));
 
-      console.log('[ScoreChart] raw data:', data);
-      console.log('[ScoreChart] series:', result.map(s => ({
-        grapheme: s.grapheme,
-        letter_id: s.letter_id,
-        numPoints: s.points.length,
-        points: s.points,
-      })));
-
       setSeries(result);
       setLoading(false);
     })();
