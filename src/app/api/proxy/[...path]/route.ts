@@ -1,13 +1,32 @@
 import { auth } from "@/auth";
 import { NextRequest } from "next/server";
 
+const ADMIN_ALLOWED: { pattern: RegExp; methods: string[] }[] = [
+  { pattern: /^users\/dashboard$/, methods: ["GET"] },
+  { pattern: /^users\/[^/]+$/, methods: ["PATCH"] },
+  { pattern: /^users\/[^/]+\/media$/, methods: ["GET"] },
+  { pattern: /^users\/[^/]+\/scores$/, methods: ["GET"] },
+  { pattern: /^media-meta-data\/[^/]+\/audio$/, methods: ["GET"] },
+  { pattern: /^media-meta-data\/[^/]+\/dashboard-transcript$/, methods: ["POST", "PATCH", "DELETE"] },
+];
+
+function isAdminAllowed(path: string, method: string): boolean {
+  return ADMIN_ALLOWED.some((r) => r.pattern.test(path) && r.methods.includes(method));
+}
+
 async function proxyToSketch(req: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
   const session = await auth();
-  if (!session || session.user.role !== "dev") {
+  if (!session) {
     return new Response("Unauthorized", { status: 401 });
   }
 
   const { path } = await params;
+  const joined = path.join("/");
+  const role = session.user.role;
+
+  if (role !== "dev" && !(role === "admin" && isAdminAllowed(joined, req.method))) {
+    return new Response("Unauthorized", { status: 401 });
+  }
   const qs = req.nextUrl.search;
   const target = `${process.env.PP_SKETCH_INTERNAL_URL}/${path.join("/")}${qs}`;
 
