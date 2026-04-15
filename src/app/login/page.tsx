@@ -13,15 +13,19 @@ export default function LoginPage() {
     setLoading(true);
 
     const formData = new FormData(e.currentTarget);
-    await signIn("credentials", {
+    const res = await signIn("credentials", {
       phone: formData.get("phone") as string,
       password: formData.get("password") as string,
-      redirectTo: "/dashboard",
+      redirect: false,
     });
 
-    // Only reached if signIn fails (success redirects automatically)
     setLoading(false);
-    setError("Login failed");
+
+    if (res?.error) {
+      setError("Login failed");
+    } else {
+      window.location.href = "/dashboard";
+    }
   }
 
   return (
