@@ -74,70 +74,73 @@ function DashboardTranscript({
     }
   };
 
-  if (!editing && !existing) {
-    return (
-      <button
-        onClick={() => setEditing(true)}
-        className="text-xs text-zinc-400 hover:text-zinc-600 transition-colors mt-1"
-      >
-        + add transcript
-      </button>
-    );
-  }
-
-  if (!editing && existing) {
-    return (
-      <div className="text-sm flex items-start gap-1 group">
-        <span className="text-xs font-medium text-zinc-400 mr-1">dashboard:</span>
-        <span className="text-zinc-700">{existing.text}</span>
-        <button
-          onClick={() => {
-            setText(existing.text ?? "");
-            setEditing(true);
-          }}
-          className="text-xs text-zinc-300 hover:text-zinc-500 opacity-0 group-hover:opacity-100 transition-opacity ml-1"
-        >
-          edit
-        </button>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex items-center gap-1 mt-1">
-      <input
-        type="text"
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onKeyDown={(e) => e.key === "Enter" && save()}
-        className="border border-zinc-300 rounded px-1.5 py-0.5 text-sm w-40 focus:outline-none focus:border-zinc-500"
-        autoFocus
-        disabled={saving}
-      />
-      <button
-        onClick={save}
-        disabled={saving || !text.trim()}
-        className="text-xs text-emerald-600 hover:text-emerald-700 disabled:opacity-40"
-      >
-        save
-      </button>
-      {existing && (
+    <>
+      {/* "+ add" button in top-right of cell */}
+      {!existing && !editing && (
         <button
-          onClick={remove}
-          disabled={saving}
-          className="text-xs text-red-500 hover:text-red-600 disabled:opacity-40"
+          onClick={() => setEditing(true)}
+          className="absolute top-2 right-3 text-xs text-zinc-400 hover:text-zinc-600 transition-colors"
         >
-          del
+          + add
         </button>
       )}
-      <button
-        onClick={() => setEditing(false)}
-        disabled={saving}
-        className="text-xs text-zinc-400 hover:text-zinc-500"
-      >
-        cancel
-      </button>
-    </div>
+
+      {/* Existing dashboard transcript display */}
+      {existing && !editing && (
+        <div className="text-sm flex items-start gap-1 group">
+          <span className="text-xs font-medium text-zinc-400 mr-1">dashboard:</span>
+          <span className="text-zinc-700">{existing.text}</span>
+          <button
+            onClick={() => {
+              setText(existing.text ?? "");
+              setEditing(true);
+            }}
+            className="text-xs text-zinc-300 hover:text-zinc-500 opacity-0 group-hover:opacity-100 transition-opacity ml-1"
+          >
+            edit
+          </button>
+        </div>
+      )}
+
+      {/* Editing form */}
+      {editing && (
+        <div className="flex items-center gap-1 mt-1">
+          <input
+            type="text"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && save()}
+            className="border border-zinc-300 rounded px-1.5 py-0.5 text-sm w-40 focus:outline-none focus:border-zinc-500"
+            autoFocus
+            disabled={saving}
+          />
+          <button
+            onClick={save}
+            disabled={saving || !text.trim()}
+            className="text-xs text-emerald-600 hover:text-emerald-700 disabled:opacity-40"
+          >
+            save
+          </button>
+          {existing && (
+            <button
+              onClick={remove}
+              disabled={saving}
+              className="text-xs text-red-500 hover:text-red-600 disabled:opacity-40"
+            >
+              del
+            </button>
+          )}
+          <button
+            onClick={() => setEditing(false)}
+            disabled={saving}
+            className="text-xs text-zinc-400 hover:text-zinc-500"
+          >
+            cancel
+          </button>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -234,7 +237,7 @@ export function MediaTable({
                   </span>
                 )}
               </td>
-              <td className="py-2.5 px-4">
+              <td className="py-2.5 px-4 relative">
                 <div className="flex flex-col gap-1">
                   {row.transcripts
                     .filter((t) => t.source !== "dashboard")
