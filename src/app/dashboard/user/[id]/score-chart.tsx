@@ -64,6 +64,14 @@ export function ScoreChart({ userId }: { userId: string }) {
         color: COLORS[i % COLORS.length],
       }));
 
+      console.log('[ScoreChart] raw data:', data);
+      console.log('[ScoreChart] series:', result.map(s => ({
+        grapheme: s.grapheme,
+        letter_id: s.letter_id,
+        numPoints: s.points.length,
+        points: s.points,
+      })));
+
       setSeries(result);
       setLoading(false);
     })();
@@ -165,6 +173,27 @@ export function ScoreChart({ userId }: { userId: string }) {
               style={{ cursor: "pointer" }}
             />
           ))}
+
+          {/* Dots for each data point */}
+          {series.map((s) =>
+            s.points.map((p, pi) => (
+              <circle
+                key={`dot-${s.letter_id}-${pi}`}
+                cx={x(p.t)}
+                cy={y(p.score)}
+                r={hoveredLetter === s.letter_id ? 4 : 2.5}
+                fill={s.color}
+                opacity={
+                  hoveredLetter === null || hoveredLetter === s.letter_id
+                    ? 1
+                    : 0.15
+                }
+                onMouseEnter={() => setHoveredLetter(s.letter_id)}
+                onMouseLeave={() => setHoveredLetter(null)}
+                style={{ cursor: "pointer" }}
+              />
+            ))
+          )}
 
           {/* Wider invisible hit areas for easier hover */}
           {series.map((s) => (
