@@ -27,11 +27,11 @@ export function UserMediaView({ userId }: { userId: string }) {
           &larr; Back
         </Link>
         <div>
-          <h1 className="text-xl font-semibold text-zinc-900">
-            {userName ?? userId}
+          <h1 className="text-xl font-semibold text-zinc-900 font-mono">
+            {userPhone ?? userId}
           </h1>
-          {userPhone && (
-            <p className="text-sm text-zinc-500 font-mono">{userPhone}</p>
+          {userName && (
+            <p className="text-sm text-zinc-500">{userName}</p>
           )}
         </div>
       </div>

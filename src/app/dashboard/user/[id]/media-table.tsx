@@ -137,13 +137,8 @@ export function MediaTable({
                   </span>
                 )}
               </td>
-              <td className="py-2.5 px-4">
-                {row.word ? (
-                  <span className="text-zinc-700">{row.word}</span>
-                ) : (
-                  <span className="text-zinc-400 italic">--</span>
-                )}
-              </td>
+              {/* word data available in row.word but stubbed for now */}
+              <td className="py-2.5 px-4 text-zinc-400 italic">--</td>
               <td className="py-2.5 px-4 text-zinc-400 italic">--</td>
             </tr>
           ))}
