@@ -3,8 +3,13 @@ import { redirect } from "next/navigation";
 import { SignOutButton } from "./sign-out-button";
 
 export default async function DashboardPage() {
+  console.log("[auth] DashboardPage: checking session...");
   const session = await auth();
-  if (!session) redirect("/login");
+  console.log("[auth] DashboardPage: session=", JSON.stringify(session));
+  if (!session) {
+    console.log("[auth] DashboardPage: NO SESSION, redirecting to /login");
+    redirect("/login");
+  }
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-zinc-50">

@@ -25,9 +25,11 @@ export default function LoginPage() {
 
     console.log("[auth] signIn result:", JSON.stringify(res));
     if (res?.error) {
-      setError(`Login failed: ${res.error} (status ${res.status})`);
+      setError(`Login failed: ${res.error} (status ${res.status} url=${res.url})`);
     } else {
+      console.log("[auth] signIn OK, navigating to /dashboard. res.ok=", res?.ok, "res.url=", res?.url);
       router.push("/dashboard");
+      console.log("[auth] router.push called");
     }
   }
 
