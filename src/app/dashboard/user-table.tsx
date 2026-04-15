@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 interface DayActivity {
   date: string;
@@ -111,6 +112,7 @@ function EditableName({
 }
 
 export function UserTable() {
+  const router = useRouter();
   const [users, setUsers] = useState<DashboardUser[]>([]);
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -132,10 +134,10 @@ export function UserTable() {
     }
   }, [users.length]);
 
-  // Auto-load on first render
-  if (!loaded && !loading) {
+  useEffect(() => {
     loadUsers();
-  }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="w-full max-w-5xl mx-auto">
@@ -153,10 +155,11 @@ export function UserTable() {
           {users.map((user, i) => (
             <tr
               key={user.id}
-              className="border-b border-zinc-100 hover:bg-zinc-50"
+              onClick={() => router.push(`/dashboard/user/${user.id}`)}
+              className="border-b border-zinc-100 hover:bg-zinc-50 cursor-pointer"
             >
               <td className="py-2.5 px-4 text-zinc-400">{i + 1}</td>
-              <td className="py-2.5 px-4">
+              <td className="py-2.5 px-4" onClick={(e) => e.stopPropagation()}>
                 <EditableName userId={user.id} initialName={user.name} />
               </td>
               <td className="py-2.5 px-4 font-mono text-zinc-600">
@@ -177,13 +180,14 @@ export function UserTable() {
           )}
         </tbody>
       </table>
-      {hasMore && !loading && loaded && (
+      {hasMore && loaded && (
         <div className="flex justify-center py-4">
           <button
             onClick={loadUsers}
-            className="px-4 py-2 text-sm bg-zinc-100 hover:bg-zinc-200 text-zinc-700 rounded-md transition-colors"
+            disabled={loading}
+            className="px-4 py-2 text-sm bg-zinc-100 hover:bg-zinc-200 text-zinc-700 rounded-md transition-colors disabled:opacity-40"
           >
-            Load more
+            {loading ? "Loading..." : "Load more"}
           </button>
         </div>
       )}

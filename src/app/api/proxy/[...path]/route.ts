@@ -8,7 +8,8 @@ async function proxyToSketch(req: NextRequest, { params }: { params: Promise<{ p
   }
 
   const { path } = await params;
-  const target = `${process.env.PP_SKETCH_INTERNAL_URL}/${path.join("/")}`;
+  const qs = req.nextUrl.search;
+  const target = `${process.env.PP_SKETCH_INTERNAL_URL}/${path.join("/")}${qs}`;
 
   const headers: Record<string, string> = { "Content-Type": "application/json" };
 
@@ -18,11 +19,14 @@ async function proxyToSketch(req: NextRequest, { params }: { params: Promise<{ p
   }
 
   const res = await fetch(target, init);
-  const body = await res.text();
+  const contentType = res.headers.get("Content-Type") || "application/json";
+  const body = contentType.startsWith("application/json") || contentType.startsWith("text/")
+    ? await res.text()
+    : await res.arrayBuffer();
 
   return new Response(body, {
     status: res.status,
-    headers: { "Content-Type": res.headers.get("Content-Type") || "application/json" },
+    headers: { "Content-Type": contentType },
   });
 }
 
