@@ -1,11 +1,9 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -28,8 +26,8 @@ export default function LoginPage() {
       setError(`Login failed: ${res.error} (status ${res.status} url=${res.url})`);
     } else {
       console.log("[auth] signIn OK, navigating to /dashboard. res.ok=", res?.ok, "res.url=", res?.url);
-      router.push("/dashboard");
-      console.log("[auth] router.push called");
+      window.location.href = "/dashboard";
+      console.log("[auth] navigation triggered");
     }
   }
 
