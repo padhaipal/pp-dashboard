@@ -13,6 +13,8 @@ interface MediaRow {
   has_audio: boolean;
   transcripts: Transcript[];
   word: string | null;
+  answer: string | null;
+  answer_correct: boolean | null;
 }
 
 interface UserInfo {
@@ -271,9 +273,24 @@ export function MediaTable({
                   />
                 </div>
               </td>
-              {/* word data available in row.word but stubbed for now */}
-              <td className="py-2.5 px-4 text-zinc-400 italic">--</td>
-              <td className="py-2.5 px-4 text-zinc-400 italic">--</td>
+              <td className="py-2.5 px-4">
+                {row.answer ? (
+                  <span className="text-zinc-700">{row.answer}</span>
+                ) : (
+                  <span className="text-zinc-400 italic">--</span>
+                )}
+              </td>
+              <td className="py-2.5 px-4">
+                {row.answer_correct === true && (
+                  <span className="text-emerald-600 font-medium">Correct</span>
+                )}
+                {row.answer_correct === false && (
+                  <span className="text-red-500 font-medium">Incorrect</span>
+                )}
+                {row.answer_correct === null && (
+                  <span className="text-zinc-400 italic">--</span>
+                )}
+              </td>
             </tr>
           ))}
           {loading && (
