@@ -12,6 +12,7 @@ interface MediaRow {
   created_at: string;
   has_audio: boolean;
   transcripts: Transcript[];
+  word: string | null;
 }
 
 interface UserInfo {
@@ -136,7 +137,13 @@ export function MediaTable({
                   </span>
                 )}
               </td>
-              <td className="py-2.5 px-4 text-zinc-400 italic">--</td>
+              <td className="py-2.5 px-4">
+                {row.word ? (
+                  <span className="text-zinc-700">{row.word}</span>
+                ) : (
+                  <span className="text-zinc-400 italic">--</span>
+                )}
+              </td>
               <td className="py-2.5 px-4 text-zinc-400 italic">--</td>
             </tr>
           ))}
