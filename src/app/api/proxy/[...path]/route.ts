@@ -1,6 +1,8 @@
 import { auth } from "@/auth";
 import { NextRequest } from "next/server";
 
+export const runtime = "nodejs";
+
 const ADMIN_ALLOWED: { pattern: RegExp; methods: string[] }[] = [
   { pattern: /^users\/dashboard$/, methods: ["GET"] },
   { pattern: /^users\/[^/]+$/, methods: ["PATCH"] },
@@ -12,6 +14,17 @@ const ADMIN_ALLOWED: { pattern: RegExp; methods: string[] }[] = [
 
 function isAdminAllowed(path: string, method: string): boolean {
   return ADMIN_ALLOWED.some((r) => r.pattern.test(path) && r.methods.includes(method));
+}
+
+function buildProxyRequestHeaders(req: NextRequest): Headers {
+  const headers = new Headers(req.headers);
+
+  // Let fetch recalculate hop-by-hop and body-specific headers.
+  headers.delete("host");
+  headers.delete("connection");
+  headers.delete("content-length");
+
+  return headers;
 }
 
 async function proxyToSketch(req: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
@@ -30,22 +43,28 @@ async function proxyToSketch(req: NextRequest, { params }: { params: Promise<{ p
   const qs = req.nextUrl.search;
   const target = `${process.env.PP_SKETCH_INTERNAL_URL}/${path.join("/")}${qs}`;
 
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-
-  const init: RequestInit = { method: req.method, headers };
+  const init: RequestInit = {
+    method: req.method,
+    headers: buildProxyRequestHeaders(req),
+  };
   if (req.method !== "GET" && req.method !== "HEAD") {
-    init.body = await req.text();
+    init.body = await req.arrayBuffer();
   }
 
   const res = await fetch(target, init);
-  const contentType = res.headers.get("Content-Type") || "application/json";
-  const body = contentType.startsWith("application/json") || contentType.startsWith("text/")
-    ? await res.text()
-    : await res.arrayBuffer();
 
-  return new Response(body, {
+  const responseHeaders = new Headers();
+  const contentType = res.headers.get("Content-Type");
+  const contentDisposition = res.headers.get("Content-Disposition");
+  const cacheControl = res.headers.get("Cache-Control");
+
+  if (contentType) responseHeaders.set("Content-Type", contentType);
+  if (contentDisposition) responseHeaders.set("Content-Disposition", contentDisposition);
+  if (cacheControl) responseHeaders.set("Cache-Control", cacheControl);
+
+  return new Response(res.body, {
     status: res.status,
-    headers: { "Content-Type": contentType },
+    headers: responseHeaders,
   });
 }
 
