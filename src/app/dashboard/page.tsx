@@ -1,9 +1,15 @@
 import { auth } from "@/auth";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { SignOutButton } from "./sign-out-button";
 
 export default async function DashboardPage() {
-  console.log("[auth] DashboardPage: checking session...");
+  const cookieStore = await cookies();
+  const headerStore = await headers();
+  const allCookies = cookieStore.getAll();
+  console.log("[auth] DashboardPage: cookies=", JSON.stringify(allCookies.map(c => ({ name: c.name, len: c.value.length }))));
+  console.log("[auth] DashboardPage: x-forwarded-proto=", headerStore.get("x-forwarded-proto"), "host=", headerStore.get("host"));
+
   const session = await auth();
   console.log("[auth] DashboardPage: session=", JSON.stringify(session));
   if (!session) {

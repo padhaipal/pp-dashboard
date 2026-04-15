@@ -3,7 +3,6 @@ import Credentials from "next-auth/providers/credentials";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   debug: true,
-  useSecureCookies: true,
   providers: [
     Credentials({
       credentials: {

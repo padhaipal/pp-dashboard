@@ -13,22 +13,15 @@ export default function LoginPage() {
     setLoading(true);
 
     const formData = new FormData(e.currentTarget);
-    const res = await signIn("credentials", {
+    await signIn("credentials", {
       phone: formData.get("phone") as string,
       password: formData.get("password") as string,
-      redirect: false,
+      redirectTo: "/dashboard",
     });
 
+    // Only reached if signIn fails (success redirects automatically)
     setLoading(false);
-
-    console.log("[auth] signIn result:", JSON.stringify(res));
-    if (res?.error) {
-      setError(`Login failed: ${res.error} (status ${res.status} url=${res.url})`);
-    } else {
-      console.log("[auth] signIn OK, navigating to /dashboard. res.ok=", res?.ok, "res.url=", res?.url);
-      window.location.href = "/dashboard";
-      console.log("[auth] navigation triggered");
-    }
+    setError("Login failed");
   }
 
   return (
