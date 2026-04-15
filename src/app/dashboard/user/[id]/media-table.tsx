@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 
 interface Transcript {
   text: string | null;
@@ -14,7 +14,48 @@ interface MediaRow {
   transcripts: Transcript[];
 }
 
-export function MediaTable({ userId }: { userId: string }) {
+interface UserInfo {
+  name: string | null;
+  phone: string;
+}
+
+function formatIST(iso: string) {
+  return new Date(iso).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
+}
+
+function AudioCell({ mediaId }: { mediaId: string }) {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [duration, setDuration] = useState<number | null>(null);
+
+  return (
+    <div className="flex items-center gap-2">
+      <audio
+        ref={audioRef}
+        controls
+        preload="metadata"
+        className="h-8 w-64"
+        src={`/api/proxy/media-meta-data/${mediaId}/audio`}
+        onLoadedMetadata={() => {
+          const d = audioRef.current?.duration;
+          if (d && isFinite(d)) setDuration(d);
+        }}
+      />
+      {duration !== null && (
+        <span className="text-xs text-zinc-400 whitespace-nowrap">
+          {duration.toFixed(1)}s
+        </span>
+      )}
+    </div>
+  );
+}
+
+export function MediaTable({
+  userId,
+  onUserLoaded,
+}: {
+  userId: string;
+  onUserLoaded: (user: UserInfo) => void;
+}) {
   const [rows, setRows] = useState<MediaRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -27,14 +68,16 @@ export function MediaTable({ userId }: { userId: string }) {
         `/api/proxy/users/${userId}/media?offset=${rows.length}`
       );
       if (!res.ok) return;
-      const data: MediaRow[] = await res.json();
-      setRows((prev) => [...prev, ...data]);
-      if (data.length < 100) setHasMore(false);
+      const data = await res.json();
+      const media: MediaRow[] = data.media;
+      if (data.user) onUserLoaded(data.user);
+      setRows((prev) => [...prev, ...media]);
+      if (media.length < 100) setHasMore(false);
       setLoaded(true);
     } finally {
       setLoading(false);
     }
-  }, [userId, rows.length]);
+  }, [userId, rows.length, onUserLoaded]);
 
   useEffect(() => {
     loadMore();
@@ -62,16 +105,11 @@ export function MediaTable({ userId }: { userId: string }) {
             >
               <td className="py-2.5 px-4 text-zinc-400">{i + 1}</td>
               <td className="py-2.5 px-4 text-zinc-600 whitespace-nowrap">
-                {new Date(row.created_at).toLocaleString()}
+                {formatIST(row.created_at)}
               </td>
               <td className="py-2.5 px-4">
                 {row.has_audio ? (
-                  <audio
-                    controls
-                    preload="none"
-                    className="h-8 w-48"
-                    src={`/api/proxy/media-meta-data/${row.id}/audio`}
-                  />
+                  <AudioCell mediaId={row.id} />
                 ) : (
                   <span className="text-zinc-400 italic text-xs">
                     No audio

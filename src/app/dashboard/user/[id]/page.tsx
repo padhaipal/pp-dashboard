@@ -1,7 +1,6 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
-import Link from "next/link";
-import { MediaTable } from "./media-table";
+import { UserMediaView } from "./user-media-view";
 
 export default async function UserMediaPage({
   params,
@@ -18,19 +17,7 @@ export default async function UserMediaPage({
   return (
     <div className="min-h-screen bg-zinc-50 p-6">
       <div className="max-w-6xl mx-auto">
-        <div className="flex items-center gap-4 mb-6">
-          <Link
-            href="/dashboard"
-            className="text-sm text-zinc-500 hover:text-zinc-900"
-          >
-            &larr; Back
-          </Link>
-          <h1 className="text-xl font-semibold text-zinc-900">User Media</h1>
-          <span className="text-sm text-zinc-400 font-mono">{id}</span>
-        </div>
-        <div className="bg-white rounded-lg border border-zinc-200 shadow-sm overflow-hidden">
-          <MediaTable userId={id} />
-        </div>
+        <UserMediaView userId={id} />
       </div>
     </div>
   );
