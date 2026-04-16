@@ -57,12 +57,14 @@ export function ScoreChart({ userId }: { userId: string }) {
       }
 
       const letterIds = Array.from(grouped.keys());
-      const result: LetterSeries[] = letterIds.map((lid, i) => ({
-        letter_id: lid,
-        grapheme: grouped.get(lid)!.grapheme,
-        points: grouped.get(lid)!.points,
-        color: COLORS[i % COLORS.length],
-      }));
+      const result: LetterSeries[] = letterIds
+        .filter((lid) => grouped.get(lid)!.points.length >= 2)
+        .map((lid, i) => ({
+          letter_id: lid,
+          grapheme: grouped.get(lid)!.grapheme,
+          points: grouped.get(lid)!.points,
+          color: COLORS[i % COLORS.length],
+        }));
 
       setSeries(result);
       setLoading(false);
@@ -90,9 +92,7 @@ export function ScoreChart({ userId }: { userId: string }) {
   const sMax = Math.max(...allPoints.map((p) => p.score));
   const scorePad = Math.max(1, (sMax - sMin) * 0.1);
 
-  const tMin = Math.min(...allPoints.map((p) => p.t));
-  const tMax = Math.max(...allPoints.map((p) => p.t));
-  const tRange = tMax - tMin || 1;
+  const maxLen = Math.max(...series.map((s) => s.points.length));
 
   const W = 900;
   const H = 300;
@@ -102,13 +102,14 @@ export function ScoreChart({ userId }: { userId: string }) {
   const sRange = sMax - sMin + scorePad * 2 || 1;
   const sLow = sMin - scorePad;
 
-  const x = (t: number) => PADDING.left + ((t - tMin) / tRange) * plotW;
+  const xByIndex = (i: number) =>
+    PADDING.left + (maxLen <= 1 ? plotW / 2 : (i / (maxLen - 1)) * plotW);
   const y = (s: number) => PADDING.top + plotH - ((s - sLow) / sRange) * plotH;
 
   const toPath = (pts: { t: number; score: number }[]) => {
     const parts: string[] = [];
     for (let i = 0; i < pts.length; i++) {
-      const px = x(pts[i].t).toFixed(1);
+      const px = xByIndex(i).toFixed(1);
       const py = y(pts[i].score).toFixed(1);
       if (i === 0) {
         parts.push(`M${px},${py}`);
@@ -184,7 +185,7 @@ export function ScoreChart({ userId }: { userId: string }) {
             s.points.map((p, pi) => (
               <circle
                 key={`dot-${s.letter_id}-${pi}`}
-                cx={x(p.t)}
+                cx={xByIndex(pi)}
                 cy={y(p.score)}
                 r={hoveredLetter === s.letter_id ? 4 : 2.5}
                 fill={s.color}
@@ -220,9 +221,10 @@ export function ScoreChart({ userId }: { userId: string }) {
               const s = series.find((s) => s.letter_id === hoveredLetter);
               if (!s) return null;
               const last = s.points[s.points.length - 1];
+              const lastIdx = s.points.length - 1;
               return (
                 <text
-                  x={x(last.t) + 6}
+                  x={xByIndex(lastIdx) + 6}
                   y={y(last.score) + 4}
                   fontSize={14}
                   fontWeight="bold"
