@@ -111,12 +111,42 @@ function EditableName({
   );
 }
 
+interface LettersLearntResult {
+  userId: string;
+  userPhone: string;
+  lettersLearnt: string[];
+}
+
 export function UserTable() {
   const router = useRouter();
   const [users, setUsers] = useState<DashboardUser[]>([]);
   const [loading, setLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+  const [lettersMap, setLettersMap] = useState<Map<string, string[]>>(
+    new Map()
+  );
+
+  const fetchLettersLearnt = useCallback(async (userIds: string[]) => {
+    if (userIds.length === 0) return;
+    try {
+      const param = userIds.join(",");
+      const res = await fetch(
+        `/api/proxy/scores/letters-learnt?users=${encodeURIComponent(param)}`
+      );
+      if (!res.ok) return;
+      const data: LettersLearntResult[] = await res.json();
+      setLettersMap((prev) => {
+        const next = new Map(prev);
+        for (const entry of data) {
+          next.set(entry.userId, entry.lettersLearnt);
+        }
+        return next;
+      });
+    } catch {
+      // Letters learnt is non-critical; silently ignore failures
+    }
+  }, []);
 
   const loadUsers = useCallback(async () => {
     setLoading(true);
@@ -129,10 +159,11 @@ export function UserTable() {
       setUsers((prev) => [...prev, ...data]);
       if (data.length < 100) setHasMore(false);
       setLoaded(true);
+      fetchLettersLearnt(data.map((u) => u.id));
     } finally {
       setLoading(false);
     }
-  }, [users.length]);
+  }, [users.length, fetchLettersLearnt]);
 
   useEffect(() => {
     loadUsers();
@@ -165,7 +196,19 @@ export function UserTable() {
               <td className="py-2.5 px-4 font-mono text-zinc-600">
                 {user.external_id}
               </td>
-              <td className="py-2.5 px-4 text-zinc-400 italic">--</td>
+              <td className="py-2.5 px-4">
+                {lettersMap.has(user.id) ? (
+                  lettersMap.get(user.id)!.length > 0 ? (
+                    <span className="text-zinc-700">
+                      {lettersMap.get(user.id)!.join(" ")}
+                    </span>
+                  ) : (
+                    <span className="text-zinc-400 italic">none</span>
+                  )
+                ) : (
+                  <span className="text-zinc-300 italic">...</span>
+                )}
+              </td>
               <td className="py-2.5 px-4">
                 <ActivityGraph activity={user.activity} />
               </td>

@@ -10,6 +10,7 @@ const ADMIN_ALLOWED: { pattern: RegExp; methods: string[] }[] = [
   { pattern: /^users\/[^/]+\/scores$/, methods: ["GET"] },
   { pattern: /^media-meta-data\/[^/]+\/audio$/, methods: ["GET"] },
   { pattern: /^media-meta-data\/[^/]+\/dashboard-transcript$/, methods: ["POST", "PATCH", "DELETE"] },
+  { pattern: /^scores\/letters-learnt$/, methods: ["GET"] },
 ];
 
 function isAdminAllowed(path: string, method: string): boolean {
