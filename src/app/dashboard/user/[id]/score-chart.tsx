@@ -7,12 +7,14 @@ interface ScorePoint {
   created_at: string;
   letter_id: string;
   grapheme: string;
+  is_seed: boolean;
 }
 
 interface LetterSeries {
   letter_id: string;
   grapheme: string;
   points: { t: number; score: number }[];
+  initialScore: number | null;
   color: string;
 }
 
@@ -44,16 +46,25 @@ export function ScoreChart({ userId }: { userId: string }) {
         return;
       }
 
-      // Group by letter_id
-      const grouped = new Map<string, { grapheme: string; points: { t: number; score: number }[] }>();
+      // Group by letter_id, separating seed scores from real scores
+      const grouped = new Map<string, {
+        grapheme: string;
+        seedScore: number | null;
+        points: { t: number; score: number }[];
+      }>();
       for (const d of data) {
         if (!grouped.has(d.letter_id)) {
-          grouped.set(d.letter_id, { grapheme: d.grapheme, points: [] });
+          grouped.set(d.letter_id, { grapheme: d.grapheme, seedScore: null, points: [] });
         }
-        grouped.get(d.letter_id)!.points.push({
-          t: new Date(d.created_at).getTime(),
-          score: d.score,
-        });
+        const entry = grouped.get(d.letter_id)!;
+        if (d.is_seed) {
+          entry.seedScore = d.score;
+        } else {
+          entry.points.push({
+            t: new Date(d.created_at).getTime(),
+            score: d.score,
+          });
+        }
       }
 
       const letterIds = Array.from(grouped.keys());
@@ -63,6 +74,7 @@ export function ScoreChart({ userId }: { userId: string }) {
           letter_id: lid,
           grapheme: grouped.get(lid)!.grapheme,
           points: grouped.get(lid)!.points,
+          initialScore: grouped.get(lid)!.seedScore,
           color: COLORS[i % COLORS.length],
         }));
 
@@ -87,9 +99,13 @@ export function ScoreChart({ userId }: { userId: string }) {
     );
   }
 
-  const allPoints = series.flatMap((s) => s.points);
-  const sMin = Math.min(0, ...allPoints.map((p) => p.score));
-  const sMax = Math.max(...allPoints.map((p) => p.score));
+  const allScores = series.flatMap((s) => {
+    const scores = s.points.map((p) => p.score);
+    if (s.initialScore !== null) scores.push(s.initialScore);
+    return scores;
+  });
+  const sMin = Math.min(0, ...allScores);
+  const sMax = Math.max(0, ...allScores);
   const scorePad = Math.max(1, (sMax - sMin) * 0.1);
 
   const maxLen = Math.max(...series.map((s) => s.points.length));
@@ -121,11 +137,15 @@ export function ScoreChart({ userId }: { userId: string }) {
     return parts.join(" ");
   };
 
-  // Y-axis ticks
+  // Y-axis ticks (always include 0)
   const yTicks: number[] = [];
   const tickStep = Math.ceil(sRange / 5) || 1;
   for (let v = Math.floor(sLow); v <= sMax + scorePad; v += tickStep) {
     yTicks.push(v);
+  }
+  if (!yTicks.includes(0)) {
+    yTicks.push(0);
+    yTicks.sort((a, b) => a - b);
   }
 
   return (
@@ -146,20 +166,48 @@ export function ScoreChart({ userId }: { userId: string }) {
                 y1={y(v)}
                 x2={W - PADDING.right}
                 y2={y(v)}
-                stroke="#e4e4e7"
-                strokeWidth={0.5}
+                stroke={v === 0 ? "#a1a1aa" : "#e4e4e7"}
+                strokeWidth={v === 0 ? 1 : 0.5}
               />
               <text
                 x={PADDING.left - 8}
                 y={y(v) + 4}
                 textAnchor="end"
-                className="fill-zinc-400"
+                className={v === 0 ? "fill-zinc-600" : "fill-zinc-400"}
                 fontSize={10}
+                fontWeight={v === 0 ? 600 : 400}
               >
                 {v}
               </text>
             </g>
           ))}
+
+          {/* Vertical lines from first point to initial (seed) score */}
+          {series.map((s) => {
+            if (s.initialScore === null) return null;
+            const firstPt = s.points[0];
+            if (firstPt.score === s.initialScore) return null;
+            return (
+              <line
+                key={`seed-${s.letter_id}`}
+                x1={xByIndex(0)}
+                y1={y(firstPt.score)}
+                x2={xByIndex(0)}
+                y2={y(s.initialScore)}
+                stroke={s.color}
+                strokeWidth={hoveredLetter === s.letter_id ? 2.5 : 1.5}
+                strokeDasharray="3,3"
+                opacity={
+                  hoveredLetter === null || hoveredLetter === s.letter_id
+                    ? 0.6
+                    : 0.1
+                }
+                onMouseEnter={() => setHoveredLetter(s.letter_id)}
+                onMouseLeave={() => setHoveredLetter(null)}
+                style={{ cursor: "pointer" }}
+              />
+            );
+          })}
 
           {/* Lines */}
           {series.map((s) => (
