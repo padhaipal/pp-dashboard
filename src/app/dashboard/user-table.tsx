@@ -186,7 +186,7 @@ export function UserTable() {
           {users.map((user, i) => (
             <tr
               key={user.id}
-              onClick={() => router.push(`/dashboard/user/${user.id}`)}
+              onClick={() => router.push(`/user/${user.id}`)}
               className="border-b border-zinc-100 hover:bg-zinc-50 cursor-pointer"
             >
               <td className="py-2.5 px-4 text-zinc-400">{i + 1}</td>
