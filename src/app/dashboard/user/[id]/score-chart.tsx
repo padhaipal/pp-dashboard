@@ -219,7 +219,6 @@ export function ScoreChart({ userId }: { userId: string }) {
                 y2={y(s.initialScore)}
                 stroke={s.color}
                 strokeWidth={hoveredLetter === s.letter_id ? 2.5 : 1.5}
-                strokeDasharray="3,3"
                 opacity={
                   hoveredLetter === null || hoveredLetter === s.letter_id
                     ? 0.6

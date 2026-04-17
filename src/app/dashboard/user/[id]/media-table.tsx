@@ -20,9 +20,11 @@ interface MediaRow {
   has_audio: boolean;
   transcripts: Transcript[];
   word: string | null;
+  starting_state: string | null;
   answer: string | null;
   answer_correct: boolean | null;
   score_changes?: ScoreChange[];
+  final_state: string | null;
 }
 
 interface UserInfo {
@@ -232,11 +234,13 @@ export function MediaTable({
         <thead>
           <tr className="border-b border-zinc-200 text-zinc-500 text-xs uppercase tracking-wide">
             <th className="py-3 px-4 font-medium">Timestamp</th>
+            <th className="py-3 px-4 font-medium">Starting State</th>
             <th className="py-3 px-4 font-medium">Student Audio</th>
             <th className="py-3 px-4 font-medium">Transcript</th>
             <th className="py-3 px-4 font-medium">Correct Answer</th>
             <th className="py-3 px-4 font-medium">Answer Status</th>
             <th className="py-3 px-4 font-medium">Score Change</th>
+            <th className="py-3 px-4 font-medium">Final State</th>
           </tr>
         </thead>
         <tbody>
@@ -247,6 +251,13 @@ export function MediaTable({
             >
               <td className="py-2.5 px-4 text-zinc-600 whitespace-nowrap">
                 {formatIST(row.created_at)}
+              </td>
+              <td className="py-2.5 px-4">
+                {row.starting_state ? (
+                  <span className="text-zinc-700 text-xs">{row.starting_state}</span>
+                ) : (
+                  <span className="text-zinc-400 italic text-xs">--</span>
+                )}
               </td>
               <td className="py-2.5 px-4">
                 {row.has_audio ? (
@@ -347,11 +358,18 @@ export function MediaTable({
                   <span className="text-zinc-400 italic text-xs">--</span>
                 )}
               </td>
+              <td className="py-2.5 px-4">
+                {row.final_state ? (
+                  <span className="text-zinc-700 text-xs">{row.final_state}</span>
+                ) : (
+                  <span className="text-zinc-400 italic text-xs">--</span>
+                )}
+              </td>
             </tr>
           ))}
           {loading && (
             <tr>
-              <td colSpan={6} className="py-6 text-center text-zinc-400">
+              <td colSpan={8} className="py-6 text-center text-zinc-400">
                 Loading...
               </td>
             </tr>
