@@ -16,6 +16,13 @@ interface LetterSeries {
   points: { t: number; score: number }[];
   initialScore: number | null;
   color: string;
+  learnt: boolean;
+}
+
+interface LettersLearntResult {
+  userId: string;
+  userPhone: string;
+  lettersLearnt: string[];
 }
 
 const COLORS = [
@@ -35,15 +42,24 @@ export function ScoreChart({ userId }: { userId: string }) {
 
   useEffect(() => {
     (async () => {
-      const res = await fetch(`/api/proxy/users/${userId}/scores`);
-      if (!res.ok) {
+      const [scoresRes, learntRes] = await Promise.all([
+        fetch(`/api/proxy/users/${userId}/scores`),
+        fetch(`/api/proxy/scores/letters-learnt?users=${userId}`),
+      ]);
+      if (!scoresRes.ok) {
         setLoading(false);
         return;
       }
-      const data: ScorePoint[] = await res.json();
+      const data: ScorePoint[] = await scoresRes.json();
       if (data.length === 0) {
         setLoading(false);
         return;
+      }
+
+      let learntSet = new Set<string>();
+      if (learntRes.ok) {
+        const learntData: LettersLearntResult[] = await learntRes.json();
+        learntSet = new Set(learntData[0]?.lettersLearnt ?? []);
       }
 
       // Group by letter_id, separating seed scores from real scores
@@ -76,6 +92,7 @@ export function ScoreChart({ userId }: { userId: string }) {
           points: grouped.get(lid)!.points,
           initialScore: grouped.get(lid)!.seedScore,
           color: COLORS[i % COLORS.length],
+          learnt: learntSet.has(grouped.get(lid)!.grapheme),
         }));
 
       setSeries(result);
@@ -249,6 +266,33 @@ export function ScoreChart({ userId }: { userId: string }) {
             ))
           )}
 
+          {/* Star marker at end of each learnt letter's line */}
+          {series.map((s) => {
+            if (!s.learnt || s.points.length === 0) return null;
+            const lastIdx = s.points.length - 1;
+            const last = s.points[lastIdx];
+            return (
+              <text
+                key={`star-${s.letter_id}`}
+                x={xByIndex(lastIdx)}
+                y={y(last.score) - 6}
+                textAnchor="middle"
+                fontSize={12}
+                fill={s.color}
+                opacity={
+                  hoveredLetter === null || hoveredLetter === s.letter_id
+                    ? 1
+                    : 0.15
+                }
+                onMouseEnter={() => setHoveredLetter(s.letter_id)}
+                onMouseLeave={() => setHoveredLetter(null)}
+                style={{ cursor: "pointer" }}
+              >
+                ★
+              </text>
+            );
+          })}
+
           {/* Wider invisible hit areas for easier hover */}
           {series.map((s) => (
             <path
@@ -304,6 +348,14 @@ export function ScoreChart({ userId }: { userId: string }) {
                 style={{ backgroundColor: s.color }}
               />
               <span className="text-zinc-600">{s.grapheme}</span>
+              {s.learnt && (
+                <span
+                  className="text-amber-400 text-[11px] leading-none"
+                  title="Learnt"
+                >
+                  ★
+                </span>
+              )}
             </div>
           ))}
         </div>
