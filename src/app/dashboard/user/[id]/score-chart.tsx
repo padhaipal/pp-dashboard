@@ -167,7 +167,13 @@ export function ScoreChart({ userId }: { userId: string }) {
 
   return (
     <div className="bg-white rounded-lg border border-zinc-200 shadow-sm p-4 mb-6">
-      <h2 className="text-sm font-medium text-zinc-500 mb-3">Letter Scores Over Time</h2>
+      <div className="flex items-center justify-between mb-3">
+        <h2 className="text-sm font-medium text-zinc-500">Letter Scores Over Time</h2>
+        <div className="flex items-center gap-1.5 text-xs text-zinc-500">
+          <span className="text-amber-400 text-sm leading-none">★</span>
+          <span>Letter learnt</span>
+        </div>
+      </div>
       <div className="flex gap-4">
         <svg
           ref={svgRef}

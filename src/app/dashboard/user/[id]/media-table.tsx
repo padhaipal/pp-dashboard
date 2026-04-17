@@ -231,9 +231,8 @@ export function MediaTable({
       <table className="w-full text-sm text-left">
         <thead>
           <tr className="border-b border-zinc-200 text-zinc-500 text-xs uppercase tracking-wide">
-            <th className="py-3 px-4 font-medium">#</th>
             <th className="py-3 px-4 font-medium">Timestamp</th>
-            <th className="py-3 px-4 font-medium">Audio</th>
+            <th className="py-3 px-4 font-medium">Student Audio</th>
             <th className="py-3 px-4 font-medium">Transcript</th>
             <th className="py-3 px-4 font-medium">Correct Answer</th>
             <th className="py-3 px-4 font-medium">Answer Status</th>
@@ -241,12 +240,11 @@ export function MediaTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, i) => (
+          {rows.map((row) => (
             <tr
               key={row.id}
               className="border-b border-zinc-100 hover:bg-zinc-50 align-top"
             >
-              <td className="py-2.5 px-4 text-zinc-400">{i + 1}</td>
               <td className="py-2.5 px-4 text-zinc-600 whitespace-nowrap">
                 {formatIST(row.created_at)}
               </td>
@@ -322,18 +320,28 @@ export function MediaTable({
               <td className="py-2.5 px-4">
                 {row.score_changes && row.score_changes.length > 0 ? (
                   <div className="flex flex-col gap-0.5">
-                    {row.score_changes.map((sc, j) => (
-                      <div key={j} className="text-sm flex items-center gap-1">
-                        <span className="text-zinc-700 font-medium">{sc.grapheme}</span>
-                        <span className="text-xs text-zinc-400">
-                          {sc.prev_score !== null ? sc.prev_score.toFixed(1) : "—"}
-                        </span>
-                        <span className="text-[10px] text-zinc-300">→</span>
-                        <span className="text-xs font-medium text-zinc-600">
-                          {sc.score.toFixed(1)}
-                        </span>
-                      </div>
-                    ))}
+                    {row.score_changes.map((sc, j) => {
+                      const delta =
+                        sc.prev_score !== null ? sc.score - sc.prev_score : 0;
+                      const colorClass =
+                        delta > 0
+                          ? "text-emerald-600"
+                          : delta < 0
+                          ? "text-red-500"
+                          : "text-zinc-600";
+                      return (
+                        <div key={j} className="text-sm flex items-center gap-1">
+                          <span className="text-zinc-700 font-medium">{sc.grapheme}</span>
+                          <span className={`text-xs ${colorClass} opacity-60`}>
+                            {sc.prev_score !== null ? sc.prev_score.toFixed(1) : "—"}
+                          </span>
+                          <span className={`text-[10px] ${colorClass}`}>→</span>
+                          <span className={`text-xs font-medium ${colorClass}`}>
+                            {sc.score.toFixed(1)}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                 ) : (
                   <span className="text-zinc-400 italic text-xs">--</span>
@@ -343,7 +351,7 @@ export function MediaTable({
           ))}
           {loading && (
             <tr>
-              <td colSpan={7} className="py-6 text-center text-zinc-400">
+              <td colSpan={6} className="py-6 text-center text-zinc-400">
                 Loading...
               </td>
             </tr>
