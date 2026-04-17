@@ -69,7 +69,7 @@ export function ScoreChart({ userId }: { userId: string }) {
 
       const letterIds = Array.from(grouped.keys());
       const result: LetterSeries[] = letterIds
-        .filter((lid) => grouped.get(lid)!.points.length >= 2)
+        .filter((lid) => grouped.get(lid)!.points.length >= 1)
         .map((lid, i) => ({
           letter_id: lid,
           grapheme: grouped.get(lid)!.grapheme,

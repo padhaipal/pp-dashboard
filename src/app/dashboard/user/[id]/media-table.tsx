@@ -5,6 +5,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 interface Transcript {
   text: string | null;
   source: string;
+  created_at?: string;
 }
 
 interface MediaRow {
@@ -24,6 +25,17 @@ interface UserInfo {
 
 function formatIST(iso: string) {
   return new Date(iso).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
+}
+
+function formatLatency(audioCreatedAt: string, transcriptCreatedAt: string): string | null {
+  const ms = new Date(transcriptCreatedAt).getTime() - new Date(audioCreatedAt).getTime();
+  if (ms < 0 || !isFinite(ms)) return null;
+  if (ms < 1000) return `${ms}ms`;
+  const s = ms / 1000;
+  if (s < 60) return `${s.toFixed(1)}s`;
+  const m = Math.floor(s / 60);
+  const rem = Math.round(s % 60);
+  return `${m}m${rem}s`;
 }
 
 function DashboardTranscript({
@@ -243,16 +255,24 @@ export function MediaTable({
                 <div className="flex flex-col gap-1">
                   {row.transcripts
                     .filter((t) => t.source !== "dashboard")
-                    .map((t, j) => (
-                      <div key={j} className="text-sm">
-                        <span className="text-xs font-medium text-zinc-400 mr-1">
-                          {t.source}:
-                        </span>
-                        <span className="text-zinc-700">
-                          {t.text || <em className="text-zinc-400">empty</em>}
-                        </span>
-                      </div>
-                    ))}
+                    .map((t, j) => {
+                      const latency = t.created_at ? formatLatency(row.created_at, t.created_at) : null;
+                      return (
+                        <div key={j} className="text-sm flex items-baseline gap-1">
+                          <span className="text-xs font-medium text-zinc-400 mr-1">
+                            {t.source}:
+                          </span>
+                          <span className="text-zinc-700">
+                            {t.text || <em className="text-zinc-400">empty</em>}
+                          </span>
+                          {latency && (
+                            <span className="text-[10px] text-zinc-300 ml-1" title="Transcription latency">
+                              {latency}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
                   {row.transcripts.filter((t) => t.source !== "dashboard").length === 0 && (
                     <span className="text-zinc-400 italic text-xs">
                       No transcripts
