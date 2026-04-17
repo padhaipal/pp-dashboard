@@ -8,6 +8,12 @@ interface Transcript {
   created_at?: string;
 }
 
+interface ScoreChange {
+  grapheme: string;
+  score: number;
+  prev_score: number | null;
+}
+
 interface MediaRow {
   id: string;
   created_at: string;
@@ -16,6 +22,7 @@ interface MediaRow {
   word: string | null;
   answer: string | null;
   answer_correct: boolean | null;
+  score_changes?: ScoreChange[];
 }
 
 interface UserInfo {
@@ -230,6 +237,7 @@ export function MediaTable({
             <th className="py-3 px-4 font-medium">Transcript</th>
             <th className="py-3 px-4 font-medium">Correct Answer</th>
             <th className="py-3 px-4 font-medium">Answer Status</th>
+            <th className="py-3 px-4 font-medium">Score Change</th>
           </tr>
         </thead>
         <tbody>
@@ -311,11 +319,31 @@ export function MediaTable({
                   <span className="text-zinc-400 italic">--</span>
                 )}
               </td>
+              <td className="py-2.5 px-4">
+                {row.score_changes && row.score_changes.length > 0 ? (
+                  <div className="flex flex-col gap-0.5">
+                    {row.score_changes.map((sc, j) => (
+                      <div key={j} className="text-sm flex items-center gap-1">
+                        <span className="text-zinc-700 font-medium">{sc.grapheme}</span>
+                        <span className="text-xs text-zinc-400">
+                          {sc.prev_score !== null ? sc.prev_score.toFixed(1) : "—"}
+                        </span>
+                        <span className="text-[10px] text-zinc-300">→</span>
+                        <span className="text-xs font-medium text-zinc-600">
+                          {sc.score.toFixed(1)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="text-zinc-400 italic text-xs">--</span>
+                )}
+              </td>
             </tr>
           ))}
           {loading && (
             <tr>
-              <td colSpan={6} className="py-6 text-center text-zinc-400">
+              <td colSpan={7} className="py-6 text-center text-zinc-400">
                 Loading...
               </td>
             </tr>
