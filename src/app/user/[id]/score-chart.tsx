@@ -74,11 +74,11 @@ export function ScoreChart({ userId }: { userId: string }) {
         }
         const entry = grouped.get(d.letter_id)!;
         if (d.is_seed) {
-          entry.seedScore = d.score;
+          entry.seedScore = d.score + 100;
         } else {
           entry.points.push({
             t: new Date(d.created_at).getTime(),
-            score: d.score,
+            score: d.score + 100,
           });
         }
       }
