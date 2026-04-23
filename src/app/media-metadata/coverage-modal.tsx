@@ -3,6 +3,9 @@
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+// ElevenLabs voice: "Natasha - Warm, Inviting and Clear" (Hindi, conversational).
+const NATASHA_VOICE_ID = "S2uC1CO2xXot4UtzYX68";
+
 interface MediaItem {
   id: string;
   media_type: "audio" | "text" | "video" | "image" | "sticker";
@@ -201,7 +204,7 @@ function CreateAudioForm({
   onCancel: () => void;
 }) {
   const [stid, setStid] = useState(initialStid);
-  const [voiceId, setVoiceId] = useState("");
+  const [voiceId, setVoiceId] = useState(NATASHA_VOICE_ID);
   const [scripts, setScripts] = useState<string[]>([""]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -284,7 +287,7 @@ function CreateAudioForm({
       <label className="block text-xs font-medium text-zinc-600 mb-1">
         voice_id{" "}
         <span className="text-zinc-400 font-normal">
-          (blank = use default)
+          (Natasha prefilled — Hindi conversational)
         </span>
       </label>
       <input
@@ -292,7 +295,7 @@ function CreateAudioForm({
         value={voiceId}
         onChange={(e) => setVoiceId(e.target.value)}
         disabled={submitting}
-        placeholder="ElevenLabs voice id, e.g. 21m00Tcm4TlvDq8ikWAM"
+        placeholder="ElevenLabs voice id"
         className="w-full border border-zinc-300 rounded px-2 py-1 text-sm font-mono mb-3 focus:outline-none focus:border-emerald-500"
       />
 
