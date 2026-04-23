@@ -207,7 +207,7 @@ export function CoverageModal({
     setError(null);
     try {
       const res = await fetch(
-        `/api/proxy/media-meta-data?state_transition_id=${encodeURIComponent(stid)}`,
+        `/api/proxy/media-meta-data/by-state-transition-id?state_transition_id=${encodeURIComponent(stid)}`,
       );
       if (!res.ok) {
         setError(`Failed to load (${res.status})`);
@@ -246,11 +246,13 @@ export function CoverageModal({
         className="bg-zinc-50 rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-5 py-3 border-b border-zinc-200">
-          <h2 className="text-sm font-mono text-zinc-800 truncate">{stid}</h2>
+        <div className="relative px-5 py-3 border-b border-zinc-200">
+          <h2 className="text-sm font-mono text-zinc-800 text-center truncate pr-6">
+            {stid}
+          </h2>
           <button
             onClick={onClose}
-            className="text-zinc-400 hover:text-zinc-700 text-xl leading-none"
+            className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-700 text-xl leading-none"
             aria-label="Close"
           >
             ×
