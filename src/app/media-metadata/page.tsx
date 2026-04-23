@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { CoverageTable } from "./coverage-table";
+import { CoveragePage } from "./coverage-page";
 
 export default async function MediaMetadataPage() {
   const session = await auth();
@@ -27,7 +27,7 @@ export default async function MediaMetadataPage() {
           Audio rows per (prefix, state-transition-suffix). Click a cell to see
           the media.
         </p>
-        <CoverageTable />
+        <CoveragePage />
       </div>
     </div>
   );

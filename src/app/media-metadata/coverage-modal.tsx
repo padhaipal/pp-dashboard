@@ -2,9 +2,7 @@
 
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
-
-// ElevenLabs voice: "Natasha - Warm, Inviting and Clear" (Hindi, conversational).
-const NATASHA_VOICE_ID = "S2uC1CO2xXot4UtzYX68";
+import { NATASHA_VOICE_ID } from "./types";
 
 interface MediaItem {
   id: string;
