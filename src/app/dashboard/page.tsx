@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { SignOutButton } from "./sign-out-button";
 import { UserTable } from "./user-table";
 
@@ -18,6 +19,12 @@ export default async function DashboardPage() {
             <span>
               {session.user.external_id} ({session.user.role})
             </span>
+            <Link
+              href="/media-metadata"
+              className="underline hover:text-zinc-900"
+            >
+              Media Metadata
+            </Link>
             {session.user.role === "dev" && (
               <a
                 href="/swagger"

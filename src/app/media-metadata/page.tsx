@@ -1,5 +1,7 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
+import Link from "next/link";
+import { CoverageTable } from "./coverage-table";
 
 export default async function MediaMetadataPage() {
   const session = await auth();
@@ -9,13 +11,25 @@ export default async function MediaMetadataPage() {
 
   return (
     <div className="min-h-screen bg-zinc-50 p-6">
-      <div className="max-w-5xl mx-auto">
-        <h1 className="text-xl font-semibold text-zinc-900 mb-6">
-          Media Metadata
-        </h1>
-        <div className="bg-white rounded-lg border border-zinc-200 shadow-sm p-8 text-center text-zinc-400">
-          Coming soon
+      <div className="max-w-[1400px] mx-auto">
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-xl font-semibold text-zinc-900">
+            Media Metadata Coverage
+          </h1>
+          <Link
+            href="/dashboard"
+            className="text-sm text-zinc-500 hover:text-zinc-900 underline"
+          >
+            ← Dashboard
+          </Link>
         </div>
+        <p className="text-sm text-zinc-500 mb-4">
+          Audio rows per (prefix, state-transition-suffix). Excludes{" "}
+          <code className="font-mono">rolled_back</code> from counts; any
+          non-zero <code className="font-mono">rolled_back_count</code> is
+          flagged.
+        </p>
+        <CoverageTable />
       </div>
     </div>
   );
