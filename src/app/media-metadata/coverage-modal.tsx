@@ -362,6 +362,8 @@ export function CoverageModal({
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -406,13 +408,43 @@ export function CoverageModal({
     load();
   };
 
+  const audioItems = items?.filter((i) => i.media_type === "audio") ?? [];
+
+  const runBulkDeleteAudio = async () => {
+    setBulkDeleting(true);
+    setError(null);
+    const ids = audioItems.map((i) => i.id);
+    const results = await Promise.all(
+      ids.map(async (id) => {
+        try {
+          const res = await fetch(`/api/proxy/media-meta-data/${id}`, {
+            method: "DELETE",
+          });
+          return { id, ok: res.ok };
+        } catch {
+          return { id, ok: false };
+        }
+      }),
+    );
+    const okIds = new Set(results.filter((r) => r.ok).map((r) => r.id));
+    const failCount = results.length - okIds.size;
+    setItems((prev) => (prev ? prev.filter((x) => !okIds.has(x.id)) : prev));
+    setNotice(
+      `Deleted ${okIds.size} audio ${okIds.size === 1 ? "row" : "rows"}${
+        failCount > 0 ? `; ${failCount} failed` : ""
+      }.`,
+    );
+    setBulkDeleting(false);
+    setConfirmBulkDelete(false);
+  };
+
   return (
     <div
       className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-6"
       onClick={onClose}
     >
       <div
-        className="bg-zinc-50 rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col"
+        className="relative bg-zinc-50 rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="relative px-5 py-3 border-b border-zinc-200">
@@ -430,15 +462,27 @@ export function CoverageModal({
         <div className="p-5 overflow-auto flex-1">
           {!creating && (
             <div className="flex items-center justify-between mb-4">
-              <button
-                onClick={() => {
-                  setNotice(null);
-                  setCreating(true);
-                }}
-                className="px-3 py-1.5 text-sm bg-emerald-500 hover:bg-emerald-600 text-white rounded"
-              >
-                + Create audio
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setNotice(null);
+                    setCreating(true);
+                  }}
+                  className="px-3 py-1.5 text-sm bg-emerald-500 hover:bg-emerald-600 text-white rounded"
+                >
+                  + Create audio
+                </button>
+                <button
+                  onClick={() => {
+                    setNotice(null);
+                    setConfirmBulkDelete(true);
+                  }}
+                  disabled={audioItems.length === 0}
+                  className="px-3 py-1.5 text-sm bg-red-500 hover:bg-red-600 text-white rounded disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Delete all audio ({audioItems.length})
+                </button>
+              </div>
               <button
                 onClick={load}
                 disabled={loading}
@@ -484,6 +528,52 @@ export function CoverageModal({
             </div>
           )}
         </div>
+
+        {confirmBulkDelete && (
+          <div
+            className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center p-6"
+            onClick={() => !bulkDeleting && setConfirmBulkDelete(false)}
+          >
+            <div
+              className="bg-white rounded-lg shadow-2xl max-w-md w-full p-5"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-base font-semibold text-zinc-900 mb-2">
+                Delete all audio?
+              </h3>
+              <p className="text-sm text-zinc-600 mb-1">
+                This will soft-delete {audioItems.length} audio{" "}
+                {audioItems.length === 1 ? "row" : "rows"} for:
+              </p>
+              <p className="text-xs font-mono text-zinc-800 bg-zinc-50 border border-zinc-200 rounded px-2 py-1 mb-3 break-all">
+                {stid}
+              </p>
+              <p className="text-xs text-zinc-500 mb-4">
+                S3 objects will be removed and rows flagged as{" "}
+                <code className="font-mono">rolled_back</code>. Non-audio media
+                (text, image, video, sticker) will not be affected.
+              </p>
+              <div className="flex items-center justify-end gap-2">
+                <button
+                  onClick={() => setConfirmBulkDelete(false)}
+                  disabled={bulkDeleting}
+                  className="px-3 py-1.5 text-sm text-zinc-600 hover:text-zinc-900 disabled:opacity-40"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={runBulkDeleteAudio}
+                  disabled={bulkDeleting}
+                  className="px-3 py-1.5 text-sm bg-red-500 hover:bg-red-600 text-white rounded disabled:opacity-40"
+                >
+                  {bulkDeleting
+                    ? "Deleting..."
+                    : `Delete ${audioItems.length} ${audioItems.length === 1 ? "row" : "rows"}`}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
