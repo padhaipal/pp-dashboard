@@ -191,6 +191,164 @@ function MediaCard({
   );
 }
 
+function CreateAudioForm({
+  initialStid,
+  onCreated,
+  onCancel,
+}: {
+  initialStid: string;
+  onCreated: (count: number) => void;
+  onCancel: () => void;
+}) {
+  const [stid, setStid] = useState(initialStid);
+  const [voiceId, setVoiceId] = useState("");
+  const [scripts, setScripts] = useState<string[]>([""]);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const updateScript = (i: number, value: string) =>
+    setScripts((prev) => prev.map((s, j) => (j === i ? value : s)));
+  const addScript = () => setScripts((prev) => [...prev, ""]);
+  const removeScript = (i: number) =>
+    setScripts((prev) => prev.filter((_, j) => j !== i));
+
+  const submit = async () => {
+    setError(null);
+    const trimmedStid = stid.trim();
+    if (!trimmedStid) {
+      setError("state_transition_id is required");
+      return;
+    }
+    const items = scripts
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0)
+      .map((script_text) => ({
+        state_transition_id: trimmedStid,
+        script_text,
+        ...(voiceId.trim() ? { voice_id: voiceId.trim() } : {}),
+      }));
+    if (items.length === 0) {
+      setError("At least one non-empty transcript required");
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const res = await fetch(
+        `/api/proxy/media-meta-data/elevenlabs-generate`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ items }),
+        },
+      );
+      if (!res.ok) {
+        const text = await res.text();
+        setError(`Create failed (${res.status}): ${text}`);
+        return;
+      }
+      onCreated(items.length);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="mb-4 p-4 bg-emerald-50 border border-emerald-200 rounded-lg">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-medium text-emerald-900">
+          Create audio (ElevenLabs)
+        </h3>
+        <button
+          onClick={onCancel}
+          disabled={submitting}
+          className="text-xs text-zinc-500 hover:text-zinc-700 disabled:opacity-40"
+        >
+          Cancel
+        </button>
+      </div>
+
+      <label className="block text-xs font-medium text-zinc-600 mb-1">
+        state_transition_id
+      </label>
+      <input
+        type="text"
+        value={stid}
+        onChange={(e) => setStid(e.target.value)}
+        disabled={submitting}
+        className="w-full border border-zinc-300 rounded px-2 py-1 text-sm font-mono mb-3 focus:outline-none focus:border-emerald-500"
+      />
+
+      <label className="block text-xs font-medium text-zinc-600 mb-1">
+        voice_id{" "}
+        <span className="text-zinc-400 font-normal">
+          (blank = use default)
+        </span>
+      </label>
+      <input
+        type="text"
+        value={voiceId}
+        onChange={(e) => setVoiceId(e.target.value)}
+        disabled={submitting}
+        placeholder="ElevenLabs voice id, e.g. 21m00Tcm4TlvDq8ikWAM"
+        className="w-full border border-zinc-300 rounded px-2 py-1 text-sm font-mono mb-3 focus:outline-none focus:border-emerald-500"
+      />
+
+      <label className="block text-xs font-medium text-zinc-600 mb-1">
+        Transcripts{" "}
+        <span className="text-zinc-400 font-normal">
+          (one audio per transcript)
+        </span>
+      </label>
+      <div className="flex flex-col gap-2 mb-2">
+        {scripts.map((s, i) => (
+          <div key={i} className="flex items-start gap-2">
+            <textarea
+              value={s}
+              onChange={(e) => updateScript(i, e.target.value)}
+              disabled={submitting}
+              rows={2}
+              className="flex-1 border border-zinc-300 rounded px-2 py-1 text-sm focus:outline-none focus:border-emerald-500"
+              placeholder="Script text..."
+            />
+            {scripts.length > 1 && (
+              <button
+                onClick={() => removeScript(i)}
+                disabled={submitting}
+                className="text-xs text-red-500 hover:text-red-700 mt-1 disabled:opacity-40"
+                aria-label="Remove transcript"
+              >
+                ×
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+      <button
+        onClick={addScript}
+        disabled={submitting}
+        className="text-xs text-emerald-700 hover:text-emerald-900 mb-3 disabled:opacity-40"
+      >
+        + Add another
+      </button>
+
+      {error && <div className="text-xs text-red-600 mb-2">{error}</div>}
+
+      <div className="flex items-center gap-2">
+        <button
+          onClick={submit}
+          disabled={submitting}
+          className="px-3 py-1.5 text-sm bg-emerald-500 hover:bg-emerald-600 text-white rounded disabled:opacity-40"
+        >
+          {submitting ? "Creating..." : "Create"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function CoverageModal({
   stid,
   onClose,
@@ -201,6 +359,8 @@ export function CoverageModal({
   const [items, setItems] = useState<MediaItem[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -237,6 +397,14 @@ export function CoverageModal({
     setItems((prev) => (prev ? prev.filter((x) => x.id !== id) : prev));
   };
 
+  const handleCreated = (count: number) => {
+    setCreating(false);
+    setNotice(
+      `Queued ${count} audio ${count === 1 ? "row" : "rows"} — may take a moment to finish processing.`,
+    );
+    load();
+  };
+
   return (
     <div
       className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-6"
@@ -259,6 +427,41 @@ export function CoverageModal({
           </button>
         </div>
         <div className="p-5 overflow-auto flex-1">
+          {!creating && (
+            <div className="flex items-center justify-between mb-4">
+              <button
+                onClick={() => {
+                  setNotice(null);
+                  setCreating(true);
+                }}
+                className="px-3 py-1.5 text-sm bg-emerald-500 hover:bg-emerald-600 text-white rounded"
+              >
+                + Create audio
+              </button>
+              <button
+                onClick={load}
+                disabled={loading}
+                className="text-xs text-zinc-500 hover:text-zinc-700 disabled:opacity-40"
+              >
+                {loading ? "Refreshing..." : "Refresh"}
+              </button>
+            </div>
+          )}
+
+          {creating && (
+            <CreateAudioForm
+              initialStid={stid}
+              onCreated={handleCreated}
+              onCancel={() => setCreating(false)}
+            />
+          )}
+
+          {notice && (
+            <div className="mb-4 text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 rounded px-3 py-2">
+              {notice}
+            </div>
+          )}
+
           {loading && !items && (
             <div className="text-sm text-zinc-400">Loading...</div>
           )}
