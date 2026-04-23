@@ -11,6 +11,8 @@ const ADMIN_ALLOWED: { pattern: RegExp; methods: string[] }[] = [
   { pattern: /^media-meta-data\/[^/]+\/audio$/, methods: ["GET"] },
   { pattern: /^media-meta-data\/[^/]+\/dashboard-transcript$/, methods: ["POST", "PATCH", "DELETE"] },
   { pattern: /^media-meta-data\/coverage$/, methods: ["GET"] },
+  { pattern: /^media-meta-data$/, methods: ["GET"] },
+  { pattern: /^media-meta-data\/[^/]+$/, methods: ["DELETE"] },
   { pattern: /^scores\/letters-learnt$/, methods: ["GET"] },
 ];
 

@@ -1,11 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { CoverageModal } from "./coverage-modal";
 
 interface CoverageRow {
   prefix: string;
   counts: number[];
-  rolled_back_count: number;
 }
 
 interface CoverageResponse {
@@ -14,16 +14,12 @@ interface CoverageResponse {
 }
 
 function toCsv(data: CoverageResponse): string {
-  const header = ["prefix", ...data.suffixes, "rolled_back_count"];
+  const header = ["prefix", ...data.suffixes];
   const escape = (v: string) =>
     /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
   const lines = [header.map(escape).join(",")];
   for (const row of data.rows) {
-    const cells = [
-      row.prefix,
-      ...row.counts.map((n) => String(n)),
-      String(row.rolled_back_count),
-    ];
+    const cells = [row.prefix, ...row.counts.map((n) => String(n))];
     lines.push(cells.map(escape).join(","));
   }
   return lines.join("\n");
@@ -31,7 +27,7 @@ function toCsv(data: CoverageResponse): string {
 
 function downloadCsv(data: CoverageResponse) {
   const csv = toCsv(data);
-  // Prepend UTF-8 BOM so Excel renders Devanagari correctly.
+  // UTF-8 BOM so Excel renders Devanagari correctly.
   const blob = new Blob(["﻿" + csv], {
     type: "text/csv;charset=utf-8;",
   });
@@ -49,6 +45,7 @@ export function CoverageTable() {
   const [data, setData] = useState<CoverageResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [openStid, setOpenStid] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -80,7 +77,7 @@ export function CoverageTable() {
   if (!data) return null;
 
   return (
-    <div>
+    <>
       <div className="flex justify-end mb-3">
         <button
           onClick={() => downloadCsv(data)}
@@ -104,9 +101,6 @@ export function CoverageTable() {
                   {s}
                 </th>
               ))}
-              <th className="py-2 px-2 text-left font-medium text-red-600 whitespace-nowrap">
-                rolled_back_count
-              </th>
             </tr>
           </thead>
           <tbody>
@@ -121,21 +115,25 @@ export function CoverageTable() {
                 {row.counts.map((n, i) => (
                   <td
                     key={i}
-                    className={`py-1.5 px-2 text-right ${n === 0 ? "text-zinc-300" : "text-zinc-700"}`}
+                    onClick={() =>
+                      setOpenStid(`${row.prefix}-${data.suffixes[i]}`)
+                    }
+                    className={`py-1.5 px-2 text-right cursor-pointer hover:bg-emerald-50 ${
+                      n === 0 ? "text-zinc-300" : "text-zinc-700"
+                    }`}
+                    title={`${row.prefix}-${data.suffixes[i]}`}
                   >
                     {n}
                   </td>
                 ))}
-                <td
-                  className={`py-1.5 px-2 text-right ${row.rolled_back_count > 0 ? "text-red-600 font-semibold" : "text-zinc-300"}`}
-                >
-                  {row.rolled_back_count}
-                </td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-    </div>
+      {openStid && (
+        <CoverageModal stid={openStid} onClose={() => setOpenStid(null)} />
+      )}
+    </>
   );
 }

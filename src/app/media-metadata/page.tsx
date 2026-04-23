@@ -24,10 +24,8 @@ export default async function MediaMetadataPage() {
           </Link>
         </div>
         <p className="text-sm text-zinc-500 mb-4">
-          Audio rows per (prefix, state-transition-suffix). Excludes{" "}
-          <code className="font-mono">rolled_back</code> from counts; any
-          non-zero <code className="font-mono">rolled_back_count</code> is
-          flagged.
+          Audio rows per (prefix, state-transition-suffix). Click a cell to see
+          the media.
         </p>
         <CoverageTable />
       </div>
