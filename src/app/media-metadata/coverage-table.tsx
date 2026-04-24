@@ -2,15 +2,59 @@
 
 import { useState } from "react";
 import { CoverageModal } from "./coverage-modal";
-import type { CoverageResponse, MediaType, MediaTypeCounts } from "./types";
+import type { CoverageResponse, MediaType } from "./types";
 
-const TYPE_ABBR: Record<MediaType, string> = {
-  audio: "a",
-  text: "t",
-  video: "v",
-  image: "i",
-  sticker: "s",
-};
+function MediaIcon({ type }: { type: MediaType }) {
+  const common = {
+    width: 11,
+    height: 11,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 2,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    "aria-label": type,
+  };
+  switch (type) {
+    case "audio":
+      return (
+        <svg {...common}>
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+          <path d="M15.54 8.46a5 5 0 0 1 0 7.07" />
+        </svg>
+      );
+    case "text":
+      return (
+        <svg {...common}>
+          <path d="M4 7h16M4 12h16M4 17h10" />
+        </svg>
+      );
+    case "video":
+      return (
+        <svg {...common}>
+          <polygon points="6 4 20 12 6 20 6 4" />
+        </svg>
+      );
+    case "image":
+      return (
+        <svg {...common}>
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+          <circle cx="8.5" cy="8.5" r="1.5" />
+          <polyline points="21 15 16 10 5 21" />
+        </svg>
+      );
+    case "sticker":
+      return (
+        <svg {...common}>
+          <circle cx="12" cy="12" r="10" />
+          <path d="M8 14s1.5 2 4 2 4-2 4-2" />
+          <line x1="9" y1="9" x2="9.01" y2="9" />
+          <line x1="15" y1="9" x2="15.01" y2="9" />
+        </svg>
+      );
+  }
+}
 
 function toCsv(data: CoverageResponse): string {
   const escape = (v: string) =>
@@ -28,12 +72,6 @@ function toCsv(data: CoverageResponse): string {
     lines.push(cells.map(escape).join(","));
   }
   return lines.join("\n");
-}
-
-function cellTotal(counts: MediaTypeCounts, mediaTypes: MediaType[]): number {
-  let sum = 0;
-  for (const mt of mediaTypes) sum += counts[mt];
-  return sum;
 }
 
 function downloadCsv(data: CoverageResponse) {
@@ -91,35 +129,30 @@ export function CoverageTable({ data }: { data: CoverageResponse }) {
                 <td className="sticky left-0 bg-white hover:bg-zinc-50 py-1.5 px-3 font-mono border-r border-zinc-200">
                   {row.prefix}
                 </td>
-                {row.counts.map((counts, i) => {
-                  const total = cellTotal(counts, data.media_types);
-                  return (
-                    <td
-                      key={i}
-                      onClick={() =>
-                        setOpenStid(`${row.prefix}-${data.suffixes[i]}`)
-                      }
-                      className={`py-1.5 px-2 cursor-pointer hover:bg-emerald-50 ${
-                        total === 0 ? "text-zinc-300" : "text-zinc-700"
-                      }`}
-                      title={`${row.prefix}-${data.suffixes[i]}`}
-                    >
-                      <div className="flex gap-1.5 font-mono whitespace-nowrap justify-center">
-                        {data.media_types.map((mt) => (
+                {row.counts.map((counts, i) => (
+                  <td
+                    key={i}
+                    onClick={() =>
+                      setOpenStid(`${row.prefix}-${data.suffixes[i]}`)
+                    }
+                    className="py-1.5 px-2 text-zinc-700 cursor-pointer hover:bg-emerald-50"
+                    title={`${row.prefix}-${data.suffixes[i]}`}
+                  >
+                    <div className="flex gap-1.5 font-mono whitespace-nowrap justify-center items-center min-h-[14px]">
+                      {data.media_types
+                        .filter((mt) => counts[mt] > 0)
+                        .map((mt) => (
                           <span
                             key={mt}
-                            className={
-                              counts[mt] === 0 ? "text-zinc-300" : "text-zinc-700"
-                            }
+                            className="inline-flex items-center gap-0.5"
                           >
-                            {TYPE_ABBR[mt]}
+                            <MediaIcon type={mt} />
                             {counts[mt]}
                           </span>
                         ))}
-                      </div>
-                    </td>
-                  );
-                })}
+                    </div>
+                  </td>
+                ))}
               </tr>
             ))}
           </tbody>
