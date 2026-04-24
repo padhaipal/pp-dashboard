@@ -2,18 +2,38 @@
 
 import { useState } from "react";
 import { CoverageModal } from "./coverage-modal";
-import type { CoverageResponse } from "./types";
+import type { CoverageResponse, MediaType, MediaTypeCounts } from "./types";
+
+const TYPE_ABBR: Record<MediaType, string> = {
+  audio: "a",
+  text: "t",
+  video: "v",
+  image: "i",
+  sticker: "s",
+};
 
 function toCsv(data: CoverageResponse): string {
-  const header = ["prefix", ...data.suffixes];
   const escape = (v: string) =>
     /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+  const header: string[] = ["prefix"];
+  for (const suffix of data.suffixes) {
+    for (const mt of data.media_types) header.push(`${suffix} [${mt}]`);
+  }
   const lines = [header.map(escape).join(",")];
   for (const row of data.rows) {
-    const cells = [row.prefix, ...row.counts.map((n) => String(n))];
+    const cells: string[] = [row.prefix];
+    for (const counts of row.counts) {
+      for (const mt of data.media_types) cells.push(String(counts[mt]));
+    }
     lines.push(cells.map(escape).join(","));
   }
   return lines.join("\n");
+}
+
+function cellTotal(counts: MediaTypeCounts, mediaTypes: MediaType[]): number {
+  let sum = 0;
+  for (const mt of mediaTypes) sum += counts[mt];
+  return sum;
 }
 
 function downloadCsv(data: CoverageResponse) {
@@ -71,20 +91,35 @@ export function CoverageTable({ data }: { data: CoverageResponse }) {
                 <td className="sticky left-0 bg-white hover:bg-zinc-50 py-1.5 px-3 font-mono border-r border-zinc-200">
                   {row.prefix}
                 </td>
-                {row.counts.map((n, i) => (
-                  <td
-                    key={i}
-                    onClick={() =>
-                      setOpenStid(`${row.prefix}-${data.suffixes[i]}`)
-                    }
-                    className={`py-1.5 px-2 text-center cursor-pointer hover:bg-emerald-50 ${
-                      n === 0 ? "text-zinc-300" : "text-zinc-700"
-                    }`}
-                    title={`${row.prefix}-${data.suffixes[i]}`}
-                  >
-                    {n}
-                  </td>
-                ))}
+                {row.counts.map((counts, i) => {
+                  const total = cellTotal(counts, data.media_types);
+                  return (
+                    <td
+                      key={i}
+                      onClick={() =>
+                        setOpenStid(`${row.prefix}-${data.suffixes[i]}`)
+                      }
+                      className={`py-1.5 px-2 cursor-pointer hover:bg-emerald-50 ${
+                        total === 0 ? "text-zinc-300" : "text-zinc-700"
+                      }`}
+                      title={`${row.prefix}-${data.suffixes[i]}`}
+                    >
+                      <div className="flex gap-1.5 font-mono whitespace-nowrap justify-center">
+                        {data.media_types.map((mt) => (
+                          <span
+                            key={mt}
+                            className={
+                              counts[mt] === 0 ? "text-zinc-300" : "text-zinc-700"
+                            }
+                          >
+                            {TYPE_ABBR[mt]}
+                            {counts[mt]}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                  );
+                })}
               </tr>
             ))}
           </tbody>

@@ -1,10 +1,15 @@
+export type MediaType = "audio" | "text" | "video" | "image" | "sticker";
+
+export type MediaTypeCounts = Record<MediaType, number>;
+
 export interface CoverageRow {
   prefix: string;
-  counts: number[];
+  counts: MediaTypeCounts[];
 }
 
 export interface CoverageResponse {
   suffixes: string[];
+  media_types: MediaType[];
   rows: CoverageRow[];
   letters: string[];
   words: string[];
