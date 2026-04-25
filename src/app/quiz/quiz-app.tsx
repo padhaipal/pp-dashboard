@@ -684,9 +684,6 @@ const SHARE_PROMPT =
 function ShareAndSubscribeCard({ shareToken }: { shareToken: string | null }) {
   const [origin, setOrigin] = useState("");
   const [textCopied, setTextCopied] = useState(false);
-  const [imageCopyState, setImageCopyState] = useState<"idle" | "copied" | "unsupported">(
-    "idle",
-  );
 
   useEffect(() => {
     setOrigin(window.location.origin);
@@ -697,7 +694,6 @@ function ShareAndSubscribeCard({ shareToken }: { shareToken: string | null }) {
       ? `${origin}/quiz/share/${shareToken}`
       : `${origin}/quiz`
     : "";
-  const imageUrl = shareToken ? `/quiz/share/${shareToken}/opengraph-image` : null;
   const fullShareText = `${SHARE_PROMPT} ${shareUrl}`;
 
   const encodedText = encodeURIComponent(SHARE_PROMPT);
@@ -713,26 +709,6 @@ function ShareAndSubscribeCard({ shareToken }: { shareToken: string | null }) {
       setTextCopied(true);
       setTimeout(() => setTextCopied(false), 2000);
     } catch {}
-  }
-
-  async function copyImage() {
-    if (!imageUrl) return;
-    try {
-      // Check for ClipboardItem support (Safari/older browsers don't support image clipboard)
-      if (typeof ClipboardItem === "undefined") {
-        setImageCopyState("unsupported");
-        setTimeout(() => setImageCopyState("idle"), 2500);
-        return;
-      }
-      const res = await fetch(imageUrl);
-      const blob = await res.blob();
-      await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
-      setImageCopyState("copied");
-      setTimeout(() => setImageCopyState("idle"), 2000);
-    } catch {
-      setImageCopyState("unsupported");
-      setTimeout(() => setImageCopyState("idle"), 2500);
-    }
   }
 
   async function handleNativeShare() {
@@ -758,107 +734,52 @@ function ShareAndSubscribeCard({ shareToken }: { shareToken: string | null }) {
     <Card>
       <h3 className="text-lg font-semibold">Share your results</h3>
       <p className="mt-1 text-sm text-zinc-600">
-        Copy the message and image below, or send straight to a friend.
+        Copy the message below, or send straight to a friend.
       </p>
 
-      <div className="mt-4 flex flex-col gap-4 md:flex-row">
-        {/* Left: share text + actions */}
-        <div className="flex-1 flex flex-col gap-3">
-          <div
-            className="rounded-lg border p-3 text-sm leading-relaxed"
-            style={{ borderColor: BRAND_BLUE_PALE, backgroundColor: `${BRAND_BLUE_PALE}40` }}
-          >
-            {SHARE_PROMPT}{" "}
-            {shareUrl ? (
-              <a
-                href={shareUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline"
-                style={{ color: BRAND_BLUE_DARK }}
-              >
-                {shareUrl}
-              </a>
-            ) : (
-              <span className="text-zinc-400">loading link…</span>
-            )}
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={copyText}
-              disabled={!shareUrl}
-              className="rounded-lg px-3 py-2 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-50"
-              style={{ backgroundColor: BRAND_BLUE }}
-              onMouseEnter={(e) =>
-                ((e.currentTarget as HTMLButtonElement).style.backgroundColor = BRAND_BLUE_DARK)
-              }
-              onMouseLeave={(e) =>
-                ((e.currentTarget as HTMLButtonElement).style.backgroundColor = BRAND_BLUE)
-              }
-            >
-              {textCopied ? "Text copied!" : "Copy text"}
-            </button>
-            <button
-              onClick={handleNativeShare}
-              disabled={!shareUrl}
-              className={buttonStyle}
-              style={buttonInline}
-            >
-              Share…
-            </button>
-          </div>
-        </div>
-
-        {/* Right: image preview + actions */}
-        <div className="md:w-[44%] flex flex-col gap-3">
-          {imageUrl ? (
+      <div className="mt-4 flex flex-col gap-3">
+        <div
+          className="rounded-lg border p-3 text-sm leading-relaxed"
+          style={{ borderColor: BRAND_BLUE_PALE, backgroundColor: `${BRAND_BLUE_PALE}40` }}
+        >
+          {SHARE_PROMPT}{" "}
+          {shareUrl ? (
             <a
-              href={imageUrl}
+              href={shareUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="block overflow-hidden rounded-lg border"
-              style={{ borderColor: BRAND_BLUE_PALE }}
-              title="Right-click to save, or open in a new tab"
+              className="underline"
+              style={{ color: BRAND_BLUE_DARK }}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={imageUrl}
-                alt="Your PadhaiPal quiz results"
-                className="block h-auto w-full"
-              />
+              {shareUrl}
             </a>
           ) : (
-            <div
-              className="flex aspect-[1200/630] items-center justify-center rounded-lg border text-xs text-zinc-400"
-              style={{ borderColor: BRAND_BLUE_PALE }}
-            >
-              Generating your share image…
-            </div>
+            <span className="text-zinc-400">loading link…</span>
           )}
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={copyImage}
-              disabled={!imageUrl}
-              className={buttonStyle}
-              style={buttonInline}
-            >
-              {imageCopyState === "copied"
-                ? "Image copied!"
-                : imageCopyState === "unsupported"
-                  ? "Right-click to copy"
-                  : "Copy image"}
-            </button>
-            {imageUrl && (
-              <a
-                href={imageUrl}
-                download="padhaipal-quiz-result.png"
-                className={buttonStyle}
-                style={buttonInline}
-              >
-                Download
-              </a>
-            )}
-          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={copyText}
+            disabled={!shareUrl}
+            className="rounded-lg px-3 py-2 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-50"
+            style={{ backgroundColor: BRAND_BLUE }}
+            onMouseEnter={(e) =>
+              ((e.currentTarget as HTMLButtonElement).style.backgroundColor = BRAND_BLUE_DARK)
+            }
+            onMouseLeave={(e) =>
+              ((e.currentTarget as HTMLButtonElement).style.backgroundColor = BRAND_BLUE)
+            }
+          >
+            {textCopied ? "Text copied!" : "Copy text"}
+          </button>
+          <button
+            onClick={handleNativeShare}
+            disabled={!shareUrl}
+            className={buttonStyle}
+            style={buttonInline}
+          >
+            Share…
+          </button>
         </div>
       </div>
 
