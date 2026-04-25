@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Chart,
@@ -10,6 +11,10 @@ import {
 } from "chart.js";
 
 Chart.register(ScatterController, PointElement, LinearScale, Tooltip);
+
+const BRAND_BLUE = "#1D9EDF";
+const BRAND_BLUE_DARK = "#1683BC";
+const BRAND_BLUE_PALE = "#D3EBF7";
 
 interface Question {
   prompt: string;
@@ -33,15 +38,11 @@ function fmtNum(n: number | null | undefined): string {
 const QUESTIONS: Question[] = [
   {
     prompt: "How much richer would the country be?",
-    unit: "$ trillion",
+    unit: "$",
     placeholder: "e.g. 5",
     correct: 37,
-    formatAnswer: (n) => `$${fmtNum(n)} trillion`,
-    correctText: (
-      <>
-        <span className="font-bold text-emerald-700">$37 trillion</span>
-      </>
-    ),
+    formatAnswer: (n) => `$${fmtNum(n)}`,
+    correctText: <span className="font-bold text-emerald-700">$37</span>,
     min: 0,
     max: 200,
     step: 0.1,
@@ -54,7 +55,7 @@ const QUESTIONS: Question[] = [
     formatAnswer: (n) => `${fmtNum(n)}%`,
     correctText: (
       <>
-        <span className="font-bold text-emerald-700">47% higher</span>
+        <span className="font-bold text-emerald-700">47%</span> higher
       </>
     ),
     min: 0,
@@ -63,13 +64,13 @@ const QUESTIONS: Question[] = [
   },
   {
     prompt: "How many more Indian children would have gone to secondary school?",
-    unit: "million",
+    unit: "",
     placeholder: "e.g. 10",
     correct: 44,
-    formatAnswer: (n) => `${fmtNum(n)} million`,
+    formatAnswer: (n) => fmtNum(n),
     correctText: (
       <>
-        <span className="font-bold text-emerald-700">44 million</span>
+        <span className="font-bold text-emerald-700">44</span>
         {" — that's roughly 1.6× Australia's population!"}
       </>
     ),
@@ -79,15 +80,11 @@ const QUESTIONS: Question[] = [
   },
   {
     prompt: "How many Indian child marriages would have been averted?",
-    unit: "million",
+    unit: "",
     placeholder: "e.g. 0.5",
-    correct: 1,
-    formatAnswer: (n) => `${fmtNum(n)} million`,
-    correctText: (
-      <>
-        <span className="font-bold text-emerald-700">1 million</span>
-      </>
-    ),
+    correct: 1.2,
+    formatAnswer: (n) => fmtNum(n),
+    correctText: <span className="font-bold text-emerald-700">1.2</span>,
     min: 0,
     max: 20,
     step: 0.05,
@@ -95,15 +92,11 @@ const QUESTIONS: Question[] = [
   {
     prompt:
       "How many children's lives would be saved (because their mums can now read)?",
-    unit: "thousand",
+    unit: "",
     placeholder: "e.g. 50",
-    correct: 400,
-    formatAnswer: (n) => `${fmtNum(n)} thousand`,
-    correctText: (
-      <>
-        <span className="font-bold text-emerald-700">400,000</span>
-      </>
-    ),
+    correct: 420,
+    formatAnswer: (n) => fmtNum(n),
+    correctText: <span className="font-bold text-emerald-700">420,000</span>,
     min: 0,
     max: 5000,
     step: 10,
@@ -112,8 +105,26 @@ const QUESTIONS: Question[] = [
 
 const PREMISE = (
   <>
-    If <strong className="text-amber-700">90% of 10-year-olds</strong> in India became literate every
-    year, then by <strong className="text-amber-700">2050</strong>…
+    If <strong style={{ color: BRAND_BLUE_DARK }}>90% of 10-year-olds</strong> in India became
+    literate every year, then by{" "}
+    <strong style={{ color: BRAND_BLUE_DARK }}>2050</strong>…
+  </>
+);
+
+const PADHAIPAL_PITCH = (
+  <>
+    PadhaiPal is aiming to teach a child to read for less than{" "}
+    <strong>$10</strong>. That&apos;s cheaper than everyone else out there. Here is our website for
+    more information{" "}
+    <a
+      href="https://www.padhaipal.com"
+      target="_blank"
+      rel="noopener noreferrer"
+      className="underline"
+      style={{ color: BRAND_BLUE_DARK }}
+    >
+      www.padhaipal.com
+    </a>
   </>
 );
 
@@ -162,25 +173,31 @@ export function QuizApp() {
     if (!res.ok) throw new Error(`submit failed ${res.status}`);
   }, []);
 
-  const fetchAnswers = useCallback(async (idx: number): Promise<number[]> => {
-    const res = await fetch(`/api/quiz/answers?question=${idx}`);
-    if (!res.ok) return [];
-    const j = (await res.json()) as { answers: number[] };
-    return j.answers ?? [];
-  }, []);
+  const fetchOthersAnswers = useCallback(
+    async (idx: number): Promise<number[]> => {
+      const sid = sessionIdRef.current;
+      const qs = new URLSearchParams({ question: String(idx) });
+      if (sid) qs.set("exclude_session", sid);
+      const res = await fetch(`/api/quiz/answers?${qs.toString()}`);
+      if (!res.ok) return [];
+      const j = (await res.json()) as { answers: number[] };
+      return j.answers ?? [];
+    },
+    [],
+  );
 
   const handleSubmit = useCallback(
     async (value: number) => {
       setSubmitting(true);
       try {
         await submit(qIndex, value);
-        const all = await fetchAnswers(qIndex);
+        const others = await fetchOthersAnswers(qIndex);
         setAnswers((prev) => {
           const next = prev.slice();
           next[qIndex] = value;
           return next;
         });
-        setRevealAnswers(all);
+        setRevealAnswers(others);
         setPhase("reveal");
       } catch {
         alert("Something went wrong saving your answer. Please try again.");
@@ -188,7 +205,7 @@ export function QuizApp() {
         setSubmitting(false);
       }
     },
-    [qIndex, submit, fetchAnswers],
+    [qIndex, submit, fetchOthersAnswers],
   );
 
   const handleNext = useCallback(() => {
@@ -209,21 +226,18 @@ export function QuizApp() {
   }, [phase]);
 
   return (
-    <div className="min-h-screen bg-amber-50 text-zinc-900">
+    <div className="min-h-screen bg-white text-zinc-900">
       <div className="mx-auto max-w-2xl px-4 py-8 pb-24">
-        <div className="text-xs font-bold tracking-widest text-amber-700">
-          PADHAIPAL · SUPPORTER UPDATE
-        </div>
-        <h1 className="mt-2 text-3xl leading-tight font-semibold">
+        <h1 className="text-center text-3xl leading-tight font-semibold">
           What if every Indian child could read?
         </h1>
-        <p className="mt-1 mb-6 text-zinc-600">
+        <p className="mt-2 mb-6 text-center text-zinc-600">
           A 5-question quiz. Take a guess — then see what the research says.
         </p>
 
-        {phase === "intro" && (
-          <Intro onStart={() => setPhase("question")} />
-        )}
+        <BrandCard />
+
+        {phase === "intro" && <Intro onStart={() => setPhase("question")} />}
 
         {phase === "question" && (
           <QuestionCard
@@ -239,7 +253,7 @@ export function QuizApp() {
             qIndex={qIndex}
             question={QUESTIONS[qIndex]}
             userAnswer={answers[qIndex] ?? 0}
-            allAnswers={revealAnswers}
+            othersAnswers={revealAnswers}
             isLast={qIndex === QUESTIONS.length - 1}
             onNext={handleNext}
           />
@@ -249,10 +263,29 @@ export function QuizApp() {
           <Summary
             answers={answers}
             completed={completed}
-            fetchAnswers={fetchAnswers}
+            fetchOthersAnswers={fetchOthersAnswers}
           />
         )}
       </div>
+    </div>
+  );
+}
+
+function BrandCard() {
+  return (
+    <div
+      className="mb-4 flex flex-col items-center gap-4 rounded-2xl border bg-white p-6 shadow-sm sm:flex-row sm:gap-5"
+      style={{ borderColor: BRAND_BLUE_PALE }}
+    >
+      <Image
+        src="/padhaipal-logo.svg"
+        alt="PadhaiPal"
+        width={96}
+        height={96}
+        className="shrink-0"
+        priority
+      />
+      <p className="text-center text-zinc-700 sm:text-left">{PADHAIPAL_PITCH}</p>
     </div>
   );
 }
@@ -263,10 +296,11 @@ function ProgressBar({ idx }: { idx: number }) {
       {QUESTIONS.map((_, i) => (
         <span
           key={i}
-          className={
-            "h-1.5 flex-1 rounded " +
-            (i < idx ? "bg-amber-500" : i === idx ? "bg-amber-700" : "bg-amber-200")
-          }
+          className="h-1.5 flex-1 rounded"
+          style={{
+            backgroundColor:
+              i < idx ? BRAND_BLUE : i === idx ? BRAND_BLUE_DARK : BRAND_BLUE_PALE,
+          }}
         />
       ))}
     </div>
@@ -275,9 +309,39 @@ function ProgressBar({ idx }: { idx: number }) {
 
 function Card({ children }: { children: React.ReactNode }) {
   return (
-    <div className="mb-4 rounded-2xl border border-amber-200 bg-white p-6 shadow-sm">
+    <div
+      className="mb-4 rounded-2xl border bg-white p-6 shadow-sm"
+      style={{ borderColor: BRAND_BLUE_PALE }}
+    >
       {children}
     </div>
+  );
+}
+
+function PrimaryButton({
+  onClick,
+  disabled,
+  children,
+}: {
+  onClick: () => void;
+  disabled?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className="rounded-lg px-5 py-3 font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-50"
+      style={{ backgroundColor: BRAND_BLUE }}
+      onMouseEnter={(e) =>
+        ((e.currentTarget as HTMLButtonElement).style.backgroundColor = BRAND_BLUE_DARK)
+      }
+      onMouseLeave={(e) =>
+        ((e.currentTarget as HTMLButtonElement).style.backgroundColor = BRAND_BLUE)
+      }
+    >
+      {children}
+    </button>
   );
 }
 
@@ -290,12 +354,7 @@ function Intro({ onStart }: { onStart: () => void }) {
         your guess sits.
       </p>
       <div className="mt-5">
-        <button
-          onClick={onStart}
-          className="rounded-lg bg-amber-500 px-5 py-3 font-semibold text-white transition hover:bg-amber-600"
-        >
-          Start the quiz
-        </button>
+        <PrimaryButton onClick={onStart}>Start the quiz</PrimaryButton>
       </div>
     </Card>
   );
@@ -332,6 +391,7 @@ function QuestionCard({
     onSubmit(n);
   }
 
+  const inputBorder = error ? "#e11d48" : BRAND_BLUE_PALE;
   return (
     <Card>
       <ProgressBar idx={qIndex} />
@@ -357,23 +417,31 @@ function QuestionCard({
           onKeyDown={(e) => {
             if (e.key === "Enter") handleClick();
           }}
-          className={
-            "flex-1 rounded-lg border-2 px-3 py-3 text-lg outline-none " +
-            (error ? "border-rose-500" : "border-amber-200 focus:border-amber-500")
-          }
+          className="flex-1 rounded-lg border-2 px-3 py-3 text-lg outline-none focus:outline-none"
+          style={{ borderColor: inputBorder }}
+          onFocus={(e) => {
+            if (!error) e.currentTarget.style.borderColor = BRAND_BLUE;
+          }}
+          onBlur={(e) => {
+            if (!error) e.currentTarget.style.borderColor = BRAND_BLUE_PALE;
+          }}
         />
-        <div className="flex items-center rounded-lg border-2 border-amber-200 bg-amber-100/60 px-3 text-zinc-600">
-          {question.unit}
-        </div>
+        {question.unit && (
+          <div
+            className="flex items-center rounded-lg border-2 px-3 text-zinc-700"
+            style={{
+              borderColor: BRAND_BLUE_PALE,
+              backgroundColor: `${BRAND_BLUE_PALE}80`,
+            }}
+          >
+            {question.unit}
+          </div>
+        )}
       </div>
       <div className="mt-4">
-        <button
-          onClick={handleClick}
-          disabled={submitting}
-          className="rounded-lg bg-amber-500 px-5 py-3 font-semibold text-white transition hover:bg-amber-600 disabled:cursor-not-allowed disabled:opacity-50"
-        >
+        <PrimaryButton onClick={handleClick} disabled={submitting}>
           {submitting ? "Saving…" : "Submit guess"}
-        </button>
+        </PrimaryButton>
       </div>
     </Card>
   );
@@ -383,14 +451,14 @@ function RevealCard({
   qIndex,
   question,
   userAnswer,
-  allAnswers,
+  othersAnswers,
   isLast,
   onNext,
 }: {
   qIndex: number;
   question: Question;
   userAnswer: number;
-  allAnswers: number[];
+  othersAnswers: number[];
   isLast: boolean;
   onNext: () => void;
 }) {
@@ -410,15 +478,12 @@ function RevealCard({
       <ScatterChart
         question={question}
         userAnswer={userAnswer}
-        allAnswers={allAnswers}
+        othersAnswers={othersAnswers}
       />
       <div className="mt-5">
-        <button
-          onClick={onNext}
-          className="rounded-lg bg-amber-500 px-5 py-3 font-semibold text-white transition hover:bg-amber-600"
-        >
+        <PrimaryButton onClick={onNext}>
           {isLast ? "See the summary" : "Next question"}
-        </button>
+        </PrimaryButton>
       </div>
     </Card>
   );
@@ -446,11 +511,11 @@ function Legend() {
 function ScatterChart({
   question,
   userAnswer,
-  allAnswers,
+  othersAnswers,
 }: {
   question: Question;
   userAnswer: number;
-  allAnswers: number[];
+  othersAnswers: number[];
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<Chart | null>(null);
@@ -459,7 +524,7 @@ function ScatterChart({
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const all = allAnswers.slice();
+    const all = othersAnswers.slice();
     const maxVal = Math.max(...all, question.correct, userAnswer);
     const minVal = Math.min(...all, question.correct, userAnswer, 0);
     const span = Math.max(1, maxVal - minVal);
@@ -523,7 +588,7 @@ function ScatterChart({
             type: "linear",
             min: xMin,
             max: xMax,
-            title: { display: true, text: question.unit },
+            title: { display: !!question.unit, text: question.unit },
             ticks: { callback: (v) => fmtNum(Number(v)) },
             grid: { color: "rgba(0,0,0,0.05)" },
           },
@@ -541,7 +606,7 @@ function ScatterChart({
       chartRef.current?.destroy();
       chartRef.current = null;
     };
-  }, [question, userAnswer, allAnswers]);
+  }, [question, userAnswer, othersAnswers]);
 
   return (
     <div className="relative mt-2 h-36">
@@ -553,17 +618,17 @@ function ScatterChart({
 function Summary({
   answers,
   completed,
-  fetchAnswers,
+  fetchOthersAnswers,
 }: {
   answers: (number | null)[];
   completed: number | null;
-  fetchAnswers: (idx: number) => Promise<number[]>;
+  fetchOthersAnswers: (idx: number) => Promise<number[]>;
 }) {
   const [allByQ, setAllByQ] = useState<Record<number, number[]>>({});
 
   useEffect(() => {
     let cancelled = false;
-    Promise.all(QUESTIONS.map((_, i) => fetchAnswers(i))).then((results) => {
+    Promise.all(QUESTIONS.map((_, i) => fetchOthersAnswers(i))).then((results) => {
       if (cancelled) return;
       const map: Record<number, number[]> = {};
       results.forEach((r, i) => (map[i] = r));
@@ -572,7 +637,7 @@ function Summary({
     return () => {
       cancelled = true;
     };
-  }, [fetchAnswers]);
+  }, [fetchOthersAnswers]);
 
   return (
     <>
@@ -584,31 +649,31 @@ function Summary({
             <span className="text-zinc-500">Loading…</span>
           ) : completed === 1 ? (
             <>
-              <span className="font-bold text-amber-700">1</span> person has completed this quiz so
-              far.
+              <span className="font-bold" style={{ color: BRAND_BLUE_DARK }}>
+                1
+              </span>{" "}
+              person has completed this quiz so far.
             </>
           ) : (
             <>
-              <span className="font-bold text-amber-700">
+              <span className="font-bold" style={{ color: BRAND_BLUE_DARK }}>
                 {completed.toLocaleString()}
               </span>{" "}
               people have completed this quiz so far.
             </>
           )}
         </p>
-        <p className="mt-2 text-zinc-700">
-          Here&apos;s how everyone has answered. Your guesses are highlighted.
-        </p>
       </Card>
 
       <Card>
         {QUESTIONS.map((q, i) => {
           const userAnswer = answers[i];
-          const all = allByQ[i] ?? [];
+          const others = allByQ[i] ?? [];
           return (
             <div
               key={i}
-              className="border-t border-dashed border-amber-200 py-4 first:border-t-0 first:pt-0"
+              className="border-t border-dashed py-4 first:border-t-0 first:pt-0"
+              style={{ borderColor: BRAND_BLUE_PALE }}
             >
               <div className="text-xs tracking-widest text-zinc-500 uppercase">
                 Question {i + 1}
@@ -621,7 +686,7 @@ function Summary({
                 </span>{" "}
                 · Research: {q.correctText}
               </p>
-              <ScatterChart question={q} userAnswer={userAnswer ?? 0} allAnswers={all} />
+              <ScatterChart question={q} userAnswer={userAnswer ?? 0} othersAnswers={others} />
             </div>
           );
         })}
@@ -629,23 +694,19 @@ function Summary({
 
       <Card>
         <p>
-          Want the full picture? Read the original insight note from the{" "}
-          What Works Hub for Global Education:
-        </p>
-        <p className="mt-2">
+          Want the full picture? Read the original article from the What Works Hub for Global
+          Education:{" "}
           <a
             href={PDF_URL}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-amber-700 underline hover:text-amber-800"
+            className="underline"
+            style={{ color: BRAND_BLUE_DARK }}
           >
-            WWHGE — Universal Foundational Learning Insight Note (PDF)
+            Universal Foundational Learning Insight Note (PDF)
           </a>
         </p>
-        <p className="mt-4 text-sm text-zinc-500">
-          Thank you for supporting PadhaiPal — we&apos;re building WhatsApp-based literacy tools so
-          every child gets a real shot at reading.
-        </p>
+        <p className="mt-4 text-zinc-700">{PADHAIPAL_PITCH}</p>
       </Card>
     </>
   );
