@@ -9,6 +9,13 @@ import {
   ScatterController,
   Tooltip,
 } from "chart.js";
+import {
+  fmtCompact,
+  fmtFull,
+  formatQuestionAnswer,
+  QUESTIONS_DATA,
+  type QuestionData,
+} from "./questions";
 
 Chart.register(ScatterController, PointElement, LinearScale, Tooltip);
 
@@ -16,88 +23,38 @@ const BRAND_BLUE = "#1D9EDF";
 const BRAND_BLUE_DARK = "#1683BC";
 const BRAND_BLUE_PALE = "#D3EBF7";
 
-interface Question {
-  prompt: string;
-  prefix: string; // visible prefix on the input box (e.g. "$") — empty if none
-  suffix: string; // visible suffix unit (e.g. "%") — empty if none
-  correct: number;
+interface Question extends QuestionData {
   useMultipliers: boolean; // true for Q1/Q3/Q4/Q5 — show thousands/millions/billions/trillions submit boxes
   formatAnswer: (n: number) => string;
   correctText: React.ReactNode;
 }
 
-function fmtFull(n: number | null | undefined): string {
-  if (n === null || n === undefined || Number.isNaN(n)) return "—";
-  return n.toLocaleString(undefined, { maximumFractionDigits: 2 });
-}
+const CORRECT_TEXT_OVERRIDES: Record<number, React.ReactNode> = {
+  1: (
+    <>
+      <span className="font-bold text-emerald-700">47%</span> higher
+    </>
+  ),
+  2: (
+    <>
+      <span className="font-bold text-emerald-700">44,000,000</span>
+      {" — that's roughly 1.6× Australia's population!"}
+    </>
+  ),
+};
 
-function fmtCompact(n: number | null | undefined): string {
-  if (n === null || n === undefined || Number.isNaN(n)) return "—";
-  return new Intl.NumberFormat(undefined, {
-    notation: "compact",
-    maximumFractionDigits: 1,
-  }).format(n);
-}
-
-const QUESTIONS: Question[] = [
-  {
-    prompt: "How much richer would the country be?",
-    prefix: "$",
-    suffix: "",
-    correct: 37_000_000_000_000,
-    useMultipliers: true,
-    formatAnswer: (n) => `$${fmtFull(n)}`,
-    correctText: (
-      <span className="font-bold text-emerald-700">$37,000,000,000,000</span>
+const QUESTIONS: Question[] = QUESTIONS_DATA.map((q, i) => ({
+  ...q,
+  useMultipliers: q.suffix !== "%",
+  formatAnswer: (n: number) => formatQuestionAnswer(q, n),
+  correctText:
+    CORRECT_TEXT_OVERRIDES[i] ??
+    (
+      <span className="font-bold text-emerald-700">
+        {`${q.prefix}${fmtFull(q.correct)}${q.suffix}`}
+      </span>
     ),
-  },
-  {
-    prompt: "How much higher would India's per capita GDP be?",
-    prefix: "",
-    suffix: "%",
-    correct: 47,
-    useMultipliers: false,
-    formatAnswer: (n) => `${fmtFull(n)}%`,
-    correctText: (
-      <>
-        <span className="font-bold text-emerald-700">47%</span> higher
-      </>
-    ),
-  },
-  {
-    prompt: "How many more Indian children would have gone to secondary school?",
-    prefix: "",
-    suffix: "",
-    correct: 44_000_000,
-    useMultipliers: true,
-    formatAnswer: (n) => fmtFull(n),
-    correctText: (
-      <>
-        <span className="font-bold text-emerald-700">44,000,000</span>
-        {" — that's roughly 1.6× Australia's population!"}
-      </>
-    ),
-  },
-  {
-    prompt: "How many Indian child marriages would have been averted?",
-    prefix: "",
-    suffix: "",
-    correct: 1_200_000,
-    useMultipliers: true,
-    formatAnswer: (n) => fmtFull(n),
-    correctText: <span className="font-bold text-emerald-700">1,200,000</span>,
-  },
-  {
-    prompt:
-      "How many children's lives would be saved (because their mums can now read)?",
-    prefix: "",
-    suffix: "",
-    correct: 420_000,
-    useMultipliers: true,
-    formatAnswer: (n) => fmtFull(n),
-    correctText: <span className="font-bold text-emerald-700">420,000</span>,
-  },
-];
+}));
 
 const MULTIPLIERS: { label: string; factor: number }[] = [
   { label: "thousands", factor: 1_000 },
@@ -161,6 +118,7 @@ export function QuizApp() {
   const [revealAnswers, setRevealAnswers] = useState<number[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [completed, setCompleted] = useState<number | null>(null);
+  const [shareToken, setShareToken] = useState<string | null>(null);
   const sessionIdRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -247,6 +205,23 @@ export function QuizApp() {
       .catch(() => setCompleted(0));
   }, []);
 
+  useEffect(() => {
+    if (phase !== "summary") return;
+    const sid = sessionIdRef.current;
+    if (!sid) return;
+    if (shareToken) return;
+    fetch("/api/quiz/share-token", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: sid }),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j: { token: string } | null) => {
+        if (j?.token) setShareToken(j.token);
+      })
+      .catch(() => {});
+  }, [phase, shareToken]);
+
   return (
     <div className="min-h-screen bg-white text-zinc-900">
       <div className="mx-auto max-w-2xl px-4 py-8 pb-24">
@@ -292,6 +267,7 @@ export function QuizApp() {
             answers={answers}
             completed={completed}
             fetchOthersAnswers={fetchOthersAnswers}
+            shareToken={shareToken}
           />
         )}
       </div>
@@ -650,8 +626,8 @@ function ScatterChart({
             data: [{ x: question.correct, y: 0 }],
             backgroundColor: "#047857",
             borderColor: "#047857",
-            pointRadius: 11,
-            pointHoverRadius: 11,
+            pointRadius: 8,
+            pointHoverRadius: 8,
             pointStyle: "rectRot",
             order: 0,
           },
@@ -702,102 +678,203 @@ function ScatterChart({
   );
 }
 
-const SHARE_TEXT =
-  "I just took the PadhaiPal quiz on what universal foundational literacy could mean for India by 2050. Take a guess yourself:";
+const SHARE_PROMPT =
+  "I just took the fun PadhaiPal quiz on what universal foundational literacy could mean for India by 2050. Take a guess yourself:";
 
-function ShareAndSubscribeCard() {
-  const [shareUrl, setShareUrl] = useState("");
-  const [copyState, setCopyState] = useState<"idle" | "copied">("idle");
+function ShareAndSubscribeCard({ shareToken }: { shareToken: string | null }) {
+  const [origin, setOrigin] = useState("");
+  const [textCopied, setTextCopied] = useState(false);
+  const [imageCopyState, setImageCopyState] = useState<"idle" | "copied" | "unsupported">(
+    "idle",
+  );
 
   useEffect(() => {
-    setShareUrl(window.location.href);
+    setOrigin(window.location.origin);
   }, []);
 
-  const encodedText = encodeURIComponent(SHARE_TEXT);
+  const shareUrl = origin
+    ? shareToken
+      ? `${origin}/quiz/share/${shareToken}`
+      : `${origin}/quiz`
+    : "";
+  const imageUrl = shareToken ? `/quiz/share/${shareToken}/opengraph-image` : null;
+  const fullShareText = `${SHARE_PROMPT} ${shareUrl}`;
+
+  const encodedText = encodeURIComponent(SHARE_PROMPT);
   const encodedUrl = encodeURIComponent(shareUrl);
   const twitterHref = `https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`;
   const whatsappHref = `https://wa.me/?text=${encodedText}%20${encodedUrl}`;
   const linkedinHref = `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`;
   const facebookHref = `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`;
 
+  async function copyText() {
+    try {
+      await navigator.clipboard.writeText(fullShareText);
+      setTextCopied(true);
+      setTimeout(() => setTextCopied(false), 2000);
+    } catch {}
+  }
+
+  async function copyImage() {
+    if (!imageUrl) return;
+    try {
+      // Check for ClipboardItem support (Safari/older browsers don't support image clipboard)
+      if (typeof ClipboardItem === "undefined") {
+        setImageCopyState("unsupported");
+        setTimeout(() => setImageCopyState("idle"), 2500);
+        return;
+      }
+      const res = await fetch(imageUrl);
+      const blob = await res.blob();
+      await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })]);
+      setImageCopyState("copied");
+      setTimeout(() => setImageCopyState("idle"), 2000);
+    } catch {
+      setImageCopyState("unsupported");
+      setTimeout(() => setImageCopyState("idle"), 2500);
+    }
+  }
+
   async function handleNativeShare() {
     if (typeof navigator !== "undefined" && navigator.share) {
       try {
         await navigator.share({
           title: "PadhaiPal Quiz",
-          text: SHARE_TEXT,
+          text: SHARE_PROMPT,
           url: shareUrl,
         });
         return;
       } catch {
-        // user cancelled, or share failed — fall through to clipboard
+        // user cancelled — fall through
       }
     }
-    try {
-      await navigator.clipboard.writeText(`${SHARE_TEXT} ${shareUrl}`);
-      setCopyState("copied");
-      setTimeout(() => setCopyState("idle"), 2000);
-    } catch {
-      // ignore
-    }
+    copyText();
   }
+
+  const buttonStyle = "rounded-lg border-2 px-3 py-2 text-sm font-medium transition hover:bg-zinc-50";
+  const buttonInline = { borderColor: BRAND_BLUE_PALE, color: BRAND_BLUE_DARK };
 
   return (
     <Card>
       <h3 className="text-lg font-semibold">Share your results</h3>
       <p className="mt-1 text-sm text-zinc-600">
-        Pass this on so more people see what universal literacy could do.
+        Copy the message and image below, or send straight to a friend.
       </p>
-      <div className="mt-3 flex flex-wrap gap-2">
-        <a
-          href={twitterHref}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="rounded-lg border-2 px-3 py-2 text-sm font-medium transition hover:bg-zinc-50"
-          style={{ borderColor: BRAND_BLUE_PALE, color: BRAND_BLUE_DARK }}
-        >
+
+      <div className="mt-4 flex flex-col gap-4 md:flex-row">
+        {/* Left: share text + actions */}
+        <div className="flex-1 flex flex-col gap-3">
+          <div
+            className="rounded-lg border p-3 text-sm leading-relaxed"
+            style={{ borderColor: BRAND_BLUE_PALE, backgroundColor: `${BRAND_BLUE_PALE}40` }}
+          >
+            {SHARE_PROMPT}{" "}
+            {shareUrl ? (
+              <a
+                href={shareUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline"
+                style={{ color: BRAND_BLUE_DARK }}
+              >
+                {shareUrl}
+              </a>
+            ) : (
+              <span className="text-zinc-400">loading link…</span>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={copyText}
+              disabled={!shareUrl}
+              className="rounded-lg px-3 py-2 text-sm font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-50"
+              style={{ backgroundColor: BRAND_BLUE }}
+              onMouseEnter={(e) =>
+                ((e.currentTarget as HTMLButtonElement).style.backgroundColor = BRAND_BLUE_DARK)
+              }
+              onMouseLeave={(e) =>
+                ((e.currentTarget as HTMLButtonElement).style.backgroundColor = BRAND_BLUE)
+              }
+            >
+              {textCopied ? "Text copied!" : "Copy text"}
+            </button>
+            <button
+              onClick={handleNativeShare}
+              disabled={!shareUrl}
+              className={buttonStyle}
+              style={buttonInline}
+            >
+              Share…
+            </button>
+          </div>
+        </div>
+
+        {/* Right: image preview + actions */}
+        <div className="md:w-[44%] flex flex-col gap-3">
+          {imageUrl ? (
+            <a
+              href={imageUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block overflow-hidden rounded-lg border"
+              style={{ borderColor: BRAND_BLUE_PALE }}
+              title="Right-click to save, or open in a new tab"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={imageUrl}
+                alt="Your PadhaiPal quiz results"
+                className="block h-auto w-full"
+              />
+            </a>
+          ) : (
+            <div
+              className="flex aspect-[1200/630] items-center justify-center rounded-lg border text-xs text-zinc-400"
+              style={{ borderColor: BRAND_BLUE_PALE }}
+            >
+              Generating your share image…
+            </div>
+          )}
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={copyImage}
+              disabled={!imageUrl}
+              className={buttonStyle}
+              style={buttonInline}
+            >
+              {imageCopyState === "copied"
+                ? "Image copied!"
+                : imageCopyState === "unsupported"
+                  ? "Right-click to copy"
+                  : "Copy image"}
+            </button>
+            {imageUrl && (
+              <a
+                href={imageUrl}
+                download="padhaipal-quiz-result.png"
+                className={buttonStyle}
+                style={buttonInline}
+              >
+                Download
+              </a>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-5 flex flex-wrap gap-2">
+        <a href={twitterHref} target="_blank" rel="noopener noreferrer" className={buttonStyle} style={buttonInline}>
           Share on X
         </a>
-        <a
-          href={whatsappHref}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="rounded-lg border-2 px-3 py-2 text-sm font-medium transition hover:bg-zinc-50"
-          style={{ borderColor: BRAND_BLUE_PALE, color: BRAND_BLUE_DARK }}
-        >
+        <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className={buttonStyle} style={buttonInline}>
           WhatsApp
         </a>
-        <a
-          href={linkedinHref}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="rounded-lg border-2 px-3 py-2 text-sm font-medium transition hover:bg-zinc-50"
-          style={{ borderColor: BRAND_BLUE_PALE, color: BRAND_BLUE_DARK }}
-        >
+        <a href={linkedinHref} target="_blank" rel="noopener noreferrer" className={buttonStyle} style={buttonInline}>
           LinkedIn
         </a>
-        <a
-          href={facebookHref}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="rounded-lg border-2 px-3 py-2 text-sm font-medium transition hover:bg-zinc-50"
-          style={{ borderColor: BRAND_BLUE_PALE, color: BRAND_BLUE_DARK }}
-        >
+        <a href={facebookHref} target="_blank" rel="noopener noreferrer" className={buttonStyle} style={buttonInline}>
           Facebook
         </a>
-        <button
-          onClick={handleNativeShare}
-          className="rounded-lg px-3 py-2 text-sm font-semibold text-white transition"
-          style={{ backgroundColor: BRAND_BLUE }}
-          onMouseEnter={(e) =>
-            ((e.currentTarget as HTMLButtonElement).style.backgroundColor = BRAND_BLUE_DARK)
-          }
-          onMouseLeave={(e) =>
-            ((e.currentTarget as HTMLButtonElement).style.backgroundColor = BRAND_BLUE)
-          }
-        >
-          {copyState === "copied" ? "Link copied!" : "Share"}
-        </button>
       </div>
 
       <div
@@ -927,10 +1004,12 @@ function Summary({
   answers,
   completed,
   fetchOthersAnswers,
+  shareToken,
 }: {
   answers: (number | null)[];
   completed: number | null;
   fetchOthersAnswers: (idx: number) => Promise<number[]>;
+  shareToken: string | null;
 }) {
   const [allByQ, setAllByQ] = useState<Record<number, number[]>>({});
 
@@ -973,7 +1052,7 @@ function Summary({
         </p>
       </Card>
 
-      <ShareAndSubscribeCard />
+      <ShareAndSubscribeCard shareToken={shareToken} />
 
       <Card>
         {QUESTIONS.map((q, i) => {
