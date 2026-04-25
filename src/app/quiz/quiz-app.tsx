@@ -18,89 +18,92 @@ const BRAND_BLUE_PALE = "#D3EBF7";
 
 interface Question {
   prompt: string;
-  unit: string;
-  placeholder: string;
+  prefix: string; // visible prefix on the input box (e.g. "$") — empty if none
+  suffix: string; // visible suffix unit (e.g. "%") — empty if none
   correct: number;
+  useMultipliers: boolean; // true for Q1/Q3/Q4/Q5 — show thousands/millions/billions/trillions submit boxes
   formatAnswer: (n: number) => string;
   correctText: React.ReactNode;
-  min: number;
-  max: number;
-  step: number;
 }
 
-function fmtNum(n: number | null | undefined): string {
+function fmtFull(n: number | null | undefined): string {
   if (n === null || n === undefined || Number.isNaN(n)) return "—";
-  if (Math.abs(n) >= 1000) return n.toLocaleString(undefined, { maximumFractionDigits: 0 });
-  if (Math.abs(n) >= 100) return n.toLocaleString(undefined, { maximumFractionDigits: 1 });
   return n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+}
+
+function fmtCompact(n: number | null | undefined): string {
+  if (n === null || n === undefined || Number.isNaN(n)) return "—";
+  return new Intl.NumberFormat(undefined, {
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(n);
 }
 
 const QUESTIONS: Question[] = [
   {
     prompt: "How much richer would the country be?",
-    unit: "$",
-    placeholder: "e.g. 5",
-    correct: 37,
-    formatAnswer: (n) => `$${fmtNum(n)}`,
-    correctText: <span className="font-bold text-emerald-700">$37</span>,
-    min: 0,
-    max: 200,
-    step: 0.1,
+    prefix: "$",
+    suffix: "",
+    correct: 37_000_000_000_000,
+    useMultipliers: true,
+    formatAnswer: (n) => `$${fmtFull(n)}`,
+    correctText: (
+      <span className="font-bold text-emerald-700">$37,000,000,000,000</span>
+    ),
   },
   {
     prompt: "How much higher would India's per capita GDP be?",
-    unit: "%",
-    placeholder: "e.g. 20",
+    prefix: "",
+    suffix: "%",
     correct: 47,
-    formatAnswer: (n) => `${fmtNum(n)}%`,
+    useMultipliers: false,
+    formatAnswer: (n) => `${fmtFull(n)}%`,
     correctText: (
       <>
         <span className="font-bold text-emerald-700">47%</span> higher
       </>
     ),
-    min: 0,
-    max: 300,
-    step: 0.1,
   },
   {
     prompt: "How many more Indian children would have gone to secondary school?",
-    unit: "",
-    placeholder: "e.g. 10",
-    correct: 44,
-    formatAnswer: (n) => fmtNum(n),
+    prefix: "",
+    suffix: "",
+    correct: 44_000_000,
+    useMultipliers: true,
+    formatAnswer: (n) => fmtFull(n),
     correctText: (
       <>
-        <span className="font-bold text-emerald-700">44</span>
+        <span className="font-bold text-emerald-700">44,000,000</span>
         {" — that's roughly 1.6× Australia's population!"}
       </>
     ),
-    min: 0,
-    max: 300,
-    step: 0.1,
   },
   {
     prompt: "How many Indian child marriages would have been averted?",
-    unit: "",
-    placeholder: "e.g. 0.5",
-    correct: 1.2,
-    formatAnswer: (n) => fmtNum(n),
-    correctText: <span className="font-bold text-emerald-700">1.2</span>,
-    min: 0,
-    max: 20,
-    step: 0.05,
+    prefix: "",
+    suffix: "",
+    correct: 1_200_000,
+    useMultipliers: true,
+    formatAnswer: (n) => fmtFull(n),
+    correctText: <span className="font-bold text-emerald-700">1,200,000</span>,
   },
   {
     prompt:
       "How many children's lives would be saved (because their mums can now read)?",
-    unit: "",
-    placeholder: "e.g. 50",
-    correct: 420,
-    formatAnswer: (n) => fmtNum(n),
+    prefix: "",
+    suffix: "",
+    correct: 420_000,
+    useMultipliers: true,
+    formatAnswer: (n) => fmtFull(n),
     correctText: <span className="font-bold text-emerald-700">420,000</span>,
-    min: 0,
-    max: 5000,
-    step: 10,
   },
+];
+
+const MULTIPLIERS: { label: string; factor: number }[] = [
+  { label: "thousands", factor: 1_000 },
+  { label: "millions", factor: 1_000_000 },
+  { label: "billions", factor: 1_000_000_000 },
+  { label: "trillions", factor: 1_000_000_000_000 },
 ];
 
 const PREMISE = (
@@ -133,9 +136,25 @@ const PDF_URL =
 
 type Phase = "intro" | "question" | "reveal" | "summary";
 
+function shuffleIndices(n: number): number[] {
+  const a = Array.from({ length: n }, (_, i) => i);
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
 export function QuizApp() {
   const [phase, setPhase] = useState<Phase>("intro");
   const [qIndex, setQIndex] = useState(0);
+  // Display order: position-in-display → original question index. Shuffled on mount.
+  // Defaults to identity order for SSR consistency before useEffect runs (no question is
+  // rendered before the user clicks Start, which happens after mount).
+  const [displayOrder, setDisplayOrder] = useState<number[]>(() =>
+    Array.from({ length: QUESTIONS.length }, (_, i) => i),
+  );
+  // Keyed by ORIGINAL question index, not display position.
   const [answers, setAnswers] = useState<(number | null)[]>(() =>
     new Array(QUESTIONS.length).fill(null),
   );
@@ -145,6 +164,8 @@ export function QuizApp() {
   const sessionIdRef = useRef<string | null>(null);
 
   useEffect(() => {
+    setDisplayOrder(shuffleIndices(QUESTIONS.length));
+
     let sid: string | null = null;
     try {
       sid = localStorage.getItem("padhaipal_quiz_session");
@@ -157,6 +178,8 @@ export function QuizApp() {
     }
     sessionIdRef.current = sid;
   }, []);
+
+  const origIndex = displayOrder[qIndex];
 
   const submit = useCallback(async (idx: number, value: number) => {
     const sid = sessionIdRef.current;
@@ -190,11 +213,11 @@ export function QuizApp() {
     async (value: number) => {
       setSubmitting(true);
       try {
-        await submit(qIndex, value);
-        const others = await fetchOthersAnswers(qIndex);
+        await submit(origIndex, value);
+        const others = await fetchOthersAnswers(origIndex);
         setAnswers((prev) => {
           const next = prev.slice();
-          next[qIndex] = value;
+          next[origIndex] = value;
           return next;
         });
         setRevealAnswers(others);
@@ -205,7 +228,7 @@ export function QuizApp() {
         setSubmitting(false);
       }
     },
-    [qIndex, submit, fetchOthersAnswers],
+    [origIndex, submit, fetchOthersAnswers],
   );
 
   const handleNext = useCallback(() => {
@@ -218,12 +241,11 @@ export function QuizApp() {
   }, [qIndex]);
 
   useEffect(() => {
-    if (phase !== "summary") return;
     fetch("/api/quiz/stats")
       .then((r) => (r.ok ? r.json() : { completed: 0 }))
       .then((j: { completed: number }) => setCompleted(j.completed ?? 0))
       .catch(() => setCompleted(0));
-  }, [phase]);
+  }, []);
 
   return (
     <div className="min-h-screen bg-white text-zinc-900">
@@ -232,7 +254,13 @@ export function QuizApp() {
           What if every Indian child could read?
         </h1>
         <p className="mt-2 mb-6 text-center text-zinc-600">
-          A 5-question quiz. Take a guess — then see what the research says.
+          {completed === null
+            ? "Loading…"
+            : completed === 0
+              ? "Be the first to take this 5-question quiz. Take a guess — then see what the research says."
+              : completed === 1
+                ? "Join the 1 person who has taken this 5-question quiz. Take a guess — then see what the research says."
+                : `Join the ${completed.toLocaleString()} people who have taken this 5-question quiz. Take a guess — then see what the research says.`}
         </p>
 
         <BrandCard />
@@ -242,7 +270,7 @@ export function QuizApp() {
         {phase === "question" && (
           <QuestionCard
             qIndex={qIndex}
-            question={QUESTIONS[qIndex]}
+            question={QUESTIONS[origIndex]}
             submitting={submitting}
             onSubmit={handleSubmit}
           />
@@ -251,8 +279,8 @@ export function QuizApp() {
         {phase === "reveal" && (
           <RevealCard
             qIndex={qIndex}
-            question={QUESTIONS[qIndex]}
-            userAnswer={answers[qIndex] ?? 0}
+            question={QUESTIONS[origIndex]}
+            userAnswer={answers[origIndex] ?? 0}
             othersAnswers={revealAnswers}
             isLast={qIndex === QUESTIONS.length - 1}
             onNext={handleNext}
@@ -360,6 +388,9 @@ function Intro({ onStart }: { onStart: () => void }) {
   );
 }
 
+const NO_SPINNER_CLASSES =
+  "[appearance:textfield] [&::-webkit-outer-spin-button]:m-0 [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:m-0 [&::-webkit-inner-spin-button]:appearance-none";
+
 function QuestionCard({
   qIndex,
   question,
@@ -381,17 +412,28 @@ function QuestionCard({
     inputRef.current?.focus();
   }, [qIndex]);
 
-  function handleClick() {
+  function parseInput(): number | null {
     const n = parseFloat(value);
     if (value === "" || Number.isNaN(n)) {
       setError(true);
       inputRef.current?.focus();
-      return;
+      return null;
     }
+    return n;
+  }
+
+  function submitDirect() {
+    const n = parseInput();
+    if (n === null) return;
     onSubmit(n);
   }
 
-  const inputBorder = error ? "#e11d48" : BRAND_BLUE_PALE;
+  function submitWithFactor(factor: number) {
+    const n = parseInput();
+    if (n === null) return;
+    onSubmit(n * factor);
+  }
+
   return (
     <Card>
       <ProgressBar idx={qIndex} />
@@ -401,32 +443,7 @@ function QuestionCard({
       <p className="mt-1 text-base">{PREMISE}</p>
       <h2 className="mt-3 mb-3 text-xl leading-snug font-semibold">{question.prompt}</h2>
       <div className="flex gap-2">
-        <input
-          ref={inputRef}
-          type="number"
-          inputMode="decimal"
-          min={question.min}
-          max={question.max}
-          step={question.step}
-          placeholder={question.placeholder}
-          value={value}
-          onChange={(e) => {
-            setValue(e.target.value);
-            setError(false);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") handleClick();
-          }}
-          className="flex-1 rounded-lg border-2 px-3 py-3 text-lg outline-none focus:outline-none"
-          style={{ borderColor: inputBorder }}
-          onFocus={(e) => {
-            if (!error) e.currentTarget.style.borderColor = BRAND_BLUE;
-          }}
-          onBlur={(e) => {
-            if (!error) e.currentTarget.style.borderColor = BRAND_BLUE_PALE;
-          }}
-        />
-        {question.unit && (
+        {question.prefix && (
           <div
             className="flex items-center rounded-lg border-2 px-3 text-zinc-700"
             style={{
@@ -434,15 +451,80 @@ function QuestionCard({
               backgroundColor: `${BRAND_BLUE_PALE}80`,
             }}
           >
-            {question.unit}
+            {question.prefix}
+          </div>
+        )}
+        <input
+          ref={inputRef}
+          type="number"
+          inputMode="decimal"
+          value={value}
+          onChange={(e) => {
+            setValue(e.target.value);
+            setError(false);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !question.useMultipliers) submitDirect();
+          }}
+          className={`flex-1 rounded-lg border-2 px-3 py-3 text-lg outline-none focus:outline-none ${NO_SPINNER_CLASSES}`}
+          style={{ borderColor: error ? "#e11d48" : BRAND_BLUE_PALE }}
+          onFocus={(e) => {
+            if (!error) e.currentTarget.style.borderColor = BRAND_BLUE;
+          }}
+          onBlur={(e) => {
+            if (!error) e.currentTarget.style.borderColor = BRAND_BLUE_PALE;
+          }}
+        />
+        {question.suffix && (
+          <div
+            className="flex items-center rounded-lg border-2 px-3 text-zinc-700"
+            style={{
+              borderColor: BRAND_BLUE_PALE,
+              backgroundColor: `${BRAND_BLUE_PALE}80`,
+            }}
+          >
+            {question.suffix}
           </div>
         )}
       </div>
-      <div className="mt-4">
-        <PrimaryButton onClick={handleClick} disabled={submitting}>
-          {submitting ? "Saving…" : "Submit guess"}
-        </PrimaryButton>
-      </div>
+      {question.useMultipliers ? (
+        <>
+          <p className="mt-3 text-xs text-zinc-500">
+            Type a number, then tap the unit to submit.
+          </p>
+          <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {MULTIPLIERS.map((m) => (
+              <button
+                key={m.label}
+                type="button"
+                disabled={submitting}
+                onClick={() => submitWithFactor(m.factor)}
+                className="rounded-lg border-2 px-3 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50"
+                style={{
+                  borderColor: BRAND_BLUE_PALE,
+                  color: BRAND_BLUE_DARK,
+                  backgroundColor: "white",
+                }}
+                onMouseEnter={(e) => {
+                  if (submitting) return;
+                  e.currentTarget.style.backgroundColor = BRAND_BLUE_PALE;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = "white";
+                }}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+        </>
+      ) : (
+        <div className="mt-4">
+          <PrimaryButton onClick={submitDirect} disabled={submitting}>
+            {submitting ? "Saving…" : "Submit guess"}
+          </PrimaryButton>
+        </div>
+      )}
     </Card>
   );
 }
@@ -471,8 +553,10 @@ function RevealCard({
       <h2 className="mt-1 mb-3 text-xl leading-snug font-semibold">{question.prompt}</h2>
       <p className="text-base">
         You guessed{" "}
-        <span className="font-bold text-rose-600">{question.formatAnswer(userAnswer)}</span>. The
-        research says {question.correctText}.
+        <span className="font-bold" style={{ color: BRAND_BLUE_DARK }}>
+          {question.formatAnswer(userAnswer)}
+        </span>
+        . The research says {question.correctText}.
       </p>
       <Legend />
       <ScatterChart
@@ -497,7 +581,10 @@ function Legend() {
         Other guesses
       </span>
       <span className="inline-flex items-center gap-1.5">
-        <span className="inline-block h-2.5 w-2.5 rounded-full bg-rose-500" />
+        <span
+          className="inline-block h-2.5 w-2.5 rounded-full"
+          style={{ backgroundColor: BRAND_BLUE }}
+        />
         You
       </span>
       <span className="inline-flex items-center gap-1.5">
@@ -551,8 +638,8 @@ function ScatterChart({
           {
             label: "Your guess",
             data: [{ x: userAnswer, y: 0 }],
-            backgroundColor: "#e11d48",
-            borderColor: "#e11d48",
+            backgroundColor: BRAND_BLUE,
+            borderColor: BRAND_BLUE,
             pointRadius: 9,
             pointHoverRadius: 9,
             pointStyle: "circle",
@@ -588,8 +675,8 @@ function ScatterChart({
             type: "linear",
             min: xMin,
             max: xMax,
-            title: { display: !!question.unit, text: question.unit },
-            ticks: { callback: (v) => fmtNum(Number(v)) },
+            title: { display: false },
+            ticks: { callback: (v) => fmtCompact(Number(v)) },
             grid: { color: "rgba(0,0,0,0.05)" },
           },
           y: {
@@ -612,6 +699,227 @@ function ScatterChart({
     <div className="relative mt-2 h-36">
       <canvas ref={canvasRef} />
     </div>
+  );
+}
+
+const SHARE_TEXT =
+  "I just took the PadhaiPal quiz on what universal foundational literacy could mean for India by 2050. Take a guess yourself:";
+
+function ShareAndSubscribeCard() {
+  const [shareUrl, setShareUrl] = useState("");
+  const [copyState, setCopyState] = useState<"idle" | "copied">("idle");
+
+  useEffect(() => {
+    setShareUrl(window.location.href);
+  }, []);
+
+  const encodedText = encodeURIComponent(SHARE_TEXT);
+  const encodedUrl = encodeURIComponent(shareUrl);
+  const twitterHref = `https://twitter.com/intent/tweet?text=${encodedText}&url=${encodedUrl}`;
+  const whatsappHref = `https://wa.me/?text=${encodedText}%20${encodedUrl}`;
+  const linkedinHref = `https://www.linkedin.com/sharing/share-offsite/?url=${encodedUrl}`;
+  const facebookHref = `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`;
+
+  async function handleNativeShare() {
+    if (typeof navigator !== "undefined" && navigator.share) {
+      try {
+        await navigator.share({
+          title: "PadhaiPal Quiz",
+          text: SHARE_TEXT,
+          url: shareUrl,
+        });
+        return;
+      } catch {
+        // user cancelled, or share failed — fall through to clipboard
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(`${SHARE_TEXT} ${shareUrl}`);
+      setCopyState("copied");
+      setTimeout(() => setCopyState("idle"), 2000);
+    } catch {
+      // ignore
+    }
+  }
+
+  return (
+    <Card>
+      <h3 className="text-lg font-semibold">Share your results</h3>
+      <p className="mt-1 text-sm text-zinc-600">
+        Pass this on so more people see what universal literacy could do.
+      </p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <a
+          href={twitterHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="rounded-lg border-2 px-3 py-2 text-sm font-medium transition hover:bg-zinc-50"
+          style={{ borderColor: BRAND_BLUE_PALE, color: BRAND_BLUE_DARK }}
+        >
+          Share on X
+        </a>
+        <a
+          href={whatsappHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="rounded-lg border-2 px-3 py-2 text-sm font-medium transition hover:bg-zinc-50"
+          style={{ borderColor: BRAND_BLUE_PALE, color: BRAND_BLUE_DARK }}
+        >
+          WhatsApp
+        </a>
+        <a
+          href={linkedinHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="rounded-lg border-2 px-3 py-2 text-sm font-medium transition hover:bg-zinc-50"
+          style={{ borderColor: BRAND_BLUE_PALE, color: BRAND_BLUE_DARK }}
+        >
+          LinkedIn
+        </a>
+        <a
+          href={facebookHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="rounded-lg border-2 px-3 py-2 text-sm font-medium transition hover:bg-zinc-50"
+          style={{ borderColor: BRAND_BLUE_PALE, color: BRAND_BLUE_DARK }}
+        >
+          Facebook
+        </a>
+        <button
+          onClick={handleNativeShare}
+          className="rounded-lg px-3 py-2 text-sm font-semibold text-white transition"
+          style={{ backgroundColor: BRAND_BLUE }}
+          onMouseEnter={(e) =>
+            ((e.currentTarget as HTMLButtonElement).style.backgroundColor = BRAND_BLUE_DARK)
+          }
+          onMouseLeave={(e) =>
+            ((e.currentTarget as HTMLButtonElement).style.backgroundColor = BRAND_BLUE)
+          }
+        >
+          {copyState === "copied" ? "Link copied!" : "Share"}
+        </button>
+      </div>
+
+      <div
+        className="my-5 border-t border-dashed"
+        style={{ borderColor: BRAND_BLUE_PALE }}
+      />
+
+      <SubscribeForm />
+    </Card>
+  );
+}
+
+function SubscribeForm() {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [status, setStatus] = useState<"idle" | "submitting" | "done" | "error">("idle");
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setStatus("submitting");
+    setErrorMsg(null);
+    const trimmedName = name.trim();
+    try {
+      const res = await fetch("/api/quiz/subscribe", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: email.trim(),
+          ...(trimmedName ? { name: trimmedName } : {}),
+        }),
+      });
+      if (!res.ok) {
+        setStatus("error");
+        setErrorMsg(
+          res.status === 400
+            ? "That email doesn't look right. Please check and try again."
+            : "Something went wrong. Please try again.",
+        );
+        return;
+      }
+      setStatus("done");
+    } catch {
+      setStatus("error");
+      setErrorMsg("Network error. Please try again.");
+    }
+  }
+
+  if (status === "done") {
+    return (
+      <div>
+        <h3 className="text-lg font-semibold">You&apos;re on the list 🎉</h3>
+        <p className="mt-1 text-sm text-zinc-600">
+          Thanks{name.trim() ? `, ${name.trim()}` : ""} — we&apos;ll send the occasional update on
+          PadhaiPal&apos;s progress.
+        </p>
+      </div>
+    );
+  }
+
+  const inputClass =
+    "w-full rounded-lg border-2 px-3 py-2.5 text-base outline-none focus:outline-none";
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <h3 className="text-lg font-semibold">Stay in the loop</h3>
+      <p className="mt-1 text-sm text-zinc-600">
+        Pop your details in to get occasional updates from PadhaiPal.
+      </p>
+      <div className="mt-3 flex flex-col gap-2">
+        <input
+          type="text"
+          autoComplete="name"
+          placeholder="Your name"
+          value={name}
+          onChange={(e) => {
+            setName(e.target.value);
+            if (status === "error") setStatus("idle");
+          }}
+          className={inputClass}
+          style={{ borderColor: BRAND_BLUE_PALE }}
+          onFocus={(e) => (e.currentTarget.style.borderColor = BRAND_BLUE)}
+          onBlur={(e) => (e.currentTarget.style.borderColor = BRAND_BLUE_PALE)}
+        />
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <input
+            type="email"
+            required
+            autoComplete="email"
+            placeholder="you@example.com"
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              if (status === "error") setStatus("idle");
+            }}
+            className={`flex-1 ${inputClass}`}
+            style={{ borderColor: BRAND_BLUE_PALE }}
+            onFocus={(e) => (e.currentTarget.style.borderColor = BRAND_BLUE)}
+            onBlur={(e) => (e.currentTarget.style.borderColor = BRAND_BLUE_PALE)}
+          />
+          <button
+            type="submit"
+            disabled={status === "submitting"}
+            className="rounded-lg px-5 py-2.5 font-semibold text-white transition disabled:cursor-not-allowed disabled:opacity-50"
+            style={{ backgroundColor: BRAND_BLUE }}
+            onMouseEnter={(e) =>
+              ((e.currentTarget as HTMLButtonElement).style.backgroundColor = BRAND_BLUE_DARK)
+            }
+            onMouseLeave={(e) =>
+              ((e.currentTarget as HTMLButtonElement).style.backgroundColor = BRAND_BLUE)
+            }
+          >
+            {status === "submitting" ? "Saving…" : "Sign up"}
+          </button>
+        </div>
+      </div>
+      {errorMsg && <p className="mt-2 text-sm text-rose-600">{errorMsg}</p>}
+      <p className="mt-3 text-xs text-zinc-500">
+        We&apos;ll only email you about PadhaiPal updates. We won&apos;t share your details with
+        anyone, and you can unsubscribe at any time.
+      </p>
+    </form>
   );
 }
 
@@ -665,6 +973,8 @@ function Summary({
         </p>
       </Card>
 
+      <ShareAndSubscribeCard />
+
       <Card>
         {QUESTIONS.map((q, i) => {
           const userAnswer = answers[i];
@@ -681,7 +991,7 @@ function Summary({
               <h3 className="mt-0.5 text-base font-semibold">{q.prompt}</h3>
               <p className="mt-1 text-sm text-zinc-600">
                 You:{" "}
-                <span className="font-bold text-rose-600">
+                <span className="font-bold" style={{ color: BRAND_BLUE_DARK }}>
                   {userAnswer === null ? "—" : q.formatAnswer(userAnswer)}
                 </span>{" "}
                 · Research: {q.correctText}
@@ -706,7 +1016,6 @@ function Summary({
             Universal Foundational Learning Insight Note (PDF)
           </a>
         </p>
-        <p className="mt-4 text-zinc-700">{PADHAIPAL_PITCH}</p>
       </Card>
     </>
   );

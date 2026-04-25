@@ -6,6 +6,7 @@ const ALLOWED: { pattern: RegExp; methods: string[] }[] = [
   { pattern: /^answer$/, methods: ["POST"] },
   { pattern: /^answers$/, methods: ["GET"] },
   { pattern: /^stats$/, methods: ["GET"] },
+  { pattern: /^subscribe$/, methods: ["POST"] },
 ];
 
 function isAllowed(path: string, method: string): boolean {
