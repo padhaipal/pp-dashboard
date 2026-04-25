@@ -17,6 +17,7 @@ export const QUESTIONS_DATA: QuestionData[] = [
     prefix: "$",
     suffix: "",
     correct: 37_000_000_000_000,
+    researchAnnotation: " - for comparison the US Debt as of 2026 is $39 trillion",
   },
   {
     prompt: "How much higher would India's per capita GDP be?",
