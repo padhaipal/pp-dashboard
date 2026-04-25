@@ -689,11 +689,7 @@ function ShareAndSubscribeCard({ shareToken }: { shareToken: string | null }) {
     setOrigin(window.location.origin);
   }, []);
 
-  const shareUrl = origin
-    ? shareToken
-      ? `${origin}/quiz/share/${shareToken}`
-      : `${origin}/quiz`
-    : "";
+  const shareUrl = origin ? `${origin}/quiz` : "";
   const fullShareText = `${SHARE_PROMPT} ${shareUrl}`;
 
   const encodedText = encodeURIComponent(SHARE_PROMPT);
