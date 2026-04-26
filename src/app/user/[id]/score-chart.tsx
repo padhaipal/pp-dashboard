@@ -8,12 +8,13 @@ interface ScorePoint {
   letter_id: string;
   grapheme: string;
   is_seed: boolean;
+  user_message_id: string | null;
 }
 
 interface LetterSeries {
   letter_id: string;
   grapheme: string;
-  points: { t: number; score: number }[];
+  points: { x: number; score: number }[];
   initialScore: number | null;
   color: string;
   learnt: boolean;
@@ -62,11 +63,22 @@ export function ScoreChart({ userId }: { userId: string }) {
         learntSet = new Set(learntData[0]?.lettersLearnt ?? []);
       }
 
-      // Group by letter_id, separating seed scores from real scores
+      // Build global interaction order: each unique non-seed user_message_id
+      // becomes one x-tick, in chronological order. Multiple letters scored
+      // in the same interaction share the same x.
+      const interactionIdx = new Map<string, number>();
+      let nextIdx = 0;
+      for (const d of data) {
+        if (d.user_message_id !== null && !interactionIdx.has(d.user_message_id)) {
+          interactionIdx.set(d.user_message_id, nextIdx++);
+        }
+      }
+
+      // Group by letter_id, separating seed scores from interaction scores
       const grouped = new Map<string, {
         grapheme: string;
         seedScore: number | null;
-        points: { t: number; score: number }[];
+        points: { x: number; score: number }[];
       }>();
       for (const d of data) {
         if (!grouped.has(d.letter_id)) {
@@ -77,7 +89,7 @@ export function ScoreChart({ userId }: { userId: string }) {
           entry.seedScore = d.score + 100;
         } else {
           entry.points.push({
-            t: new Date(d.created_at).getTime(),
+            x: interactionIdx.get(d.user_message_id!)!,
             score: d.score + 100,
           });
         }
@@ -125,7 +137,10 @@ export function ScoreChart({ userId }: { userId: string }) {
   const sMax = Math.max(0, ...allScores);
   const scorePad = Math.max(1, (sMax - sMin) * 0.1);
 
-  const maxLen = Math.max(...series.map((s) => s.points.length));
+  const maxX = Math.max(
+    0,
+    ...series.flatMap((s) => s.points.map((p) => p.x)),
+  );
 
   const W = 900;
   const H = 300;
@@ -135,21 +150,29 @@ export function ScoreChart({ userId }: { userId: string }) {
   const sRange = sMax - sMin + scorePad * 2 || 1;
   const sLow = sMin - scorePad;
 
-  const xByIndex = (i: number) =>
-    PADDING.left + (maxLen <= 1 ? plotW / 2 : (i / (maxLen - 1)) * plotW);
+  const xByX = (x: number) =>
+    PADDING.left + (maxX <= 0 ? plotW / 2 : (x / maxX) * plotW);
   const y = (s: number) => PADDING.top + plotH - ((s - sLow) / sRange) * plotH;
 
-  const toPath = (pts: { t: number; score: number }[]) => {
+  // Step path. If seedScore is given, the line begins at (x=0, seedScore)
+  // and steps horizontally to the first interaction's x, then vertically
+  // to its score — visualizing the seed as the letter's starting state.
+  const toPath = (
+    pts: { x: number; score: number }[],
+    seedScore: number | null,
+  ) => {
+    if (pts.length === 0) return "";
     const parts: string[] = [];
-    for (let i = 0; i < pts.length; i++) {
-      const px = xByIndex(i).toFixed(1);
-      const py = y(pts[i].score).toFixed(1);
-      if (i === 0) {
-        parts.push(`M${px},${py}`);
-      } else {
-        parts.push(`H${px}`);
-        parts.push(`V${py}`);
-      }
+    if (seedScore !== null) {
+      parts.push(`M${xByX(0).toFixed(1)},${y(seedScore).toFixed(1)}`);
+      parts.push(`H${xByX(pts[0].x).toFixed(1)}`);
+      parts.push(`V${y(pts[0].score).toFixed(1)}`);
+    } else {
+      parts.push(`M${xByX(pts[0].x).toFixed(1)},${y(pts[0].score).toFixed(1)}`);
+    }
+    for (let i = 1; i < pts.length; i++) {
+      parts.push(`H${xByX(pts[i].x).toFixed(1)}`);
+      parts.push(`V${y(pts[i].score).toFixed(1)}`);
     }
     return parts.join(" ");
   };
@@ -205,37 +228,11 @@ export function ScoreChart({ userId }: { userId: string }) {
             </g>
           ))}
 
-          {/* Vertical lines from first point to initial (seed) score */}
-          {series.map((s) => {
-            if (s.initialScore === null) return null;
-            const firstPt = s.points[0];
-            if (firstPt.score === s.initialScore) return null;
-            return (
-              <line
-                key={`seed-${s.letter_id}`}
-                x1={xByIndex(0)}
-                y1={y(firstPt.score)}
-                x2={xByIndex(0)}
-                y2={y(s.initialScore)}
-                stroke={s.color}
-                strokeWidth={hoveredLetter === s.letter_id ? 2.5 : 1.5}
-                opacity={
-                  hoveredLetter === null || hoveredLetter === s.letter_id
-                    ? 0.6
-                    : 0.1
-                }
-                onMouseEnter={() => setHoveredLetter(s.letter_id)}
-                onMouseLeave={() => setHoveredLetter(null)}
-                style={{ cursor: "pointer" }}
-              />
-            );
-          })}
-
-          {/* Lines */}
+          {/* Lines (the seed is folded into the path as a leading flat segment) */}
           {series.map((s) => (
             <path
               key={s.letter_id}
-              d={toPath(s.points)}
+              d={toPath(s.points, s.initialScore)}
               fill="none"
               stroke={s.color}
               strokeWidth={hoveredLetter === s.letter_id ? 3 : 1.5}
@@ -250,12 +247,12 @@ export function ScoreChart({ userId }: { userId: string }) {
             />
           ))}
 
-          {/* Dots for each data point */}
+          {/* Dots for each interaction point (no dot for the seed) */}
           {series.map((s) =>
             s.points.map((p, pi) => (
               <circle
                 key={`dot-${s.letter_id}-${pi}`}
-                cx={xByIndex(pi)}
+                cx={xByX(p.x)}
                 cy={y(p.score)}
                 r={hoveredLetter === s.letter_id ? 4 : 2.5}
                 fill={s.color}
@@ -274,12 +271,11 @@ export function ScoreChart({ userId }: { userId: string }) {
           {/* Star marker at end of each learnt letter's line */}
           {series.map((s) => {
             if (!s.learnt || s.points.length === 0) return null;
-            const lastIdx = s.points.length - 1;
-            const last = s.points[lastIdx];
+            const last = s.points[s.points.length - 1];
             return (
               <text
                 key={`star-${s.letter_id}`}
-                x={xByIndex(lastIdx)}
+                x={xByX(last.x)}
                 y={y(last.score) - 6}
                 textAnchor="middle"
                 fontSize={12}
@@ -302,7 +298,7 @@ export function ScoreChart({ userId }: { userId: string }) {
           {series.map((s) => (
             <path
               key={`hit-${s.letter_id}`}
-              d={toPath(s.points)}
+              d={toPath(s.points, s.initialScore)}
               fill="none"
               stroke="transparent"
               strokeWidth={12}
@@ -318,10 +314,9 @@ export function ScoreChart({ userId }: { userId: string }) {
               const s = series.find((s) => s.letter_id === hoveredLetter);
               if (!s) return null;
               const last = s.points[s.points.length - 1];
-              const lastIdx = s.points.length - 1;
               return (
                 <text
-                  x={xByIndex(lastIdx) + 6}
+                  x={xByX(last.x) + 6}
                   y={y(last.score) + 4}
                   fontSize={14}
                   fontWeight="bold"
