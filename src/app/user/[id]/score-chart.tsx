@@ -334,7 +334,7 @@ export function ScoreChart({ userId }: { userId: string }) {
         </svg>
 
         {/* Legend */}
-        <div className="flex flex-col gap-1 min-w-[60px] pt-1 overflow-y-auto max-h-[280px]">
+        <div className="flex flex-col gap-1 min-w-[60px] pt-1">
           {series.map((s) => (
             <div
               key={s.letter_id}
