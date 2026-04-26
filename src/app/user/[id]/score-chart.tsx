@@ -128,11 +128,7 @@ export function ScoreChart({ userId }: { userId: string }) {
     );
   }
 
-  const allScores = series.flatMap((s) => {
-    const scores = s.points.map((p) => p.score);
-    if (s.initialScore !== null) scores.push(s.initialScore);
-    return scores;
-  });
+  const allScores = series.flatMap((s) => s.points.map((p) => p.score));
   const sMin = Math.min(0, ...allScores);
   const sMax = Math.max(0, ...allScores);
   const scorePad = Math.max(1, (sMax - sMin) * 0.1);
@@ -154,22 +150,11 @@ export function ScoreChart({ userId }: { userId: string }) {
     PADDING.left + (maxX <= 0 ? plotW / 2 : (x / maxX) * plotW);
   const y = (s: number) => PADDING.top + plotH - ((s - sLow) / sRange) * plotH;
 
-  // Step path. If seedScore is given, the line begins at (x=0, seedScore)
-  // and steps horizontally to the first interaction's x, then vertically
-  // to its score — visualizing the seed as the letter's starting state.
-  const toPath = (
-    pts: { x: number; score: number }[],
-    seedScore: number | null,
-  ) => {
+  const toPath = (pts: { x: number; score: number }[]) => {
     if (pts.length === 0) return "";
-    const parts: string[] = [];
-    if (seedScore !== null) {
-      parts.push(`M${xByX(0).toFixed(1)},${y(seedScore).toFixed(1)}`);
-      parts.push(`H${xByX(pts[0].x).toFixed(1)}`);
-      parts.push(`V${y(pts[0].score).toFixed(1)}`);
-    } else {
-      parts.push(`M${xByX(pts[0].x).toFixed(1)},${y(pts[0].score).toFixed(1)}`);
-    }
+    const parts: string[] = [
+      `M${xByX(pts[0].x).toFixed(1)},${y(pts[0].score).toFixed(1)}`,
+    ];
     for (let i = 1; i < pts.length; i++) {
       parts.push(`H${xByX(pts[i].x).toFixed(1)}`);
       parts.push(`V${y(pts[i].score).toFixed(1)}`);
@@ -232,7 +217,7 @@ export function ScoreChart({ userId }: { userId: string }) {
           {series.map((s) => (
             <path
               key={s.letter_id}
-              d={toPath(s.points, s.initialScore)}
+              d={toPath(s.points)}
               fill="none"
               stroke={s.color}
               strokeWidth={hoveredLetter === s.letter_id ? 3 : 1.5}
@@ -298,7 +283,7 @@ export function ScoreChart({ userId }: { userId: string }) {
           {series.map((s) => (
             <path
               key={`hit-${s.letter_id}`}
-              d={toPath(s.points, s.initialScore)}
+              d={toPath(s.points)}
               fill="none"
               stroke="transparent"
               strokeWidth={12}
@@ -329,7 +314,10 @@ export function ScoreChart({ userId }: { userId: string }) {
         </svg>
 
         {/* Legend */}
-        <div className="flex flex-col gap-1 min-w-[60px] pt-1">
+        <div
+          className="flex flex-col flex-wrap gap-x-3 gap-y-1 pt-1 content-start"
+          style={{ maxHeight: 300 }}
+        >
           {series.map((s) => (
             <div
               key={s.letter_id}
