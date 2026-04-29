@@ -14,7 +14,7 @@ const ADMIN_ALLOWED: { pattern: RegExp; methods: string[] }[] = [
   { pattern: /^media-meta-data\/by-state-transition-id$/, methods: ["GET"] },
   { pattern: /^media-meta-data\/elevenlabs-generate$/, methods: ["POST"] },
   { pattern: /^media-meta-data\/[^/]+$/, methods: ["DELETE"] },
-  { pattern: /^scores\/letters-learnt$/, methods: ["GET"] },
+  { pattern: /^scores\/letter-bins$/, methods: ["GET"] },
 ];
 
 function isAdminAllowed(path: string, method: string): boolean {

@@ -20,10 +20,15 @@ interface LetterSeries {
   learnt: boolean;
 }
 
-interface LettersLearntResult {
+interface LetterBinsResult {
   userId: string;
   userPhone: string;
-  lettersLearnt: string[];
+  bins: {
+    untouched: string[];
+    regressed: string[];
+    learnt: string[];
+    improved: string[];
+  };
 }
 
 const COLORS = [
@@ -45,7 +50,7 @@ export function ScoreChart({ userId }: { userId: string }) {
     (async () => {
       const [scoresRes, learntRes] = await Promise.all([
         fetch(`/api/proxy/users/${userId}/scores`),
-        fetch(`/api/proxy/scores/letters-learnt?users=${userId}`),
+        fetch(`/api/proxy/scores/letter-bins?users=${userId}`),
       ]);
       if (!scoresRes.ok) {
         setLoading(false);
@@ -59,8 +64,8 @@ export function ScoreChart({ userId }: { userId: string }) {
 
       let learntSet = new Set<string>();
       if (learntRes.ok) {
-        const learntData: LettersLearntResult[] = await learntRes.json();
-        learntSet = new Set(learntData[0]?.lettersLearnt ?? []);
+        const learntData: LetterBinsResult[] = await learntRes.json();
+        learntSet = new Set(learntData[0]?.bins.learnt ?? []);
       }
 
       // Build global interaction order: each unique non-seed user_message_id

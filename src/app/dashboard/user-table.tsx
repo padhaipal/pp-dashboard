@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 
 interface DayActivity {
   date: string;
-  count: number;
+  active_ms: number;
 }
 
 interface DashboardUser {
@@ -15,21 +15,51 @@ interface DashboardUser {
   activity: DayActivity[];
 }
 
+const FIVE_MINUTES_MS = 5 * 60 * 1000;
+const CHART_H = 32;
+
+function formatActiveMs(ms: number): string {
+  if (ms === 0) return "0s";
+  const totalSec = Math.round(ms / 1000);
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return m > 0 ? `${m}m ${s}s` : `${s}s`;
+}
+
 function ActivityGraph({ activity }: { activity: DayActivity[] }) {
-  const max = Math.max(1, ...activity.map((d) => d.count));
+  const maxMs = Math.max(
+    FIVE_MINUTES_MS,
+    ...activity.map((d) => d.active_ms),
+    1
+  );
+  const fiveMinTop = CHART_H - (FIVE_MINUTES_MS / maxMs) * CHART_H;
   return (
-    <div className="flex items-end gap-[3px] h-8">
-      {activity.map((d) => {
-        const h = Math.max(2, (d.count / max) * 32);
-        return (
-          <div
-            key={d.date}
-            title={`${d.date}: ${d.count}`}
-            className="w-3 rounded-sm bg-emerald-500"
-            style={{ height: `${h}px`, opacity: d.count === 0 ? 0.2 : 1 }}
-          />
-        );
-      })}
+    <div className="relative" style={{ height: CHART_H }}>
+      <div className="flex items-end gap-[3px] h-full">
+        {activity.map((d) => {
+          const ratio = d.active_ms / maxMs;
+          const h = Math.max(2, ratio * CHART_H);
+          const isActive = d.active_ms >= FIVE_MINUTES_MS;
+          return (
+            <div
+              key={d.date}
+              title={`${d.date}: ${formatActiveMs(d.active_ms)}`}
+              className={`w-3 rounded-sm ${
+                isActive ? "bg-emerald-500" : "bg-red-500"
+              }`}
+              style={{
+                height: `${h}px`,
+                opacity: d.active_ms === 0 ? 0.25 : 1,
+              }}
+            />
+          );
+        })}
+      </div>
+      <div
+        className="absolute left-0 right-0 border-t border-dashed border-zinc-400 pointer-events-none"
+        style={{ top: `${fiveMinTop}px` }}
+        aria-hidden
+      />
     </div>
   );
 }
@@ -111,10 +141,15 @@ function EditableName({
   );
 }
 
-interface LettersLearntResult {
+interface LetterBinsResult {
   userId: string;
   userPhone: string;
-  lettersLearnt: string[];
+  bins: {
+    untouched: string[];
+    regressed: string[];
+    learnt: string[];
+    improved: string[];
+  };
 }
 
 export function UserTable() {
@@ -132,14 +167,14 @@ export function UserTable() {
     try {
       const param = userIds.join(",");
       const res = await fetch(
-        `/api/proxy/scores/letters-learnt?users=${encodeURIComponent(param)}`
+        `/api/proxy/scores/letter-bins?users=${encodeURIComponent(param)}`
       );
       if (!res.ok) return;
-      const data: LettersLearntResult[] = await res.json();
+      const data: LetterBinsResult[] = await res.json();
       setLettersMap((prev) => {
         const next = new Map(prev);
         for (const entry of data) {
-          next.set(entry.userId, entry.lettersLearnt);
+          next.set(entry.userId, entry.bins.learnt);
         }
         return next;
       });
