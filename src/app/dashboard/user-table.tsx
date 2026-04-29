@@ -17,6 +17,9 @@ interface DashboardUser {
 
 const FIVE_MINUTES_MS = 5 * 60 * 1000;
 const CHART_H = 32;
+const MIN_BAR_H = 4;
+const COLOR_ACTIVE = "#10b981"; // emerald-500
+const COLOR_INACTIVE = "#ef4444"; // red-500
 
 function formatActiveMs(ms: number): string {
   if (ms === 0) return "0s";
@@ -26,30 +29,52 @@ function formatActiveMs(ms: number): string {
   return m > 0 ? `${m}m ${s}s` : `${s}s`;
 }
 
-function ActivityGraph({ activity }: { activity: DayActivity[] }) {
-  const maxMs = Math.max(
-    FIVE_MINUTES_MS,
-    ...activity.map((d) => d.active_ms),
-    1
-  );
+function ActivityGraph({
+  activity,
+  userExternalId,
+}: {
+  activity: DayActivity[];
+  userExternalId: string;
+}) {
+  // Tolerate a stale API response that omits active_ms — coerce to 0
+  // so heights/maxMs don't go NaN.
+  const rawValues = activity.map((d) => d.active_ms);
+  const msValues = rawValues.map((v) => Number(v) || 0);
+  const hasAnyUndefined = rawValues.some((v) => v === undefined);
+  if (hasAnyUndefined) {
+    console.warn(
+      `[ActivityGraph] user=${userExternalId}: active_ms missing on ${
+        rawValues.filter((v) => v === undefined).length
+      }/${rawValues.length} days — API likely on stale shape (count). Sample:`,
+      activity[0]
+    );
+  } else {
+    console.debug(
+      `[ActivityGraph] user=${userExternalId} ms=${JSON.stringify(msValues)}`
+    );
+  }
+  const maxMs = Math.max(FIVE_MINUTES_MS, ...msValues, 1);
   const fiveMinTop = CHART_H - (FIVE_MINUTES_MS / maxMs) * CHART_H;
   return (
-    <div className="relative" style={{ height: CHART_H }}>
+    <div
+      className="relative"
+      style={{ height: CHART_H, width: "fit-content" }}
+    >
       <div className="flex items-end gap-[3px] h-full">
-        {activity.map((d) => {
-          const ratio = d.active_ms / maxMs;
-          const h = Math.max(2, ratio * CHART_H);
-          const isActive = d.active_ms >= FIVE_MINUTES_MS;
+        {activity.map((d, i) => {
+          const ms = msValues[i];
+          const ratio = ms / maxMs;
+          const h = Math.max(MIN_BAR_H, ratio * CHART_H);
+          const isActive = ms >= FIVE_MINUTES_MS;
           return (
             <div
               key={d.date}
-              title={`${d.date}: ${formatActiveMs(d.active_ms)}`}
-              className={`w-3 rounded-sm ${
-                isActive ? "bg-emerald-500" : "bg-red-500"
-              }`}
+              title={`${d.date}: ${formatActiveMs(ms)}`}
+              className="w-3 rounded-sm"
               style={{
                 height: `${h}px`,
-                opacity: d.active_ms === 0 ? 0.25 : 1,
+                backgroundColor: isActive ? COLOR_ACTIVE : COLOR_INACTIVE,
+                opacity: ms === 0 ? 0.4 : 1,
               }}
             />
           );
@@ -186,11 +211,31 @@ export function UserTable() {
   const loadUsers = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(
-        `/api/proxy/users/dashboard?offset=${users.length}`
+      const url = `/api/proxy/users/dashboard?offset=${users.length}`;
+      console.debug(`[UserTable.loadUsers] GET ${url}`);
+      const res = await fetch(url);
+      console.debug(
+        `[UserTable.loadUsers] response status=${res.status} ok=${res.ok}`
       );
       if (!res.ok) return;
       const data: DashboardUser[] = await res.json();
+      const firstActivityKeys =
+        data[0]?.activity?.[0] !== undefined
+          ? Object.keys(data[0].activity[0])
+          : [];
+      console.debug(
+        `[UserTable.loadUsers] received users=${data.length} ` +
+          `activityShape=${JSON.stringify(firstActivityKeys)} ` +
+          `firstUserSample=`,
+        data[0]
+      );
+      if (data.length > 0 && !firstActivityKeys.includes("active_ms")) {
+        console.error(
+          "[UserTable.loadUsers] API response missing active_ms field — " +
+            "pp-sketch backend appears to be on the old shape (count). " +
+            "Bars will fall back to 0. Redeploy pp-sketch."
+        );
+      }
       setUsers((prev) => [...prev, ...data]);
       if (data.length < 100) setHasMore(false);
       setLoaded(true);
@@ -245,7 +290,10 @@ export function UserTable() {
                 )}
               </td>
               <td className="py-2.5 px-4">
-                <ActivityGraph activity={user.activity} />
+                <ActivityGraph
+                  activity={user.activity}
+                  userExternalId={user.external_id}
+                />
               </td>
             </tr>
           ))}
