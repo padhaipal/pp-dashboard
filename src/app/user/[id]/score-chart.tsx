@@ -79,6 +79,13 @@ export function ScoreChart({ userId }: { userId: string }) {
         }
       }
 
+      // Old users were seeded in [-100, -93]; new users in [0, 7]. Apply +100
+      // to old data so the chart's 0-baseline stays meaningful.
+      const isLegacySeedUser = data.some(
+        (d) => d.is_seed && d.score >= -100 && d.score <= -50,
+      );
+      const scoreOffset = isLegacySeedUser ? 100 : 0;
+
       // Group by letter_id, separating seed scores from interaction scores
       const grouped = new Map<string, {
         grapheme: string;
@@ -91,11 +98,11 @@ export function ScoreChart({ userId }: { userId: string }) {
         }
         const entry = grouped.get(d.letter_id)!;
         if (d.is_seed) {
-          entry.seedScore = d.score + 100;
+          entry.seedScore = d.score + scoreOffset;
         } else {
           entry.points.push({
             x: interactionIdx.get(d.user_message_id!)!,
-            score: d.score + 100,
+            score: d.score + scoreOffset,
           });
         }
       }
