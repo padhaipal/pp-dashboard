@@ -8,10 +8,16 @@ interface DayActivity {
   active_ms: number;
 }
 
+interface DashboardReferrer {
+  name: string | null;
+  external_id: string;
+}
+
 interface DashboardUser {
   id: string;
   name: string | null;
   external_id: string;
+  referrer: DashboardReferrer | null;
   activity: DayActivity[];
 }
 
@@ -124,7 +130,10 @@ function EditableName({
   if (!editing) {
     return (
       <button
-        onClick={() => setEditing(true)}
+        onClick={(e) => {
+          e.stopPropagation();
+          setEditing(true);
+        }}
         className="text-xs text-zinc-400 hover:text-zinc-600 italic"
       >
         + add name
@@ -134,6 +143,7 @@ function EditableName({
 
   return (
     <form
+      onClick={(e) => e.stopPropagation()}
       onSubmit={(e) => {
         e.preventDefault();
         save();
@@ -257,6 +267,7 @@ export function UserTable() {
           <tr className="border-b border-zinc-200 text-zinc-500 text-xs uppercase tracking-wide">
             <th className="py-3 px-4 font-medium">#</th>
             <th className="py-3 px-4 font-medium">Name</th>
+            <th className="py-3 px-4 font-medium">Referred by</th>
             <th className="py-3 px-4 font-medium">Phone</th>
             <th className="py-3 px-4 font-medium">Letters Learnt</th>
             <th className="py-3 px-4 font-medium">Activity (7d)</th>
@@ -270,8 +281,21 @@ export function UserTable() {
               className="border-b border-zinc-100 hover:bg-zinc-50 cursor-pointer"
             >
               <td className="py-2.5 px-4 text-zinc-400">{i + 1}</td>
-              <td className="py-2.5 px-4" onClick={(e) => e.stopPropagation()}>
+              <td className="py-2.5 px-4">
                 <EditableName userId={user.id} initialName={user.name} />
+              </td>
+              <td className="py-2.5 px-4 text-zinc-600">
+                {user.referrer ? (
+                  user.referrer.name ? (
+                    <span>{user.referrer.name}</span>
+                  ) : (
+                    <span className="font-mono">
+                      {user.referrer.external_id}
+                    </span>
+                  )
+                ) : (
+                  <span className="text-zinc-300">—</span>
+                )}
               </td>
               <td className="py-2.5 px-4 font-mono text-zinc-600">
                 {user.external_id}
@@ -299,7 +323,7 @@ export function UserTable() {
           ))}
           {loading && (
             <tr>
-              <td colSpan={5} className="py-6 text-center text-zinc-400">
+              <td colSpan={6} className="py-6 text-center text-zinc-400">
                 Loading...
               </td>
             </tr>
