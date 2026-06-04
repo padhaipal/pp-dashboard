@@ -1,4 +1,5 @@
 import { auth } from "@/auth";
+import { logger } from "@/lib/logger";
 import { NextRequest } from "next/server";
 
 export const runtime = "nodejs";
@@ -47,6 +48,8 @@ async function proxyToSketch(req: NextRequest, { params }: { params: Promise<{ p
   }
   const qs = req.nextUrl.search;
   const target = `${process.env.PP_SKETCH_INTERNAL_URL}/${path.join("/")}${qs}`;
+
+  logger.info(`proxy ${req.method} ${joined}${qs}`, "ProxyRoute");
 
   const init: RequestInit = {
     method: req.method,
