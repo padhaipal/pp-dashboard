@@ -13,8 +13,14 @@ export async function register() {
     const { OTLPLogExporter } = await import(
       '@opentelemetry/exporter-logs-otlp-proto'
     );
+    const { resourceFromAttributes } = await import(
+      '@opentelemetry/resources'
+    );
 
     const loggerProvider = new LoggerProvider({
+      resource: resourceFromAttributes({
+        'service.name': process.env.OTEL_SERVICE_NAME ?? 'pp-dashboard',
+      }),
       processors: [new BatchLogRecordProcessor(new OTLPLogExporter())],
     });
     logs.setGlobalLoggerProvider(loggerProvider);
