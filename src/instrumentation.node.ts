@@ -1,4 +1,9 @@
-import { diag, DiagConsoleLogger, DiagLogLevel } from '@opentelemetry/api';
+import {
+  diag,
+  DiagConsoleLogger,
+  DiagLogLevel,
+  type DiagLogger,
+} from '@opentelemetry/api';
 import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
 import { OTLPLogExporter } from '@opentelemetry/exporter-logs-otlp-proto';
 import { OTLPMetricExporter } from '@opentelemetry/exporter-metrics-otlp-proto';
@@ -7,14 +12,29 @@ import { SimpleLogRecordProcessor } from '@opentelemetry/sdk-logs';
 import { PeriodicExportingMetricReader } from '@opentelemetry/sdk-metrics';
 import { NodeSDK } from '@opentelemetry/sdk-node';
 
-diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.WARN);
+const SUPPRESSED_DIAG_WARN_PATTERNS = [/Inconsistent start and end time/i];
+
+const baseDiagLogger = new DiagConsoleLogger();
+const filteredDiagLogger: DiagLogger = {
+  verbose: (m, ...a) => baseDiagLogger.verbose(m, ...a),
+  debug: (m, ...a) => baseDiagLogger.debug(m, ...a),
+  info: (m, ...a) => baseDiagLogger.info(m, ...a),
+  warn: (m, ...a) => {
+    if (SUPPRESSED_DIAG_WARN_PATTERNS.some((p) => p.test(m))) return;
+    baseDiagLogger.warn(m, ...a);
+  },
+  error: (m, ...a) => baseDiagLogger.error(m, ...a),
+};
+diag.setLogger(filteredDiagLogger, DiagLogLevel.WARN);
 
 const sdk = new NodeSDK({
   traceExporter: new OTLPTraceExporter(),
-  metricReader: new PeriodicExportingMetricReader({
-    exporter: new OTLPMetricExporter(),
-  }),
-  logRecordProcessor: new SimpleLogRecordProcessor(new OTLPLogExporter()),
+  metricReaders: [
+    new PeriodicExportingMetricReader({
+      exporter: new OTLPMetricExporter(),
+    }),
+  ],
+  logRecordProcessors: [new SimpleLogRecordProcessor(new OTLPLogExporter())],
   instrumentations: [getNodeAutoInstrumentations()],
 });
 
