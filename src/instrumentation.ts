@@ -1,4 +1,5 @@
 import { registerOTel } from '@vercel/otel';
+import { diag, DiagConsoleLogger, DiagLogLevel } from '@opentelemetry/api';
 
 export async function register() {
   registerOTel({
@@ -6,8 +7,10 @@ export async function register() {
   });
 
   if (process.env.NEXT_RUNTIME === 'nodejs') {
+    diag.setLogger(new DiagConsoleLogger(), DiagLogLevel.WARN);
+
     const { logs } = await import('@opentelemetry/api-logs');
-    const { LoggerProvider, BatchLogRecordProcessor } = await import(
+    const { LoggerProvider, SimpleLogRecordProcessor } = await import(
       '@opentelemetry/sdk-logs'
     );
     const { OTLPLogExporter } = await import(
@@ -21,7 +24,7 @@ export async function register() {
       resource: resourceFromAttributes({
         'service.name': process.env.OTEL_SERVICE_NAME ?? 'pp-dashboard',
       }),
-      processors: [new BatchLogRecordProcessor(new OTLPLogExporter())],
+      processors: [new SimpleLogRecordProcessor(new OTLPLogExporter())],
     });
     logs.setGlobalLoggerProvider(loggerProvider);
   }
