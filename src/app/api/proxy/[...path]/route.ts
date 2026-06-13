@@ -8,6 +8,7 @@ const ADMIN_ALLOWED: { pattern: RegExp; methods: string[] }[] = [
   { pattern: /^users\/dashboard$/, methods: ["GET"] },
   { pattern: /^users\/[^/]+$/, methods: ["PATCH"] },
   { pattern: /^users\/[^/]+\/media$/, methods: ["GET"] },
+  { pattern: /^users\/[^/]+\/metrics$/, methods: ["GET"] },
   { pattern: /^users\/[^/]+\/scores$/, methods: ["GET"] },
   { pattern: /^media-meta-data\/[^/]+\/audio$/, methods: ["GET"] },
   { pattern: /^media-meta-data\/[^/]+\/dashboard-transcript$/, methods: ["POST", "PATCH", "DELETE"] },

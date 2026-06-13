@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import Link from "next/link";
 import { MediaTable } from "./media-table";
 import { ScoreChart } from "./score-chart";
+import { UserMetrics } from "./user-metrics";
 
 export function UserMediaView({ userId }: { userId: string }) {
   const [userName, setUserName] = useState<string | null>(null);
@@ -35,6 +36,7 @@ export function UserMediaView({ userId }: { userId: string }) {
           )}
         </div>
       </div>
+      <UserMetrics userId={userId} />
       <ScoreChart userId={userId} />
       <div className="bg-white rounded-lg border border-zinc-200 shadow-sm overflow-hidden">
         <MediaTable userId={userId} onUserLoaded={onUserLoaded} />
