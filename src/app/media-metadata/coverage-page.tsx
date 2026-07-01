@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { BulkCreateForm } from "./bulk-create-form";
 import { CoverageTable } from "./coverage-table";
+import { NonLessonTable } from "./non-lesson-table";
 import type { CoverageResponse } from "./types";
 
 export function CoveragePage() {
@@ -46,7 +47,8 @@ export function CoveragePage() {
         words={data.words}
         onCreated={() => load()}
       />
-      <CoverageTable data={data} />
+      <NonLessonTable />
+      <CoverageTable data={data} onReload={() => load()} />
     </>
   );
 }
