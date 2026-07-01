@@ -2,6 +2,32 @@ export type MediaType = "audio" | "text" | "video" | "image" | "sticker";
 
 export type MediaTypeCounts = Record<MediaType, number>;
 
+// Fixed display order, matching pp-sketch's VALID_MEDIA_TYPES.
+export const ALL_MEDIA_TYPES: MediaType[] = [
+  "audio",
+  "text",
+  "video",
+  "image",
+  "sticker",
+];
+
+// HARDCODED list of the non-lesson state_transition_ids (onboarding, notifications,
+// re-engagement, quota). These are NOT covered by the /coverage grid, which only
+// enumerates lesson STIDs (letter/word prefix × machine-suffix). This list is
+// duplicated from pp-sketch code and will DRIFT if a new non-lesson STID is added
+// there. The real fix is a `state_transitions` table in the database that both
+// pp-sketch and this dashboard read from; until that exists, keep this in sync by
+// hand.
+export const NON_LESSON_STIDS: string[] = [
+  "welcome-message",
+  "audio-only-request",
+  "stale-lesson-restart",
+  "hail-mary",
+  "daily-activity-quota-reached",
+  "evening_notification_message",
+  "morning_notification_message",
+];
+
 export interface CoverageRow {
   prefix: string;
   counts: MediaTypeCounts[];
