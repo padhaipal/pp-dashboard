@@ -15,6 +15,7 @@ const ADMIN_ALLOWED: { pattern: RegExp; methods: string[] }[] = [
   { pattern: /^media-meta-data\/coverage$/, methods: ["GET"] },
   { pattern: /^media-meta-data\/by-state-transition-id$/, methods: ["GET"] },
   { pattern: /^media-meta-data\/elevenlabs-generate$/, methods: ["POST"] },
+  { pattern: /^media-meta-data\/upload-static$/, methods: ["POST"] },
   { pattern: /^media-meta-data\/[^/]+$/, methods: ["DELETE"] },
   { pattern: /^scores\/letter-bins$/, methods: ["GET"] },
 ];
