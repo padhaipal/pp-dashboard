@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { EditableName } from "@/components/editable-name";
 
@@ -116,6 +116,17 @@ export function UserTable() {
   const [lettersMap, setLettersMap] = useState<Map<string, string[]>>(
     new Map()
   );
+  // filterDraft = what's typed; referrerFilter = debounced value driving the
+  // DB-side filter (server applies it before pagination).
+  const [filterDraft, setFilterDraft] = useState("");
+  const [referrerFilter, setReferrerFilter] = useState("");
+  // Guards against a slow response for an old filter overwriting a newer one.
+  const requestSeq = useRef(0);
+
+  useEffect(() => {
+    const t = setTimeout(() => setReferrerFilter(filterDraft.trim()), 300);
+    return () => clearTimeout(t);
+  }, [filterDraft]);
 
   const fetchLettersLearnt = useCallback(async (userIds: string[]) => {
     if (userIds.length === 0) return;
@@ -138,47 +149,69 @@ export function UserTable() {
     }
   }, []);
 
-  const loadUsers = useCallback(async () => {
-    setLoading(true);
-    try {
-      const url = `/api/proxy/users/dashboard?offset=${users.length}`;
-      console.debug(`[UserTable.loadUsers] GET ${url}`);
-      const res = await fetch(url);
-      console.debug(
-        `[UserTable.loadUsers] response status=${res.status} ok=${res.ok}`
-      );
-      if (!res.ok) return;
-      const data: DashboardUser[] = await res.json();
-      const firstActivityKeys =
-        data[0]?.activity?.[0] !== undefined
-          ? Object.keys(data[0].activity[0])
-          : [];
-      console.debug(
-        `[UserTable.loadUsers] received users=${data.length} ` +
-          `activityShape=${JSON.stringify(firstActivityKeys)} ` +
-          `firstUserSample=`,
-        data[0]
-      );
-      if (data.length > 0 && !firstActivityKeys.includes("active_ms")) {
-        console.error(
-          "[UserTable.loadUsers] API response missing active_ms field — " +
-            "pp-sketch backend appears to be on the old shape (count). " +
-            "Bars will fall back to 0. Redeploy pp-sketch."
+  const loadUsers = useCallback(
+    async (reset = false) => {
+      const seq = ++requestSeq.current;
+      setLoading(true);
+      try {
+        const offset = reset ? 0 : users.length;
+        const url =
+          `/api/proxy/users/dashboard?offset=${offset}` +
+          (referrerFilter
+            ? `&referrer=${encodeURIComponent(referrerFilter)}`
+            : "");
+        console.debug(`[UserTable.loadUsers] GET ${url}`);
+        const res = await fetch(url);
+        console.debug(
+          `[UserTable.loadUsers] response status=${res.status} ok=${res.ok}`
         );
+        if (!res.ok) return;
+        const data: DashboardUser[] = await res.json();
+        if (seq !== requestSeq.current) return; // stale response, discard
+        const firstActivityKeys =
+          data[0]?.activity?.[0] !== undefined
+            ? Object.keys(data[0].activity[0])
+            : [];
+        console.debug(
+          `[UserTable.loadUsers] received users=${data.length} ` +
+            `activityShape=${JSON.stringify(firstActivityKeys)} ` +
+            `firstUserSample=`,
+          data[0]
+        );
+        if (data.length > 0 && !firstActivityKeys.includes("active_ms")) {
+          console.error(
+            "[UserTable.loadUsers] API response missing active_ms field — " +
+              "pp-sketch backend appears to be on the old shape (count). " +
+              "Bars will fall back to 0. Redeploy pp-sketch."
+          );
+        }
+        setUsers((prev) => (reset ? data : [...prev, ...data]));
+        setHasMore(data.length === 100);
+        setLoaded(true);
+        fetchLettersLearnt(data.map((u) => u.id));
+      } finally {
+        if (seq === requestSeq.current) setLoading(false);
       }
-      setUsers((prev) => [...prev, ...data]);
-      if (data.length < 100) setHasMore(false);
-      setLoaded(true);
-      fetchLettersLearnt(data.map((u) => u.id));
-    } finally {
-      setLoading(false);
-    }
-  }, [users.length, fetchLettersLearnt]);
+    },
+    [users.length, referrerFilter, fetchLettersLearnt]
+  );
 
   useEffect(() => {
     loadUsers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Refetch from offset 0 whenever the debounced filter changes (skip mount —
+  // the effect above already did the initial load).
+  const mounted = useRef(false);
+  useEffect(() => {
+    if (!mounted.current) {
+      mounted.current = true;
+      return;
+    }
+    loadUsers(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [referrerFilter]);
 
   return (
     <div className="w-full max-w-5xl mx-auto">
@@ -187,7 +220,28 @@ export function UserTable() {
           <tr className="border-b border-zinc-200 text-zinc-500 text-xs uppercase tracking-wide">
             <th className="py-3 px-4 font-medium">#</th>
             <th className="py-3 px-4 font-medium">Name</th>
-            <th className="py-3 px-4 font-medium">Referred by</th>
+            <th className="py-3 px-4 font-medium">
+              <div className="flex flex-col gap-1">
+                <span>Referred by</span>
+                <div className="relative">
+                  <input
+                    value={filterDraft}
+                    onChange={(e) => setFilterDraft(e.target.value)}
+                    placeholder="filter name/phone"
+                    className="w-32 border border-zinc-200 rounded px-1.5 py-0.5 text-xs font-normal normal-case tracking-normal text-zinc-700 focus:outline-none focus:border-emerald-500"
+                  />
+                  {filterDraft && (
+                    <button
+                      onClick={() => setFilterDraft("")}
+                      aria-label="Clear referrer filter"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              </div>
+            </th>
             <th className="py-3 px-4 font-medium">Phone</th>
             <th className="py-3 px-4 font-medium">Letters Learnt</th>
             <th className="py-3 px-4 font-medium">Activity (7d)</th>
@@ -206,13 +260,16 @@ export function UserTable() {
               </td>
               <td className="py-2.5 px-4 text-zinc-600">
                 {user.referrer ? (
-                  user.referrer.name ? (
-                    <span>{user.referrer.name}</span>
-                  ) : (
-                    <span className="font-mono">
-                      {user.referrer.external_id}
-                    </span>
-                  )
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setFilterDraft(user.referrer!.external_id);
+                    }}
+                    title="Filter by this referrer"
+                    className={`hover:underline ${user.referrer.name ? "" : "font-mono"}`}
+                  >
+                    {user.referrer.name ?? user.referrer.external_id}
+                  </button>
                 ) : (
                   <span className="text-zinc-300">—</span>
                 )}
@@ -248,12 +305,21 @@ export function UserTable() {
               </td>
             </tr>
           )}
+          {!loading && loaded && users.length === 0 && (
+            <tr>
+              <td colSpan={6} className="py-6 text-center text-zinc-400">
+                {referrerFilter
+                  ? "No users match this referrer."
+                  : "No users."}
+              </td>
+            </tr>
+          )}
         </tbody>
       </table>
       {hasMore && loaded && (
         <div className="flex justify-center py-4">
           <button
-            onClick={loadUsers}
+            onClick={() => loadUsers()}
             disabled={loading}
             className="px-4 py-2 text-sm bg-zinc-100 hover:bg-zinc-200 text-zinc-700 rounded-md transition-colors disabled:opacity-40"
           >
