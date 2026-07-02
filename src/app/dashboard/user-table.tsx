@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { EditableName } from "@/components/editable-name";
 
 interface DayActivity {
   date: string;
@@ -92,87 +93,6 @@ function ActivityGraph({
         aria-hidden
       />
     </div>
-  );
-}
-
-function EditableName({
-  userId,
-  initialName,
-}: {
-  userId: string;
-  initialName: string | null;
-}) {
-  const [name, setName] = useState(initialName);
-  const [draft, setDraft] = useState("");
-  const [editing, setEditing] = useState(false);
-  const [saving, setSaving] = useState(false);
-
-  const save = useCallback(async () => {
-    if (!draft.trim()) return;
-    setSaving(true);
-    try {
-      const res = await fetch(`/api/proxy/users/${userId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: draft.trim() }),
-      });
-      if (res.ok) {
-        setName(draft.trim());
-        setEditing(false);
-      }
-    } finally {
-      setSaving(false);
-    }
-  }, [draft, userId]);
-
-  if (name) return <span>{name}</span>;
-
-  if (!editing) {
-    return (
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          setEditing(true);
-        }}
-        className="text-xs text-zinc-400 hover:text-zinc-600 italic"
-      >
-        + add name
-      </button>
-    );
-  }
-
-  return (
-    <form
-      onClick={(e) => e.stopPropagation()}
-      onSubmit={(e) => {
-        e.preventDefault();
-        save();
-      }}
-      className="flex items-center gap-1"
-    >
-      <input
-        autoFocus
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        disabled={saving}
-        className="w-28 border border-zinc-300 rounded px-1.5 py-0.5 text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
-        placeholder="Name"
-      />
-      <button
-        type="submit"
-        disabled={saving || !draft.trim()}
-        className="text-xs px-1.5 py-0.5 bg-emerald-500 text-white rounded disabled:opacity-40"
-      >
-        {saving ? "..." : "Save"}
-      </button>
-      <button
-        type="button"
-        onClick={() => setEditing(false)}
-        className="text-xs text-zinc-400 hover:text-zinc-600"
-      >
-        Cancel
-      </button>
-    </form>
   );
 }
 
