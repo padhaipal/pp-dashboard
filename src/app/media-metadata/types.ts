@@ -23,7 +23,11 @@ export const NON_LESSON_STIDS: string[] = [
   "audio-only-request",
   "stale-lesson-restart",
   "hail-mary",
-  "daily-activity-quota-reached",
+  // Daily active-minute milestones (see ACTIVE_MINUTE_THRESHOLDS in pp-sketch
+  // inbound.processor.ts — keep in sync).
+  ...[5, 10, 15, 20, 25, 30, 45, 60].map(
+    (m) => `threshold-reached-${m}-active-minutes-today`,
+  ),
   "evening_notification_message",
   "morning_notification_message",
 ];
