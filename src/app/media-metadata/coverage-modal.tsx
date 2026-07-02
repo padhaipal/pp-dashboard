@@ -250,12 +250,12 @@ export function CoverageModal({
     load();
   };
 
-  const audioItems = items?.filter((i) => i.media_type === "audio") ?? [];
+  const allItems = items ?? [];
 
-  const runBulkDeleteAudio = async () => {
+  const runBulkDeleteMedia = async () => {
     setBulkDeleting(true);
     setError(null);
-    const ids = audioItems.map((i) => i.id);
+    const ids = allItems.map((i) => i.id);
     const results = await Promise.all(
       ids.map(async (id) => {
         try {
@@ -272,7 +272,7 @@ export function CoverageModal({
     const failCount = results.length - okIds.size;
     setItems((prev) => (prev ? prev.filter((x) => !okIds.has(x.id)) : prev));
     setNotice(
-      `Deleted ${okIds.size} audio ${okIds.size === 1 ? "row" : "rows"}${
+      `Deleted ${okIds.size} media ${okIds.size === 1 ? "row" : "rows"}${
         failCount > 0 ? `; ${failCount} failed` : ""
       }.`,
     );
@@ -319,10 +319,10 @@ export function CoverageModal({
                     setNotice(null);
                     setConfirmBulkDelete(true);
                   }}
-                  disabled={audioItems.length === 0}
+                  disabled={allItems.length === 0}
                   className="px-3 py-1.5 text-sm bg-red-500 hover:bg-red-600 text-white rounded disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  Delete all audio ({audioItems.length})
+                  Delete all media ({allItems.length})
                 </button>
               </div>
               <button
@@ -381,19 +381,19 @@ export function CoverageModal({
               onClick={(e) => e.stopPropagation()}
             >
               <h3 className="text-base font-semibold text-zinc-900 mb-2">
-                Delete all audio?
+                Delete all media?
               </h3>
               <p className="text-sm text-zinc-600 mb-1">
-                This will soft-delete {audioItems.length} audio{" "}
-                {audioItems.length === 1 ? "row" : "rows"} for:
+                This will soft-delete {allItems.length} media{" "}
+                {allItems.length === 1 ? "row" : "rows"} of every type (audio,
+                text, image, video, sticker) for:
               </p>
               <p className="text-xs font-mono text-zinc-800 bg-zinc-50 border border-zinc-200 rounded px-2 py-1 mb-3 break-all">
                 {stid}
               </p>
               <p className="text-xs text-zinc-500 mb-4">
                 S3 objects will be removed and rows flagged as{" "}
-                <code className="font-mono">rolled_back</code>. Non-audio media
-                (text, image, video, sticker) will not be affected.
+                <code className="font-mono">rolled_back</code>.
               </p>
               <div className="flex items-center justify-end gap-2">
                 <button
@@ -404,13 +404,13 @@ export function CoverageModal({
                   Cancel
                 </button>
                 <button
-                  onClick={runBulkDeleteAudio}
+                  onClick={runBulkDeleteMedia}
                   disabled={bulkDeleting}
                   className="px-3 py-1.5 text-sm bg-red-500 hover:bg-red-600 text-white rounded disabled:opacity-40"
                 >
                   {bulkDeleting
                     ? "Deleting..."
-                    : `Delete ${audioItems.length} ${audioItems.length === 1 ? "row" : "rows"}`}
+                    : `Delete ${allItems.length} ${allItems.length === 1 ? "row" : "rows"}`}
                 </button>
               </div>
             </div>
