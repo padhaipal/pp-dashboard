@@ -30,6 +30,15 @@ export const NON_LESSON_STIDS: string[] = [
   ),
   "evening_notification_message",
   "morning_notification_message",
+  // Sentence-lesson prompts (fixed `sentence` prefix — the /coverage grid only
+  // enumerates per-letter/per-word prefixes; the per-word drill stid
+  // `{word}-sentence-word-drillWord` DOES live in the grid). Keep in sync with
+  // literacy-lesson.machine.ts in pp-sketch.
+  "sentence-start-sentence-initial",
+  "sentence-sentence-complete-correct-first",
+  "sentence-sentence-complete-correct-retry",
+  "sentence-sentence-complete-maxErrors",
+  "sentence-word-sentence-correct-retrySentence",
 ];
 
 export interface CoverageRow {
