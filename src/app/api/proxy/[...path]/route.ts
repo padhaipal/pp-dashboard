@@ -6,6 +6,7 @@ export const runtime = "nodejs";
 
 const ADMIN_ALLOWED: { pattern: RegExp; methods: string[] }[] = [
   { pattern: /^users\/dashboard$/, methods: ["GET"] },
+  { pattern: /^users\/dashboard\/summary$/, methods: ["GET"] },
   { pattern: /^users\/[^/]+$/, methods: ["PATCH"] },
   { pattern: /^users\/[^/]+\/media$/, methods: ["GET"] },
   { pattern: /^users\/[^/]+\/metrics$/, methods: ["GET"] },

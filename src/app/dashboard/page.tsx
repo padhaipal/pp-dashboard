@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { SignOutButton } from "./sign-out-button";
 import { UserTable } from "./user-table";
+import { MetricsCharts } from "./metrics-charts";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -36,6 +37,7 @@ export default async function DashboardPage() {
             <SignOutButton />
           </div>
         </div>
+        <MetricsCharts />
         <div className="bg-white rounded-lg border border-zinc-200 shadow-sm overflow-hidden">
           <UserTable />
         </div>
