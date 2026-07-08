@@ -91,6 +91,35 @@ function niceTicks(min: number, max: number): number[] {
   return ticks;
 }
 
+function downloadCsv(
+  dates: string[],
+  series: MetricSeries[],
+  view: View,
+  from: number,
+  period: Period,
+) {
+  const header = ["date", ...series.map((s) => s.title)];
+  const rows = dates.map((d, i) => [
+    d,
+    ...series.map((s) => {
+      const full = view === "increment" ? s.increments : s.accumulated;
+      return String(Math.round(full[from + i] * 100) / 100);
+    }),
+  ]);
+  const escape = (cell: string) =>
+    /[",\n]/.test(cell) ? `"${cell.replace(/"/g, '""')}"` : cell;
+  const csv = [header, ...rows]
+    .map((row) => row.map(escape).join(","))
+    .join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `dashboard-metrics-${view}-${period}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 const W = 320;
 const H = 190;
 const PAD = { top: 10, right: 10, bottom: 34, left: 40 };
@@ -387,20 +416,28 @@ export function MetricsCharts() {
             </button>
           ))}
         </div>
-        <div className="inline-flex rounded-md border border-zinc-200 bg-white shadow-sm overflow-hidden">
-          {PERIODS.map((p) => (
-            <button
-              key={p.key}
-              onClick={() => setPeriod(p.key)}
-              className={`px-3 py-1.5 text-xs font-medium ${
-                period === p.key
-                  ? "bg-zinc-900 text-white"
-                  : "text-zinc-600 hover:bg-zinc-50"
-              }`}
-            >
-              {p.label}
-            </button>
-          ))}
+        <div className="flex items-center gap-2">
+          <div className="inline-flex rounded-md border border-zinc-200 bg-white shadow-sm overflow-hidden">
+            {PERIODS.map((p) => (
+              <button
+                key={p.key}
+                onClick={() => setPeriod(p.key)}
+                className={`px-3 py-1.5 text-xs font-medium ${
+                  period === p.key
+                    ? "bg-zinc-900 text-white"
+                    : "text-zinc-600 hover:bg-zinc-50"
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => downloadCsv(dates, series, view, from, period)}
+            className="rounded-md border border-zinc-200 bg-white shadow-sm px-3 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-50"
+          >
+            Download CSV
+          </button>
         </div>
       </div>
 
