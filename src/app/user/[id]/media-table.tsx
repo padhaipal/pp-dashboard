@@ -25,7 +25,32 @@ interface MediaRow {
   answer_correct: boolean | null;
   score_changes?: ScoreChange[];
   final_state: string | null;
+  level: number | null;
 }
+
+// Direction of this lesson's difficulty cap relative to the previous
+// (chronologically older) lesson. Rows render newest-first, so the previous
+// lesson is the next row down. Null on either side (pre-migration rows) →
+// nothing to compare.
+export function levelDirection(
+  current: number | null,
+  previous: number | null,
+): "up" | "down" | "same" | "none" {
+  if (current === null || previous === null) return "none";
+  if (current > previous) return "up";
+  if (current < previous) return "down";
+  return "same";
+}
+
+const LEVEL_DIRECTION_CLASS: Record<
+  ReturnType<typeof levelDirection>,
+  string
+> = {
+  up: "text-green-600",
+  down: "text-red-600",
+  same: "text-zinc-700",
+  none: "text-zinc-700",
+};
 
 interface UserInfo {
   name: string | null;
@@ -241,10 +266,11 @@ export function MediaTable({
             <th className="py-3 px-4 font-medium">Answer Status</th>
             <th className="py-3 px-4 font-medium">Score Change</th>
             <th className="py-3 px-4 font-medium">Final State</th>
+            <th className="py-3 px-4 font-medium">Level</th>
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
+          {rows.map((row, i) => (
             <tr
               key={row.id}
               className="border-b border-zinc-100 hover:bg-zinc-50 align-top"
@@ -365,11 +391,26 @@ export function MediaTable({
                   <span className="text-zinc-400 italic text-xs">--</span>
                 )}
               </td>
+              <td className="py-2.5 px-4">
+                {row.level !== null ? (
+                  <span
+                    className={`text-xs font-medium ${
+                      LEVEL_DIRECTION_CLASS[
+                        levelDirection(row.level, rows[i + 1]?.level ?? null)
+                      ]
+                    }`}
+                  >
+                    {row.level}
+                  </span>
+                ) : (
+                  <span className="text-zinc-400 italic text-xs">--</span>
+                )}
+              </td>
             </tr>
           ))}
           {loading && (
             <tr>
-              <td colSpan={8} className="py-6 text-center text-zinc-400">
+              <td colSpan={9} className="py-6 text-center text-zinc-400">
                 Loading...
               </td>
             </tr>
