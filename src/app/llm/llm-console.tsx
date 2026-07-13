@@ -45,6 +45,19 @@ export function LlmConsole({ models }: { models: ClientModel[] }) {
     });
   }
 
+  const availableIds = useMemo(
+    () => models.filter((m) => m.available).map((m) => m.id),
+    [models],
+  );
+
+  function selectAll() {
+    setSelected(new Set(availableIds));
+  }
+
+  function clearAll() {
+    setSelected(new Set());
+  }
+
   function setRow(i: number, patch: Partial<Row>) {
     setRows((prev) => prev.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
   }
@@ -159,7 +172,23 @@ export function LlmConsole({ models }: { models: ClientModel[] }) {
 
         {/* Model checkboxes */}
         <div className="mb-6">
-          <label className="block text-sm font-medium text-zinc-700 mb-2">Models to test</label>
+          <div className="flex items-center gap-3 mb-2">
+            <label className="text-sm font-medium text-zinc-700">Models to test</label>
+            <button
+              onClick={selectAll}
+              disabled={availableIds.length === 0}
+              className="text-xs text-blue-600 hover:underline disabled:opacity-40"
+            >
+              Select all
+            </button>
+            <button
+              onClick={clearAll}
+              disabled={selected.size === 0}
+              className="text-xs text-zinc-500 hover:underline disabled:opacity-40"
+            >
+              Clear
+            </button>
+          </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-4">
             {grouped.map(([provider, list]) => (
               <div key={provider}>
