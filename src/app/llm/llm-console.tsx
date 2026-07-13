@@ -25,6 +25,7 @@ export function LlmConsole({ models }: { models: ClientModel[] }) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [results, setResults] = useState<Record<string, ResultState>>({});
   const [running, setRunning] = useState(false);
+  const [language, setLanguage] = useState<"english" | "hindi">("english");
 
   const grouped = useMemo(() => {
     const byProvider = new Map<string, ClientModel[]>();
@@ -73,8 +74,15 @@ export function LlmConsole({ models }: { models: ClientModel[] }) {
     setRows((prev) => (prev.length === 1 ? prev : prev.filter((_, idx) => idx !== i)));
   }
 
+  // Chat-completions has no `language` body field (unlike STT), so the toggle
+  // enforces language by injecting a dedicated structured system message into
+  // the messages[] payload — part of the request JSON, not manual prompt text.
+  const HINDI_DIRECTIVE =
+    "Respond entirely in Hindi (हिन्दी) using Devanagari script. Every word of your output must be in Hindi. Do not use English.";
+
   function buildMessages(): ChatMessage[] {
     const msgs: ChatMessage[] = [];
+    if (language === "hindi") msgs.push({ role: "system", content: HINDI_DIRECTIVE });
     if (system.trim()) msgs.push({ role: "system", content: system });
     for (const r of rows) if (r.content.trim()) msgs.push({ role: r.role, content: r.content });
     return msgs;
@@ -123,6 +131,34 @@ export function LlmConsole({ models }: { models: ClientModel[] }) {
           Compare quality, latency (TTFT + total) and cost across models. Greyed models need their
           API key set in Railway.
         </p>
+
+        {/* Response language toggle — injects a Hindi directive into messages[] */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-zinc-700 mb-1">Response language</label>
+          <div className="inline-flex rounded border border-zinc-300 overflow-hidden text-sm">
+            <button
+              onClick={() => setLanguage("english")}
+              className={`px-3 py-1.5 ${
+                language === "english" ? "bg-blue-600 text-white" : "bg-white text-zinc-700 hover:bg-zinc-50"
+              }`}
+            >
+              English
+            </button>
+            <button
+              onClick={() => setLanguage("hindi")}
+              className={`px-3 py-1.5 border-l border-zinc-300 ${
+                language === "hindi" ? "bg-blue-600 text-white" : "bg-white text-zinc-700 hover:bg-zinc-50"
+              }`}
+            >
+              हिन्दी Hindi
+            </button>
+          </div>
+          {language === "hindi" && (
+            <p className="mt-1 text-xs text-zinc-500">
+              A Hindi system message is prepended to the messages[] payload.
+            </p>
+          )}
+        </div>
 
         {/* System */}
         <label className="block text-sm font-medium text-zinc-700 mb-1">System message</label>
