@@ -16,6 +16,7 @@ export type ModelDef = {
   priceOut: number; // USD per 1M output tokens
   authHeader?: string; // default "Authorization"
   authPrefix?: string; // default "Bearer " (Sarvam uses raw key, no prefix)
+  extraBody?: Record<string, unknown>; // merged into request (e.g. reasoning_effort to suppress <think>)
 };
 
 // prettier-ignore
@@ -26,39 +27,35 @@ export const MODELS: ModelDef[] = [
   { id: "openai-gpt-4.1",        label: "GPT-4.1",               provider: "OpenAI",    envKey: "OPENAI_API_KEY",    baseUrl: "https://api.openai.com/v1",                        model: "gpt-4.1",                                       priceIn: 2,     priceOut: 8 },
   { id: "openai-gpt-4.1-mini",   label: "GPT-4.1 mini",          provider: "OpenAI",    envKey: "OPENAI_API_KEY",    baseUrl: "https://api.openai.com/v1",                        model: "gpt-4.1-mini",                                  priceIn: 0.4,   priceOut: 1.6 },
   { id: "openai-gpt-4.1-nano",   label: "GPT-4.1 nano",          provider: "OpenAI",    envKey: "OPENAI_API_KEY",    baseUrl: "https://api.openai.com/v1",                        model: "gpt-4.1-nano",                                  priceIn: 0.1,   priceOut: 0.4 },
-  { id: "openai-gpt-4o-mini-2",  label: "o4-mini",               provider: "OpenAI",    envKey: "OPENAI_API_KEY",    baseUrl: "https://api.openai.com/v1",                        model: "o4-mini",                                       priceIn: 1.1,   priceOut: 4.4 },
+  { id: "openai-gpt-4o-mini-2",  label: "o4-mini",               provider: "OpenAI",    envKey: "OPENAI_API_KEY",    baseUrl: "https://api.openai.com/v1",                        model: "o4-mini",                                       priceIn: 1.1,   priceOut: 4.4, extraBody: { reasoning_effort: "low" } },
 
   // Anthropic (OpenAI-compatible endpoint)
   { id: "anthropic-opus",        label: "Claude Opus 4.8",       provider: "Anthropic", envKey: "ANTHROPIC_API_KEY", baseUrl: "https://api.anthropic.com/v1",                     model: "claude-opus-4-8",                               priceIn: 5,     priceOut: 25 },
   { id: "anthropic-sonnet",      label: "Claude Sonnet 5",       provider: "Anthropic", envKey: "ANTHROPIC_API_KEY", baseUrl: "https://api.anthropic.com/v1",                     model: "claude-sonnet-5",                               priceIn: 3,     priceOut: 15 },
   { id: "anthropic-fable",       label: "Claude Fable 5",        provider: "Anthropic", envKey: "ANTHROPIC_API_KEY", baseUrl: "https://api.anthropic.com/v1",                     model: "claude-fable-5",                                priceIn: 1,     priceOut: 5 },
   { id: "anthropic-haiku",       label: "Claude Haiku 4.5",      provider: "Anthropic", envKey: "ANTHROPIC_API_KEY", baseUrl: "https://api.anthropic.com/v1",                     model: "claude-haiku-4-5-20251001",                     priceIn: 0.8,   priceOut: 4 },
-  { id: "anthropic-haiku-35",    label: "Claude Haiku 3.5",      provider: "Anthropic", envKey: "ANTHROPIC_API_KEY", baseUrl: "https://api.anthropic.com/v1",                     model: "claude-3-5-haiku-20241022",                     priceIn: 0.8,   priceOut: 4 },
 
   // Google Gemini (OpenAI-compatible endpoint)
   { id: "gemini-flash",          label: "Gemini Flash (latest)", provider: "Gemini",    envKey: "GEMINI_API_KEY",    baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai", model: "gemini-flash-latest",                    priceIn: 0.3,   priceOut: 2.5 },
   { id: "gemini-flash-lite",     label: "Gemini Flash-Lite (latest)", provider: "Gemini", envKey: "GEMINI_API_KEY",  baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai", model: "gemini-flash-lite-latest",               priceIn: 0.1,   priceOut: 0.4 },
   { id: "gemini-pro",            label: "Gemini 2.5 Pro",        provider: "Gemini",    envKey: "GEMINI_API_KEY",    baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai", model: "gemini-2.5-pro",                         priceIn: 1.25,  priceOut: 10 },
-  { id: "gemini-2-flash",        label: "Gemini 2.0 Flash",      provider: "Gemini",    envKey: "GEMINI_API_KEY",    baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai", model: "gemini-2.0-flash",                       priceIn: 0.1,   priceOut: 0.4 },
-  { id: "gemini-2-flash-lite",   label: "Gemini 2.0 Flash-Lite", provider: "Gemini",    envKey: "GEMINI_API_KEY",    baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai", model: "gemini-2.0-flash-lite",                  priceIn: 0.075, priceOut: 0.3 },
 
   // xAI Grok (native OpenAI-compatible)
   { id: "xai-grok-4",            label: "Grok 4",                provider: "xAI",       envKey: "XAI_API_KEY",       baseUrl: "https://api.x.ai/v1",                              model: "grok-4",                                        priceIn: 3,     priceOut: 15 },
   { id: "xai-grok-3",            label: "Grok 3",                provider: "xAI",       envKey: "XAI_API_KEY",       baseUrl: "https://api.x.ai/v1",                              model: "grok-3",                                        priceIn: 3,     priceOut: 15 },
   { id: "xai-grok-3-mini",       label: "Grok 3 mini",           provider: "xAI",       envKey: "XAI_API_KEY",       baseUrl: "https://api.x.ai/v1",                              model: "grok-3-mini",                                   priceIn: 0.3,   priceOut: 0.5 },
-  { id: "xai-grok-2",            label: "Grok 2",                provider: "xAI",       envKey: "XAI_API_KEY",       baseUrl: "https://api.x.ai/v1",                              model: "grok-2-1212",                                   priceIn: 2,     priceOut: 10 },
 
   // Groq (LPU host — fast + free tier; cheap small models)
   { id: "groq-llama-8b",         label: "Llama 3.1 8B Instant",  provider: "Groq",      envKey: "GROQ_API_KEY",      baseUrl: "https://api.groq.com/openai/v1",                   model: "llama-3.1-8b-instant",                          priceIn: 0.05,  priceOut: 0.08 },
   { id: "groq-llama-70b",        label: "Llama 3.3 70B",         provider: "Groq",      envKey: "GROQ_API_KEY",      baseUrl: "https://api.groq.com/openai/v1",                   model: "llama-3.3-70b-versatile",                       priceIn: 0.59,  priceOut: 0.79 },
-  { id: "groq-qwen3-32b",        label: "Qwen3 32B",             provider: "Groq",      envKey: "GROQ_API_KEY",      baseUrl: "https://api.groq.com/openai/v1",                   model: "qwen/qwen3-32b",                                priceIn: 0.29,  priceOut: 0.59 },
-  { id: "groq-gpt-oss-20b",      label: "gpt-oss 20B",           provider: "Groq",      envKey: "GROQ_API_KEY",      baseUrl: "https://api.groq.com/openai/v1",                   model: "openai/gpt-oss-20b",                            priceIn: 0.1,   priceOut: 0.5 },
-  { id: "groq-gpt-oss-120b",     label: "gpt-oss 120B",          provider: "Groq",      envKey: "GROQ_API_KEY",      baseUrl: "https://api.groq.com/openai/v1",                   model: "openai/gpt-oss-120b",                           priceIn: 0.15,  priceOut: 0.75 },
+  { id: "groq-qwen3-32b",        label: "Qwen3 32B",             provider: "Groq",      envKey: "GROQ_API_KEY",      baseUrl: "https://api.groq.com/openai/v1",                   model: "qwen/qwen3-32b",                                priceIn: 0.29,  priceOut: 0.59, extraBody: { reasoning_effort: "none" } },
+  { id: "groq-gpt-oss-20b",      label: "gpt-oss 20B",           provider: "Groq",      envKey: "GROQ_API_KEY",      baseUrl: "https://api.groq.com/openai/v1",                   model: "openai/gpt-oss-20b",                            priceIn: 0.1,   priceOut: 0.5, extraBody: { reasoning_effort: "low" } },
+  { id: "groq-gpt-oss-120b",     label: "gpt-oss 120B",          provider: "Groq",      envKey: "GROQ_API_KEY",      baseUrl: "https://api.groq.com/openai/v1",                   model: "openai/gpt-oss-120b",                           priceIn: 0.15,  priceOut: 0.75, extraBody: { reasoning_effort: "low" } },
 
   // Cerebras (wafer-scale host — fastest throughput + free tier)
-  { id: "cerebras-llama-8b",     label: "Llama 3.1 8B",          provider: "Cerebras",  envKey: "CEREBRAS_API_KEY",  baseUrl: "https://api.cerebras.ai/v1",                       model: "llama3.1-8b",                                   priceIn: 0.1,   priceOut: 0.1 },
-  { id: "cerebras-llama4-scout", label: "Llama 4 Scout",         provider: "Cerebras",  envKey: "CEREBRAS_API_KEY",  baseUrl: "https://api.cerebras.ai/v1",                       model: "llama-4-scout-17b-16e-instruct",                priceIn: 0.65,  priceOut: 0.85 },
-  { id: "cerebras-qwen3-235b",   label: "Qwen3 235B",            provider: "Cerebras",  envKey: "CEREBRAS_API_KEY",  baseUrl: "https://api.cerebras.ai/v1",                       model: "qwen-3-235b-a22b-instruct-2507",                priceIn: 0.6,   priceOut: 1.2 },
+  // NOTE: this account's Cerebras tier only serves gpt-oss-120b; llama/qwen 404'd
+  // as "no access". Re-add them here if you upgrade tier (ids: llama3.1-8b,
+  // llama-4-scout-17b-16e-instruct, qwen-3-235b-a22b-instruct-2507).
   { id: "cerebras-gpt-oss-120b", label: "gpt-oss 120B",          provider: "Cerebras",  envKey: "CEREBRAS_API_KEY",  baseUrl: "https://api.cerebras.ai/v1",                       model: "gpt-oss-120b",                                  priceIn: 0.25,  priceOut: 0.69 },
 
   // Together AI (open-weight host)
@@ -149,6 +146,7 @@ export async function callModel(
         messages,
         stream: true,
         stream_options: { include_usage: true },
+        ...def.extraBody,
       }),
       signal: controller.signal,
     });
