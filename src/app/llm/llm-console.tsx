@@ -26,7 +26,8 @@ type SummaryState =
   | { status: "done"; data: CallResult };
 
 // The model that judges/summarizes the others (see models.ts). Requires ANTHROPIC_API_KEY.
-const JUDGE_MODEL_ID = "anthropic-fable";
+const JUDGE_MODEL_ID = "anthropic-opus";
+const JUDGE_MODEL_NAME = "Claude Opus";
 
 // Editable template. <LLM prompt> and <LLM responses> are substituted at call time.
 const DEFAULT_JUDGE_PROMPT = `You are evaluating responses from several different LLMs that were all given the SAME prompt.
@@ -73,7 +74,7 @@ export function LlmConsole({ models }: { models: ClientModel[] }) {
   const [judgePrompt, setJudgePrompt] = useState(DEFAULT_JUDGE_PROMPT);
   const [summary, setSummary] = useState<SummaryState>({ status: "idle" });
 
-  const fableModel = useMemo(() => models.find((m) => m.id === JUDGE_MODEL_ID), [models]);
+  const judgeModel = useMemo(() => models.find((m) => m.id === JUDGE_MODEL_ID), [models]);
 
   const grouped = useMemo(() => {
     const byProvider = new Map<string, ClientModel[]>();
@@ -169,7 +170,7 @@ export function LlmConsole({ models }: { models: ClientModel[] }) {
       }),
     );
 
-    // After every model has responded or timed out, ask Claude Fable 5 to judge.
+    // After every model has responded or timed out, ask the judge model to rank them.
     const completed = ids
       .map((id) => ({ m: modelById.get(id), data: local[id] }))
       .filter(
@@ -181,7 +182,7 @@ export function LlmConsole({ models }: { models: ClientModel[] }) {
       setRunning(false);
       return; // nothing to summarize
     }
-    if (!fableModel?.available) {
+    if (!judgeModel?.available) {
       setSummary({ status: "unavailable" });
       setRunning(false);
       return;
@@ -361,18 +362,18 @@ export function LlmConsole({ models }: { models: ClientModel[] }) {
           </div>
         </div>
 
-        {/* Judge prompt — sent to Claude Fable 5 after all responses settle */}
+        {/* Judge prompt — sent to the judge model after all responses settle */}
         <div className="mb-6">
           <label className="block text-sm font-medium text-zinc-700 mb-1">
-            Summary judge prompt (Claude Fable 5)
+            Summary judge prompt ({JUDGE_MODEL_NAME})
           </label>
           <p className="text-xs text-zinc-500 mb-1">
-            After every model responds, this is sent to Claude Fable 5.{" "}
+            After every model responds, this is sent to {JUDGE_MODEL_NAME}.{" "}
             <code className="rounded bg-zinc-100 px-1">&lt;LLM prompt&gt;</code> is replaced with the
             prompt sent to the models;{" "}
             <code className="rounded bg-zinc-100 px-1">&lt;LLM responses&gt;</code> with every model&apos;s
             response plus its latency and cost.
-            {!fableModel?.available && " Set ANTHROPIC_API_KEY in Railway to enable."}
+            {!judgeModel?.available && " Set ANTHROPIC_API_KEY in Railway to enable."}
           </p>
           <textarea
             value={judgePrompt}
@@ -390,11 +391,11 @@ export function LlmConsole({ models }: { models: ClientModel[] }) {
           {running ? "Running…" : `Test ${selected.size || ""} model${selected.size === 1 ? "" : "s"}`}
         </button>
 
-        {/* Summary — Claude Fable 5 verdict */}
+        {/* Summary — judge model verdict */}
         {summary.status !== "idle" && (
           <div className="mt-8 rounded-lg border border-amber-200 bg-amber-50 p-4">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-semibold text-zinc-900">Summary — Claude Fable 5</h3>
+              <h3 className="text-sm font-semibold text-zinc-900">Summary — {JUDGE_MODEL_NAME}</h3>
               {summary.status === "done" && !summary.data.error && <Metrics data={summary.data} />}
             </div>
             {summary.status === "loading" && (
@@ -402,7 +403,7 @@ export function LlmConsole({ models }: { models: ClientModel[] }) {
             )}
             {summary.status === "unavailable" && (
               <p className="text-sm text-zinc-500">
-                Set ANTHROPIC_API_KEY in Railway to enable the Claude Fable 5 summary.
+                Set ANTHROPIC_API_KEY in Railway to enable the {JUDGE_MODEL_NAME} summary.
               </p>
             )}
             {summary.status === "done" &&
@@ -416,7 +417,7 @@ export function LlmConsole({ models }: { models: ClientModel[] }) {
 
         {/* Comparison graphs */}
         {(chartData.latency.length > 0 || chartData.cost.length > 0) && (
-          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="mt-8 grid grid-cols-1 gap-4">
             <BarChart
               title="Latency (total round-trip)"
               unit="ms"
@@ -504,13 +505,16 @@ function BarChart({
   bars: { label: string; value: number }[];
   format: (n: number) => string;
 }) {
-  const barW = 30;
-  const gap = 16;
+  // Fixed logical viewBox width; the SVG renders at w-full and scales to the
+  // column, so every bar fits without a horizontal scrollbar and the height
+  // stays constant regardless of bar count. Bars just get thinner as count grows.
+  const VBW = 1000;
   const padL = 52;
-  const padR = 12;
+  const padR = 16;
   const padT = 14;
   const plotH = 150;
-  const padB = 72; // room for angled labels
+  const padB = 78; // room for angled labels
+  const H = padT + plotH + padB;
 
   if (bars.length === 0) {
     return (
@@ -524,67 +528,71 @@ function BarChart({
   const dataMax = Math.max(...bars.map((b) => b.value));
   const ticks = niceTicks(dataMax);
   const yHigh = Math.max(dataMax, ticks[ticks.length - 1]) || 1;
-  const W = padL + padR + bars.length * (barW + gap);
-  const H = padT + plotH + padB;
+  const slot = (VBW - padL - padR) / bars.length;
+  const barW = Math.min(40, slot * 0.62);
   const y = (v: number) => padT + plotH - (v / yHigh) * plotH;
 
   return (
     <div className="rounded-lg border border-zinc-200 bg-white p-4">
       <h3 className="text-sm font-medium text-zinc-500 mb-2">{title}</h3>
-      <div className="overflow-x-auto">
-        <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} className="max-w-none">
-          {/* gridlines + y ticks */}
-          {ticks.map((t) => (
-            <g key={t}>
-              <line x1={padL} y1={y(t)} x2={W - padR} y2={y(t)} stroke="#e4e4e7" strokeWidth={0.5} />
-              <text x={padL - 6} y={y(t) + 3} textAnchor="end" fontSize={9} className="fill-zinc-400">
-                {format(t)}
+      <svg viewBox={`0 0 ${VBW} ${H}`} className="w-full h-auto">
+        {/* gridlines + y ticks */}
+        {ticks.map((t) => (
+          <g key={t}>
+            <line x1={padL} y1={y(t)} x2={VBW - padR} y2={y(t)} stroke="#e4e4e7" strokeWidth={0.5} />
+            <text x={padL - 6} y={y(t) + 3} textAnchor="end" fontSize={9} className="fill-zinc-400">
+              {format(t)}
+            </text>
+          </g>
+        ))}
+        {/* y-axis title */}
+        <text
+          x={12}
+          y={padT + plotH / 2}
+          textAnchor="middle"
+          fontSize={9}
+          className="fill-zinc-500"
+          transform={`rotate(-90 12 ${padT + plotH / 2})`}
+        >
+          {unit}
+        </text>
+        {/* bars */}
+        {bars.map((b, i) => {
+          const cx = padL + slot * (i + 0.5);
+          const top = y(b.value);
+          return (
+            <g key={`${b.label}-${i}`}>
+              <rect
+                x={cx - barW / 2}
+                y={top}
+                width={barW}
+                height={Math.max(1, padT + plotH - top)}
+                rx={2}
+                fill={color}
+              >
+                <title>
+                  {b.label}: {format(b.value)}
+                </title>
+              </rect>
+              <text x={cx} y={top - 4} textAnchor="middle" fontSize={8} className="fill-zinc-500">
+                {format(b.value)}
+              </text>
+              <text
+                x={cx}
+                y={padT + plotH + 10}
+                textAnchor="end"
+                fontSize={8}
+                className="fill-zinc-600"
+                transform={`rotate(-40 ${cx} ${padT + plotH + 10})`}
+              >
+                {b.label}
               </text>
             </g>
-          ))}
-          {/* y-axis title */}
-          <text
-            x={12}
-            y={padT + plotH / 2}
-            textAnchor="middle"
-            fontSize={9}
-            className="fill-zinc-500"
-            transform={`rotate(-90 12 ${padT + plotH / 2})`}
-          >
-            {unit}
-          </text>
-          {/* bars */}
-          {bars.map((b, i) => {
-            const x = padL + i * (barW + gap) + gap / 2;
-            const top = y(b.value);
-            const cx = x + barW / 2;
-            return (
-              <g key={`${b.label}-${i}`}>
-                <rect x={x} y={top} width={barW} height={Math.max(1, padT + plotH - top)} rx={2} fill={color}>
-                  <title>
-                    {b.label}: {format(b.value)}
-                  </title>
-                </rect>
-                <text x={cx} y={top - 4} textAnchor="middle" fontSize={8} className="fill-zinc-500">
-                  {format(b.value)}
-                </text>
-                <text
-                  x={cx}
-                  y={padT + plotH + 10}
-                  textAnchor="end"
-                  fontSize={8}
-                  className="fill-zinc-600"
-                  transform={`rotate(-40 ${cx} ${padT + plotH + 10})`}
-                >
-                  {b.label}
-                </text>
-              </g>
-            );
-          })}
-          {/* baseline */}
-          <line x1={padL} y1={padT + plotH} x2={W - padR} y2={padT + plotH} stroke="#a1a1aa" strokeWidth={1} />
-        </svg>
-      </div>
+          );
+        })}
+        {/* baseline */}
+        <line x1={padL} y1={padT + plotH} x2={VBW - padR} y2={padT + plotH} stroke="#a1a1aa" strokeWidth={1} />
+      </svg>
     </div>
   );
 }
