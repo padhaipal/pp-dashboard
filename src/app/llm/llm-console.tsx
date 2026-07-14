@@ -123,6 +123,24 @@ export function LlmConsole({ models }: { models: ClientModel[] }) {
   const modelById = useMemo(() => new Map(models.map((m) => [m.id, m])), [models]);
   const orderedResults = [...selected].filter((id) => results[id]);
 
+  // Bars for the latency + cost graphs: only completed, error-free numeric
+  // results. Sorted ascending (fastest / cheapest first).
+  const chartData = useMemo(() => {
+    const latency: { label: string; value: number }[] = [];
+    const cost: { label: string; value: number }[] = [];
+    for (const id of [...selected]) {
+      const st = results[id];
+      const m = modelById.get(id);
+      if (!m || st?.status !== "done" || st.data.error) continue;
+      const label = `${m.provider} · ${m.label}`;
+      if (st.data.totalMs > 0) latency.push({ label, value: st.data.totalMs });
+      if (st.data.costUsd !== null) cost.push({ label, value: st.data.costUsd });
+    }
+    latency.sort((a, b) => a.value - b.value);
+    cost.sort((a, b) => a.value - b.value);
+    return { latency, cost };
+  }, [selected, results, modelById]);
+
   return (
     <div className="min-h-screen bg-zinc-50 p-6">
       <div className="max-w-5xl mx-auto">
@@ -261,6 +279,26 @@ export function LlmConsole({ models }: { models: ClientModel[] }) {
           {running ? "Running…" : `Test ${selected.size || ""} model${selected.size === 1 ? "" : "s"}`}
         </button>
 
+        {/* Comparison graphs */}
+        {(chartData.latency.length > 0 || chartData.cost.length > 0) && (
+          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
+            <BarChart
+              title="Latency (total round-trip)"
+              unit="ms"
+              color="#3b82f6"
+              bars={chartData.latency}
+              format={fmtLatency}
+            />
+            <BarChart
+              title="Cost per call"
+              unit="USD"
+              color="#10b981"
+              bars={chartData.cost}
+              format={fmtCost}
+            />
+          </div>
+        )}
+
         {/* Results */}
         {orderedResults.length > 0 && (
           <div className="mt-8 space-y-4">
@@ -291,6 +329,126 @@ export function LlmConsole({ models }: { models: ClientModel[] }) {
             })}
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+function fmtLatency(ms: number): string {
+  return ms >= 1000 ? `${(ms / 1000).toFixed(1)}s` : `${Math.round(ms)}ms`;
+}
+
+function fmtCost(usd: number): string {
+  if (usd === 0) return "$0";
+  return usd < 0.001 ? `$${usd.toFixed(5)}` : `$${usd.toFixed(3)}`;
+}
+
+// ~4 "nice" y-axis ticks spanning [0, max].
+function niceTicks(max: number): number[] {
+  if (max <= 0) return [0];
+  const rawStep = max / 4;
+  const mag = Math.pow(10, Math.floor(Math.log10(rawStep)));
+  const step = ([1, 2, 5, 10].map((m) => m * mag).find((s) => s >= rawStep) ?? rawStep);
+  const ticks: number[] = [];
+  for (let v = 0; v <= max + step * 0.5; v += step) ticks.push(v);
+  return ticks;
+}
+
+// Vertical SVG bar chart, one bar per model. Matches the dashboard's hand-rolled
+// SVG chart style. Scrolls horizontally when there are many bars.
+function BarChart({
+  title,
+  unit,
+  color,
+  bars,
+  format,
+}: {
+  title: string;
+  unit: string;
+  color: string;
+  bars: { label: string; value: number }[];
+  format: (n: number) => string;
+}) {
+  const barW = 30;
+  const gap = 16;
+  const padL = 52;
+  const padR = 12;
+  const padT = 14;
+  const plotH = 150;
+  const padB = 72; // room for angled labels
+
+  if (bars.length === 0) {
+    return (
+      <div className="rounded-lg border border-zinc-200 bg-white p-4">
+        <h3 className="text-sm font-medium text-zinc-500 mb-2">{title}</h3>
+        <p className="text-xs text-zinc-400">No data yet.</p>
+      </div>
+    );
+  }
+
+  const dataMax = Math.max(...bars.map((b) => b.value));
+  const ticks = niceTicks(dataMax);
+  const yHigh = Math.max(dataMax, ticks[ticks.length - 1]) || 1;
+  const W = padL + padR + bars.length * (barW + gap);
+  const H = padT + plotH + padB;
+  const y = (v: number) => padT + plotH - (v / yHigh) * plotH;
+
+  return (
+    <div className="rounded-lg border border-zinc-200 bg-white p-4">
+      <h3 className="text-sm font-medium text-zinc-500 mb-2">{title}</h3>
+      <div className="overflow-x-auto">
+        <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} className="max-w-none">
+          {/* gridlines + y ticks */}
+          {ticks.map((t) => (
+            <g key={t}>
+              <line x1={padL} y1={y(t)} x2={W - padR} y2={y(t)} stroke="#e4e4e7" strokeWidth={0.5} />
+              <text x={padL - 6} y={y(t) + 3} textAnchor="end" fontSize={9} className="fill-zinc-400">
+                {format(t)}
+              </text>
+            </g>
+          ))}
+          {/* y-axis title */}
+          <text
+            x={12}
+            y={padT + plotH / 2}
+            textAnchor="middle"
+            fontSize={9}
+            className="fill-zinc-500"
+            transform={`rotate(-90 12 ${padT + plotH / 2})`}
+          >
+            {unit}
+          </text>
+          {/* bars */}
+          {bars.map((b, i) => {
+            const x = padL + i * (barW + gap) + gap / 2;
+            const top = y(b.value);
+            const cx = x + barW / 2;
+            return (
+              <g key={`${b.label}-${i}`}>
+                <rect x={x} y={top} width={barW} height={Math.max(1, padT + plotH - top)} rx={2} fill={color}>
+                  <title>
+                    {b.label}: {format(b.value)}
+                  </title>
+                </rect>
+                <text x={cx} y={top - 4} textAnchor="middle" fontSize={8} className="fill-zinc-500">
+                  {format(b.value)}
+                </text>
+                <text
+                  x={cx}
+                  y={padT + plotH + 10}
+                  textAnchor="end"
+                  fontSize={8}
+                  className="fill-zinc-600"
+                  transform={`rotate(-40 ${cx} ${padT + plotH + 10})`}
+                >
+                  {b.label}
+                </text>
+              </g>
+            );
+          })}
+          {/* baseline */}
+          <line x1={padL} y1={padT + plotH} x2={W - padR} y2={padT + plotH} stroke="#a1a1aa" strokeWidth={1} />
+        </svg>
       </div>
     </div>
   );
