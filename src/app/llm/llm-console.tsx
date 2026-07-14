@@ -19,6 +19,50 @@ type ResultState =
   | { status: "loading" }
   | { status: "done"; data: CallResult };
 
+type SummaryState =
+  | { status: "idle" }
+  | { status: "loading" }
+  | { status: "unavailable" } // no ANTHROPIC_API_KEY
+  | { status: "done"; data: CallResult };
+
+// The model that judges/summarizes the others (see models.ts). Requires ANTHROPIC_API_KEY.
+const JUDGE_MODEL_ID = "anthropic-fable";
+
+// Editable template. <LLM prompt> and <LLM responses> are substituted at call time.
+const DEFAULT_JUDGE_PROMPT = `You are evaluating responses from several different LLMs that were all given the SAME prompt.
+
+The prompt that was sent to every model:
+<LLM prompt>
+
+Each model's response, with its measured latency and cost:
+<LLM responses>
+
+Decide:
+1. HIGHEST QUALITY — which single response is best on quality alone (ignore latency and cost). Name the model and explain briefly.
+2. BEST OVERALL — which response is best balancing quality, latency, and cost. Name the model and justify the trade-off.
+
+Keep it concise.`;
+
+function formatSentPrompt(messages: ChatMessage[]): string {
+  return messages.map((m) => `[${m.role}]\n${m.content}`).join("\n\n");
+}
+
+function formatResponses(items: { label: string; data: CallResult }[]): string {
+  return items
+    .map(({ label, data }) => {
+      const ttft = data.ttftMs !== null ? `TTFT ${Math.round(data.ttftMs)}ms, ` : "";
+      const cost = data.costUsd !== null ? `, cost $${data.costUsd.toFixed(5)}` : "";
+      return `### ${label} (${ttft}total ${Math.round(data.totalMs)}ms${cost})\n${data.text}`;
+    })
+    .join("\n\n");
+}
+
+function fillJudgePrompt(template: string, promptText: string, responsesText: string): string {
+  return template
+    .replaceAll("<LLM prompt>", promptText)
+    .replaceAll("<LLM responses>", responsesText);
+}
+
 export function LlmConsole({ models }: { models: ClientModel[] }) {
   const [system, setSystem] = useState("");
   const [rows, setRows] = useState<Row[]>([{ role: "user", content: "" }]);
@@ -26,6 +70,10 @@ export function LlmConsole({ models }: { models: ClientModel[] }) {
   const [results, setResults] = useState<Record<string, ResultState>>({});
   const [running, setRunning] = useState(false);
   const [language, setLanguage] = useState<"english" | "hindi">("english");
+  const [judgePrompt, setJudgePrompt] = useState(DEFAULT_JUDGE_PROMPT);
+  const [summary, setSummary] = useState<SummaryState>({ status: "idle" });
+
+  const fableModel = useMemo(() => models.find((m) => m.id === JUDGE_MODEL_ID), [models]);
 
   const grouped = useMemo(() => {
     const byProvider = new Map<string, ClientModel[]>();
@@ -94,38 +142,80 @@ export function LlmConsole({ models }: { models: ClientModel[] }) {
     if (messages.length === 0 || ids.length === 0) return;
 
     setRunning(true);
+    setSummary({ status: "idle" });
     setResults(Object.fromEntries(ids.map((id) => [id, { status: "loading" }])));
 
     // Fire all in parallel; each card updates the moment its model responds.
+    // Also collect into `local` so the judge sees final data without a stale
+    // closure over `results` state.
+    const local: Record<string, CallResult> = {};
     await Promise.all(
       ids.map(async (id) => {
+        let data: CallResult;
         try {
           const res = await fetch("/api/llm", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ modelId: id, messages }),
           });
-          const data: CallResult = res.ok
+          data = res.ok
             ? await res.json()
             : { ...emptyResult(), error: (await res.json().catch(() => ({}))).error ?? `HTTP ${res.status}` };
-          setResults((prev) => ({ ...prev, [id]: { status: "done", data } }));
         } catch (err) {
-          setResults((prev) => ({
-            ...prev,
-            [id]: { status: "done", data: { ...emptyResult(), error: (err as Error).message } },
-          }));
+          data = { ...emptyResult(), error: (err as Error).message };
         }
+        local[id] = data;
+        setResults((prev) => ({ ...prev, [id]: { status: "done", data } }));
       }),
     );
+
+    // After every model has responded or timed out, ask Claude Fable 5 to judge.
+    const completed = ids
+      .map((id) => ({ m: modelById.get(id), data: local[id] }))
+      .filter(
+        (x): x is { m: ClientModel; data: CallResult } =>
+          !!x.m && !!x.data && !x.data.error && x.data.text.trim().length > 0,
+      );
+
+    if (completed.length === 0) {
+      setRunning(false);
+      return; // nothing to summarize
+    }
+    if (!fableModel?.available) {
+      setSummary({ status: "unavailable" });
+      setRunning(false);
+      return;
+    }
+
+    setSummary({ status: "loading" });
+    const filled = fillJudgePrompt(
+      judgePrompt,
+      formatSentPrompt(messages),
+      formatResponses(completed.map((c) => ({ label: `${c.m.provider} · ${c.m.label}`, data: c.data }))),
+    );
+    let judgeData: CallResult;
+    try {
+      const res = await fetch("/api/llm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ modelId: JUDGE_MODEL_ID, messages: [{ role: "user", content: filled }] }),
+      });
+      judgeData = res.ok
+        ? await res.json()
+        : { ...emptyResult(), error: (await res.json().catch(() => ({}))).error ?? `HTTP ${res.status}` };
+    } catch (err) {
+      judgeData = { ...emptyResult(), error: (err as Error).message };
+    }
+    setSummary({ status: "done", data: judgeData });
     setRunning(false);
   }
 
-  const modelById = useMemo(() => new Map(models.map((m) => [m.id, m])), [models]);
+  const modelById = new Map(models.map((m) => [m.id, m]));
   const orderedResults = [...selected].filter((id) => results[id]);
 
   // Bars for the latency + cost graphs: only completed, error-free numeric
   // results. Sorted ascending (fastest / cheapest first).
-  const chartData = useMemo(() => {
+  const chartData = (() => {
     const latency: { label: string; value: number }[] = [];
     const cost: { label: string; value: number }[] = [];
     for (const id of [...selected]) {
@@ -139,7 +229,7 @@ export function LlmConsole({ models }: { models: ClientModel[] }) {
     latency.sort((a, b) => a.value - b.value);
     cost.sort((a, b) => a.value - b.value);
     return { latency, cost };
-  }, [selected, results, modelById]);
+  })();
 
   return (
     <div className="min-h-screen bg-zinc-50 p-6">
@@ -271,6 +361,27 @@ export function LlmConsole({ models }: { models: ClientModel[] }) {
           </div>
         </div>
 
+        {/* Judge prompt — sent to Claude Fable 5 after all responses settle */}
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-zinc-700 mb-1">
+            Summary judge prompt (Claude Fable 5)
+          </label>
+          <p className="text-xs text-zinc-500 mb-1">
+            After every model responds, this is sent to Claude Fable 5.{" "}
+            <code className="rounded bg-zinc-100 px-1">&lt;LLM prompt&gt;</code> is replaced with the
+            prompt sent to the models;{" "}
+            <code className="rounded bg-zinc-100 px-1">&lt;LLM responses&gt;</code> with every model&apos;s
+            response plus its latency and cost.
+            {!fableModel?.available && " Set ANTHROPIC_API_KEY in Railway to enable."}
+          </p>
+          <textarea
+            value={judgePrompt}
+            onChange={(e) => setJudgePrompt(e.target.value)}
+            rows={7}
+            className="w-full rounded border border-zinc-300 p-2 text-sm text-zinc-900 font-mono"
+          />
+        </div>
+
         <button
           onClick={start}
           disabled={running || selected.size === 0}
@@ -278,6 +389,30 @@ export function LlmConsole({ models }: { models: ClientModel[] }) {
         >
           {running ? "Running…" : `Test ${selected.size || ""} model${selected.size === 1 ? "" : "s"}`}
         </button>
+
+        {/* Summary — Claude Fable 5 verdict */}
+        {summary.status !== "idle" && (
+          <div className="mt-8 rounded-lg border border-amber-200 bg-amber-50 p-4">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-semibold text-zinc-900">Summary — Claude Fable 5</h3>
+              {summary.status === "done" && !summary.data.error && <Metrics data={summary.data} />}
+            </div>
+            {summary.status === "loading" && (
+              <p className="text-sm text-zinc-500">Judging responses…</p>
+            )}
+            {summary.status === "unavailable" && (
+              <p className="text-sm text-zinc-500">
+                Set ANTHROPIC_API_KEY in Railway to enable the Claude Fable 5 summary.
+              </p>
+            )}
+            {summary.status === "done" &&
+              (summary.data.error ? (
+                <p className="text-sm text-red-600 whitespace-pre-wrap">{summary.data.error}</p>
+              ) : (
+                <p className="text-sm text-zinc-800 whitespace-pre-wrap">{summary.data.text}</p>
+              ))}
+          </div>
+        )}
 
         {/* Comparison graphs */}
         {(chartData.latency.length > 0 || chartData.cost.length > 0) && (
