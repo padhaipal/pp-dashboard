@@ -41,6 +41,7 @@ Each model's response, with its measured latency and cost:
 Decide:
 1. HIGHEST QUALITY — which single response is best on quality alone (ignore latency and cost). Name the model and explain briefly.
 2. BEST OVERALL — which response is best balancing quality, latency, and cost. Name the model and justify the trade-off.
+3. Then please make suggestions to the original prompt to correct for the most common sources of errors and generally what would increase the quality and consistency of the LLM responses.
 
 Keep it concise.`;
 
