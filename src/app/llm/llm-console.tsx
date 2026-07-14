@@ -218,15 +218,15 @@ export function LlmConsole({ models }: { models: ClientModel[] }) {
   // Bars for the latency + cost graphs: only completed, error-free numeric
   // results. Sorted ascending (fastest / cheapest first).
   const chartData = (() => {
-    const latency: { label: string; value: number }[] = [];
-    const cost: { label: string; value: number }[] = [];
+    const latency: { id: string; label: string; value: number }[] = [];
+    const cost: { id: string; label: string; value: number }[] = [];
     for (const id of [...selected]) {
       const st = results[id];
       const m = modelById.get(id);
       if (!m || st?.status !== "done" || st.data.error) continue;
       const label = `${m.provider} · ${m.label}`;
-      if (st.data.totalMs > 0) latency.push({ label, value: st.data.totalMs });
-      if (st.data.costUsd !== null) cost.push({ label, value: st.data.costUsd });
+      if (st.data.totalMs > 0) latency.push({ id, label, value: st.data.totalMs });
+      if (st.data.costUsd !== null) cost.push({ id, label, value: st.data.costUsd });
     }
     latency.sort((a, b) => a.value - b.value);
     cost.sort((a, b) => a.value - b.value);
@@ -443,7 +443,11 @@ export function LlmConsole({ models }: { models: ClientModel[] }) {
               const m = modelById.get(id)!;
               const state = results[id];
               return (
-                <div key={id} className="rounded border border-zinc-200 bg-white p-4">
+                <div
+                  key={id}
+                  id={`result-${id}`}
+                  className="scroll-mt-4 rounded border border-zinc-200 bg-white p-4"
+                >
                   <div className="flex items-center justify-between mb-2">
                     <div className="font-medium text-zinc-900">
                       {m.label}{" "}
@@ -503,7 +507,7 @@ function BarChart({
   title: string;
   unit: string;
   color: string;
-  bars: { label: string; value: number }[];
+  bars: { id: string; label: string; value: number }[];
   format: (n: number) => string;
 }) {
   // Fixed logical viewBox width; the SVG renders at w-full and scales to the
@@ -583,9 +587,15 @@ function BarChart({
                 y={padT + plotH + 10}
                 textAnchor="end"
                 fontSize={8}
-                className="fill-zinc-600"
+                className="cursor-pointer fill-blue-600 underline"
                 transform={`rotate(-40 ${cx} ${padT + plotH + 10})`}
+                onClick={() =>
+                  document
+                    .getElementById(`result-${b.id}`)
+                    ?.scrollIntoView({ behavior: "smooth", block: "start" })
+                }
               >
+                <title>Jump to {b.label} response</title>
                 {b.label}
               </text>
             </g>
