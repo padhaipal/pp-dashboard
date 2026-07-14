@@ -22,18 +22,18 @@ export type ModelDef = {
 // prettier-ignore
 export const MODELS: ModelDef[] = [
   // OpenAI (native OpenAI-compatible) — largest to smallest
-  { id: "openai-gpt-4o",         label: "GPT-4o",                provider: "OpenAI",    envKey: "OPENAI_API_KEY",    baseUrl: "https://api.openai.com/v1",                        model: "gpt-4o",                                        priceIn: 2.5,   priceOut: 10 },
   { id: "openai-gpt-4.1",        label: "GPT-4.1",               provider: "OpenAI",    envKey: "OPENAI_API_KEY",    baseUrl: "https://api.openai.com/v1",                        model: "gpt-4.1",                                       priceIn: 2,     priceOut: 8 },
+  { id: "openai-gpt-4o",         label: "GPT-4o",                provider: "OpenAI",    envKey: "OPENAI_API_KEY",    baseUrl: "https://api.openai.com/v1",                        model: "gpt-4o",                                        priceIn: 2.5,   priceOut: 10 },
   { id: "openai-gpt-4o-mini-2",  label: "o4-mini",               provider: "OpenAI",    envKey: "OPENAI_API_KEY",    baseUrl: "https://api.openai.com/v1",                        model: "o4-mini",                                       priceIn: 1.1,   priceOut: 4.4, extraBody: { reasoning_effort: "low" } },
   { id: "openai-gpt-4.1-mini",   label: "GPT-4.1 mini",          provider: "OpenAI",    envKey: "OPENAI_API_KEY",    baseUrl: "https://api.openai.com/v1",                        model: "gpt-4.1-mini",                                  priceIn: 0.4,   priceOut: 1.6 },
   { id: "openai-gpt-4o-mini",    label: "GPT-4o mini",           provider: "OpenAI",    envKey: "OPENAI_API_KEY",    baseUrl: "https://api.openai.com/v1",                        model: "gpt-4o-mini",                                   priceIn: 0.15,  priceOut: 0.6 },
   { id: "openai-gpt-4.1-nano",   label: "GPT-4.1 nano",          provider: "OpenAI",    envKey: "OPENAI_API_KEY",    baseUrl: "https://api.openai.com/v1",                        model: "gpt-4.1-nano",                                  priceIn: 0.1,   priceOut: 0.4 },
 
   // Anthropic (OpenAI-compatible endpoint)
+  { id: "anthropic-fable",       label: "Claude Fable 5",        provider: "Anthropic", envKey: "ANTHROPIC_API_KEY", baseUrl: "https://api.anthropic.com/v1",                     model: "claude-fable-5",                                priceIn: 1,     priceOut: 5 },
   { id: "anthropic-opus",        label: "Claude Opus 4.8",       provider: "Anthropic", envKey: "ANTHROPIC_API_KEY", baseUrl: "https://api.anthropic.com/v1",                     model: "claude-opus-4-8",                               priceIn: 5,     priceOut: 25 },
   { id: "anthropic-sonnet",      label: "Claude Sonnet 5",       provider: "Anthropic", envKey: "ANTHROPIC_API_KEY", baseUrl: "https://api.anthropic.com/v1",                     model: "claude-sonnet-5",                               priceIn: 3,     priceOut: 15 },
   { id: "anthropic-haiku",       label: "Claude Haiku 4.5",      provider: "Anthropic", envKey: "ANTHROPIC_API_KEY", baseUrl: "https://api.anthropic.com/v1",                     model: "claude-haiku-4-5-20251001",                     priceIn: 0.8,   priceOut: 4 },
-  { id: "anthropic-fable",       label: "Claude Fable 5",        provider: "Anthropic", envKey: "ANTHROPIC_API_KEY", baseUrl: "https://api.anthropic.com/v1",                     model: "claude-fable-5",                                priceIn: 1,     priceOut: 5 },
 
   // Google Gemini (OpenAI-compatible endpoint) — largest to smallest
   { id: "gemini-pro",            label: "Gemini 2.5 Pro",        provider: "Gemini",    envKey: "GEMINI_API_KEY",    baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai", model: "gemini-2.5-pro",                         priceIn: 1.25,  priceOut: 10 },
