@@ -79,8 +79,10 @@ export const MODELS: ModelDef[] = [
   { id: "deepseek-reasoner",     label: "DeepSeek Reasoner",     provider: "DeepSeek",  envKey: "DEEPSEEK_API_KEY",  baseUrl: "https://api.deepseek.com/v1",                      model: "deepseek-reasoner",                             priceIn: 0.55,  priceOut: 2.19 },
 
   // Sarvam (Indic-specialist; note raw-key auth header)
-  { id: "sarvam-30b",            label: "Sarvam 30B",            provider: "Sarvam",    envKey: "SARVAM_API_KEY",    baseUrl: "https://api.sarvam.ai/v1",                         model: "sarvam-30b",                                    priceIn: 0.5,   priceOut: 1.5, authHeader: "api-subscription-key", authPrefix: "" },
-  { id: "sarvam-105b",           label: "Sarvam 105B",           provider: "Sarvam",    envKey: "SARVAM_API_KEY",    baseUrl: "https://api.sarvam.ai/v1",                         model: "sarvam-105b",                                   priceIn: 1,     priceOut: 3, authHeader: "api-subscription-key", authPrefix: "" },
+  // reasoning_effort: null disables Sarvam's default "thinking" mode, which
+  // otherwise consumes the whole 2048 max_tokens budget before emitting an answer.
+  { id: "sarvam-30b",            label: "Sarvam 30B",            provider: "Sarvam",    envKey: "SARVAM_API_KEY",    baseUrl: "https://api.sarvam.ai/v1",                         model: "sarvam-30b",                                    priceIn: 0.5,   priceOut: 1.5, authHeader: "api-subscription-key", authPrefix: "", extraBody: { reasoning_effort: null } },
+  { id: "sarvam-105b",           label: "Sarvam 105B",           provider: "Sarvam",    envKey: "SARVAM_API_KEY",    baseUrl: "https://api.sarvam.ai/v1",                         model: "sarvam-105b",                                   priceIn: 1,     priceOut: 3, authHeader: "api-subscription-key", authPrefix: "", extraBody: { reasoning_effort: null } },
 
   // Mistral (first-party; cheap Ministral small models)
   { id: "mistral-large",         label: "Mistral Large",         provider: "Mistral",   envKey: "MISTRAL_API_KEY",   baseUrl: "https://api.mistral.ai/v1",                        model: "mistral-large-latest",                          priceIn: 2,     priceOut: 6 },
@@ -168,6 +170,7 @@ export async function callModel(
     const decoder = new TextDecoder();
     let buffer = "";
     let text = "";
+    let reasoning = ""; // delta.reasoning_content (thinking models: DeepSeek R1, Sarvam, …)
     let ttftMs: number | null = null;
     let promptTokens: number | null = null;
     let completionTokens: number | null = null;
@@ -184,7 +187,7 @@ export async function callModel(
         const data = trimmed.slice(5).trim();
         if (data === "[DONE]") continue;
         let json: {
-          choices?: { delta?: { content?: string } }[];
+          choices?: { delta?: { content?: string; reasoning_content?: string } }[];
           usage?: { prompt_tokens?: number; completion_tokens?: number };
         };
         try {
@@ -192,10 +195,15 @@ export async function callModel(
         } catch {
           continue;
         }
-        const delta = json.choices?.[0]?.delta?.content;
-        if (delta) {
+        const delta = json.choices?.[0]?.delta;
+        // TTFT = first token of either the answer OR the reasoning stream.
+        if (delta?.content) {
           if (ttftMs === null) ttftMs = performance.now() - start;
-          text += delta;
+          text += delta.content;
+        }
+        if (delta?.reasoning_content) {
+          if (ttftMs === null) ttftMs = performance.now() - start;
+          reasoning += delta.reasoning_content;
         }
         if (json.usage) {
           promptTokens = json.usage.prompt_tokens ?? promptTokens;
@@ -210,7 +218,16 @@ export async function callModel(
         ? (promptTokens * def.priceIn + completionTokens * def.priceOut) / 1_000_000
         : null;
 
-    return { text, ttftMs, totalMs, promptTokens, completionTokens, costUsd };
+    // If the model only emitted reasoning (hit max_tokens before answering),
+    // surface the reasoning so the card isn't blank.
+    const finalText =
+      text.length > 0
+        ? text
+        : reasoning.length > 0
+          ? `[reasoning only — no answer returned]\n${reasoning}`
+          : text;
+
+    return { text: finalText, ttftMs, totalMs, promptTokens, completionTokens, costUsd };
   } catch (err) {
     const msg = (err as Error).name === "AbortError" ? "Timed out" : (err as Error).message;
     return {
