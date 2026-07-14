@@ -275,7 +275,7 @@ export function LlmConsole({ models }: { models: ClientModel[] }) {
           onChange={(e) => setSystem(e.target.value)}
           rows={2}
           placeholder="Optional. e.g. You are a helpful Hindi tutor."
-          className="w-full mb-4 rounded border border-zinc-300 p-2 text-sm text-zinc-900"
+          className="w-full mb-4 rounded border border-zinc-300 p-2 text-sm text-zinc-900 resize-y min-h-[2.5rem]"
         />
 
         {/* Messages */}
@@ -297,7 +297,7 @@ export function LlmConsole({ models }: { models: ClientModel[] }) {
                 onChange={(e) => setRow(i, { content: e.target.value })}
                 rows={2}
                 placeholder="Message content…"
-                className="flex-1 rounded border border-zinc-300 p-2 text-sm text-zinc-900"
+                className="flex-1 rounded border border-zinc-300 p-2 text-sm text-zinc-900 resize-y min-h-[2.5rem]"
               />
               <button
                 onClick={() => removeRow(i)}
@@ -378,7 +378,7 @@ export function LlmConsole({ models }: { models: ClientModel[] }) {
             value={judgePrompt}
             onChange={(e) => setJudgePrompt(e.target.value)}
             rows={7}
-            className="w-full rounded border border-zinc-300 p-2 text-sm text-zinc-900 font-mono"
+            className="w-full rounded border border-zinc-300 p-2 text-sm text-zinc-900 font-mono resize-y min-h-[4rem]"
           />
         </div>
 
