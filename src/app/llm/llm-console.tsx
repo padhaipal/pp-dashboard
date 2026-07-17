@@ -22,12 +22,12 @@ type ResultState =
 type SummaryState =
   | { status: "idle" }
   | { status: "loading" }
-  | { status: "unavailable" } // no ANTHROPIC_API_KEY
+  | { status: "unavailable" } // judge model's API key not set
   | { status: "done"; data: CallResult };
 
-// The model that judges/summarizes the others (see models.ts). Requires ANTHROPIC_API_KEY.
-const JUDGE_MODEL_ID = "anthropic-opus";
-const JUDGE_MODEL_NAME = "Claude Opus";
+// The model that judges/summarizes the others (see models.ts). Requires its API key.
+const JUDGE_MODEL_ID = "openai-gpt-4.1";
+const JUDGE_MODEL_NAME = "GPT-4.1";
 
 // Editable template. <LLM prompt> and <LLM responses> are substituted at call time.
 const DEFAULT_JUDGE_PROMPT = `You are evaluating responses from several different LLMs that were all given the SAME prompt.
@@ -374,7 +374,8 @@ export function LlmConsole({ models }: { models: ClientModel[] }) {
             prompt sent to the models;{" "}
             <code className="rounded bg-zinc-100 px-1">&lt;LLM responses&gt;</code> with every model&apos;s
             response plus its latency and cost.
-            {!judgeModel?.available && " Set ANTHROPIC_API_KEY in Railway to enable."}
+            {!judgeModel?.available &&
+              ` Set ${judgeModel?.envKey ?? "the judge model's API key"} in Railway to enable.`}
           </p>
           <textarea
             value={judgePrompt}
@@ -404,7 +405,8 @@ export function LlmConsole({ models }: { models: ClientModel[] }) {
             )}
             {summary.status === "unavailable" && (
               <p className="text-sm text-zinc-500">
-                Set ANTHROPIC_API_KEY in Railway to enable the {JUDGE_MODEL_NAME} summary.
+                Set {judgeModel?.envKey ?? "the judge model's API key"} in Railway to enable the{" "}
+                {JUDGE_MODEL_NAME} summary.
               </p>
             )}
             {summary.status === "done" &&
