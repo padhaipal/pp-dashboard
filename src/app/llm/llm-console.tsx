@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { CallResult, ChatMessage } from "./models";
+import { DEFAULT_SYSTEM_PROMPT, DEFAULT_USER_PROMPT } from "./default-prompts";
 
 export type ClientModel = {
   id: string;
@@ -79,8 +80,8 @@ function fillJudgePrompt(template: string, promptText: string, responsesText: st
 }
 
 export function LlmConsole({ models }: { models: ClientModel[] }) {
-  const [system, setSystem] = useState("");
-  const [rows, setRows] = useState<Row[]>([{ role: "user", content: "" }]);
+  const [system, setSystem] = useState(DEFAULT_SYSTEM_PROMPT);
+  const [rows, setRows] = useState<Row[]>([{ role: "user", content: DEFAULT_USER_PROMPT }]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [results, setResults] = useState<Record<string, ResultState>>({});
   const [running, setRunning] = useState(false);
