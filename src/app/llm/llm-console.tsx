@@ -45,16 +45,29 @@ Decide:
 
 Keep it concise.`;
 
+// The judge bundles the original prompt + every response into ONE call, which
+// can blow the judge model's tokens-per-minute limit (e.g. GPT-4.1 at 30k TPM).
+// Cap the character budget so the request stays well under it (~1 token ≈ 4 chars).
+const JUDGE_PROMPT_CHAR_BUDGET = 6000; // ~1.5k tokens for the original prompt copy
+const JUDGE_RESPONSES_CHAR_BUDGET = 32000; // ~8k tokens shared across all responses
+
+function truncate(s: string, max: number): string {
+  return s.length <= max ? s : `${s.slice(0, max)}\n… [truncated ${s.length - max} chars]`;
+}
+
 function formatSentPrompt(messages: ChatMessage[]): string {
-  return messages.map((m) => `[${m.role}]\n${m.content}`).join("\n\n");
+  const joined = messages.map((m) => `[${m.role}]\n${m.content}`).join("\n\n");
+  return truncate(joined, JUDGE_PROMPT_CHAR_BUDGET);
 }
 
 function formatResponses(items: { label: string; data: CallResult }[]): string {
+  // Split the response budget evenly across models so many selections still fit.
+  const perResponse = Math.max(400, Math.floor(JUDGE_RESPONSES_CHAR_BUDGET / Math.max(1, items.length)));
   return items
     .map(({ label, data }) => {
       const ttft = data.ttftMs !== null ? `TTFT ${Math.round(data.ttftMs)}ms, ` : "";
       const cost = data.costUsd !== null ? `, cost $${data.costUsd.toFixed(5)}` : "";
-      return `### ${label} (${ttft}total ${Math.round(data.totalMs)}ms${cost})\n${data.text}`;
+      return `### ${label} (${ttft}total ${Math.round(data.totalMs)}ms${cost})\n${truncate(data.text, perResponse)}`;
     })
     .join("\n\n");
 }
