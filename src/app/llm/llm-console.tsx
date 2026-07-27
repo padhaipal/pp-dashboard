@@ -3,12 +3,27 @@
 import { useMemo, useState } from "react";
 import type { CallResult, ChatMessage } from "./models";
 import { DEFAULT_SYSTEM_PROMPT, DEFAULT_USER_PROMPT } from "./default-prompts";
+import {
+  MAX_CUSTOM_VARS,
+  OUTPUT_SCHEMAS,
+  SEED_CONCURRENCY,
+  SEED_MAX_COUNT,
+  SEED_PROVIDER_MAP,
+  VAR_NAME_MAX_CHARS,
+  VAR_VALUE_MAX_CHARS,
+  substituteVariables,
+  type CustomVar,
+  type SeedRun,
+} from "./seed";
 
 export type ClientModel = {
   id: string;
   label: string;
   provider: string;
   envKey: string;
+  // Provider-native model id (e.g. "gpt-4.1") — what pp-sketch's seeding
+  // endpoint expects.
+  model: string;
   priceIn: number;
   priceOut: number;
   available: boolean;
@@ -89,7 +104,22 @@ export function LlmConsole({ models }: { models: ClientModel[] }) {
   const [judgePrompt, setJudgePrompt] = useState(DEFAULT_JUDGE_PROMPT);
   const [summary, setSummary] = useState<SummaryState>({ status: "idle" });
 
+  // ── Seeding state (the pp-sketch-backed path) ──
+  const [outputSchemaName, setOutputSchemaName] = useState(OUTPUT_SCHEMAS[0].name);
+  const [customVars, setCustomVars] = useState<CustomVar[]>([]);
+  const [count, setCount] = useState(1);
+  const [seedModelId, setSeedModelId] = useState<string>("");
+  const [seedStates, setSeedStates] = useState<SeedRun[]>([]);
+  const [seeding, setSeeding] = useState(false);
+
   const judgeModel = useMemo(() => models.find((m) => m.id === JUDGE_MODEL_ID), [models]);
+
+  // Models whose provider is wired in pp-sketch's interfaces/llm — the only
+  // ones the seed endpoint accepts.
+  const seedableModels = useMemo(
+    () => models.filter((m) => m.available && SEED_PROVIDER_MAP[m.provider]),
+    [models],
+  );
 
   const grouped = useMemo(() => {
     const byProvider = new Map<string, ClientModel[]>();
@@ -144,12 +174,125 @@ export function LlmConsole({ models }: { models: ClientModel[] }) {
   const HINDI_DIRECTIVE =
     "Respond entirely in Hindi (हिन्दी) using Devanagari script. Every word of your output must be in Hindi. Do not use English.";
 
-  function buildMessages(): ChatMessage[] {
+  // requestIndex drives array-variable rotation across a seed batch. Test
+  // Models always uses index 0.
+  function buildMessages(requestIndex = 0): ChatMessage[] {
+    const allVars: CustomVar[] = [
+      {
+        name: "outputSchema",
+        value:
+          OUTPUT_SCHEMAS.find((s) => s.name === outputSchemaName)?.value ??
+          OUTPUT_SCHEMAS[0].value,
+      },
+      ...customVars,
+    ];
+    const sub = (text: string) => substituteVariables(text, allVars, requestIndex);
     const msgs: ChatMessage[] = [];
     if (language === "hindi") msgs.push({ role: "system", content: HINDI_DIRECTIVE });
-    if (system.trim()) msgs.push({ role: "system", content: system });
-    for (const r of rows) if (r.content.trim()) msgs.push({ role: r.role, content: r.content });
+    if (system.trim()) msgs.push({ role: "system", content: sub(system) });
+    for (const r of rows) if (r.content.trim()) msgs.push({ role: r.role, content: sub(r.content) });
     return msgs;
+  }
+
+  function setCustomVar(i: number, patch: Partial<CustomVar>) {
+    setCustomVars((prev) => prev.map((v, idx) => (idx === i ? { ...v, ...patch } : v)));
+  }
+
+  function addCustomVar() {
+    setCustomVars((prev) =>
+      prev.length >= MAX_CUSTOM_VARS ? prev : [...prev, { name: "", value: "" }],
+    );
+  }
+
+  function removeCustomVar(i: number) {
+    setCustomVars((prev) => prev.filter((_, idx) => idx !== i));
+  }
+
+  function setSeedRun(i: number, run: SeedRun) {
+    setSeedStates((prev) => prev.map((s, idx) => (idx === i ? run : s)));
+  }
+
+  // One generation per request: LLM call → validation → solvability filter →
+  // insert. Slow by nature (~1-2 min per question for the 100-run filter).
+  async function runSeedRequest(model: ClientModel, provider: string, i: number) {
+    setSeedRun(i, { status: "running" });
+    try {
+      const res = await fetch("/api/proxy/media-meta-data/llm-generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider,
+          model: model.model,
+          messages: buildMessages(i),
+        }),
+      });
+      const json = (await res.json().catch(() => null)) as {
+        status?: string;
+        reason?: string;
+        retriable?: boolean;
+        passage_id?: string;
+        level?: number;
+        tts_error?: string;
+        questions?: { status: string }[];
+        message?: string;
+      } | null;
+      if (!res.ok || !json?.status) {
+        setSeedRun(i, {
+          status: "failed",
+          reason: json?.message ?? json?.reason ?? `HTTP ${res.status}`,
+          retriable: true,
+        });
+        return;
+      }
+      if (json.status === "created") {
+        const questions = json.questions ?? [];
+        setSeedRun(i, {
+          status: "created",
+          passageId: json.passage_id,
+          level: json.level,
+          questionsCreated: questions.filter((q) => q.status === "created").length,
+          questionsRejected: questions.filter((q) => q.status === "rejected").length,
+          ttsError: json.tts_error,
+        });
+      } else {
+        setSeedRun(i, {
+          status: json.status === "rejected" ? "rejected" : "failed",
+          reason: json.reason ?? "unknown",
+          retriable: json.retriable === true,
+        });
+      }
+    } catch (err) {
+      setSeedRun(i, { status: "failed", reason: (err as Error).message, retriable: true });
+    }
+  }
+
+  async function seed() {
+    const model = modelById.get(seedModelId);
+    if (!model) return;
+    const provider = SEED_PROVIDER_MAP[model.provider];
+    if (!provider) return;
+    const n = Math.min(Math.max(Math.round(count) || 1, 1), SEED_MAX_COUNT);
+
+    setSeeding(true);
+    setSeedStates(Array.from({ length: n }, () => ({ status: "running" })));
+    let next = 0;
+    await Promise.all(
+      Array.from({ length: Math.min(SEED_CONCURRENCY, n) }, async () => {
+        while (next < n) {
+          const i = next++;
+          await runSeedRequest(model, provider, i);
+        }
+      }),
+    );
+    setSeeding(false);
+  }
+
+  async function retrySeed(i: number) {
+    const model = modelById.get(seedModelId);
+    if (!model) return;
+    const provider = SEED_PROVIDER_MAP[model.provider];
+    if (!provider) return;
+    await runSeedRequest(model, provider, i);
   }
 
   async function start() {
@@ -330,6 +473,69 @@ export function LlmConsole({ models }: { models: ClientModel[] }) {
           + Add message
         </button>
 
+        {/* Prompt variables — <varName> placeholders substituted into the
+            system message + all message rows before sending */}
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-zinc-700 mb-1">Prompt variables</label>
+          <p className="text-xs text-zinc-500 mb-2">
+            Reference variables in any message as{" "}
+            <code className="rounded bg-zinc-100 px-1">&lt;varName&gt;</code>.{" "}
+            <code className="rounded bg-zinc-100 px-1">&lt;outputSchema&gt;</code> is built in — pick a
+            preset below. A value that is a JSON array rotates per request in a seed batch (element ={" "}
+            <code className="rounded bg-zinc-100 px-1">requestIndex % length</code>, wrapping); Test
+            Models always uses the first element.
+          </p>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="text-xs font-mono text-zinc-600 w-32 shrink-0">&lt;outputSchema&gt;</span>
+            <select
+              value={outputSchemaName}
+              onChange={(e) => setOutputSchemaName(e.target.value)}
+              className="flex-1 rounded border border-zinc-300 p-2 text-sm text-zinc-900 bg-white"
+            >
+              {OUTPUT_SCHEMAS.map((s) => (
+                <option key={s.name} value={s.name}>
+                  {s.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="space-y-2 mb-2">
+            {customVars.map((v, i) => (
+              <div key={i} className="flex gap-2 items-start">
+                <input
+                  value={v.name}
+                  maxLength={VAR_NAME_MAX_CHARS}
+                  onChange={(e) => setCustomVar(i, { name: e.target.value })}
+                  placeholder="varName"
+                  className="w-32 shrink-0 rounded border border-zinc-300 p-2 text-sm font-mono text-zinc-900"
+                />
+                <textarea
+                  value={v.value}
+                  maxLength={VAR_VALUE_MAX_CHARS}
+                  onChange={(e) => setCustomVar(i, { value: e.target.value })}
+                  rows={1}
+                  placeholder='Value — plain text, or a JSON array like ["जंगल","नदी"] to rotate per request'
+                  className="flex-1 rounded border border-zinc-300 p-2 text-sm text-zinc-900 resize-y min-h-[2.5rem]"
+                />
+                <button
+                  onClick={() => removeCustomVar(i)}
+                  className="px-2 py-2 text-sm text-zinc-500 hover:text-red-600"
+                  aria-label="Remove variable"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+          <button
+            onClick={addCustomVar}
+            disabled={customVars.length >= MAX_CUSTOM_VARS}
+            className="text-sm text-blue-600 hover:underline disabled:opacity-40 disabled:no-underline"
+          >
+            + Add variable{customVars.length >= MAX_CUSTOM_VARS ? ` (max ${MAX_CUSTOM_VARS})` : ""}
+          </button>
+        </div>
+
         {/* Model checkboxes */}
         <div className="mb-6">
           <div className="flex items-center gap-3 mb-2">
@@ -399,12 +605,102 @@ export function LlmConsole({ models }: { models: ClientModel[] }) {
           />
         </div>
 
+        {/* Seed the database via pp-sketch (media-metadata → interfaces/llm) */}
+        <div className="mb-4 rounded-lg border border-zinc-200 bg-white p-4">
+          <label className="block text-sm font-medium text-zinc-700 mb-1">Seed database</label>
+          <p className="text-xs text-zinc-500 mb-2">
+            Sends the prompt through pp-sketch: one request per generation (LLM call → validation →
+            100-run zero-context solvability filter → passage/question/option/explanation/flow
+            entities). Expect ~1–2 min per question. Only OpenAI, Anthropic, Gemini, Mistral and
+            Sarvam models are wired.
+          </p>
+          <div className="flex flex-wrap items-center gap-3">
+            <select
+              value={seedModelId}
+              onChange={(e) => setSeedModelId(e.target.value)}
+              className="rounded border border-zinc-300 p-2 text-sm text-zinc-900 bg-white"
+            >
+              <option value="">Model for seeding…</option>
+              {seedableModels.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.provider} · {m.label}
+                </option>
+              ))}
+            </select>
+            <label className="flex items-center gap-2 text-sm text-zinc-700">
+              Requests
+              <input
+                type="number"
+                min={1}
+                max={SEED_MAX_COUNT}
+                value={count}
+                onChange={(e) => {
+                  const n = parseInt(e.target.value, 10);
+                  setCount(Number.isNaN(n) ? 1 : Math.min(Math.max(n, 1), SEED_MAX_COUNT));
+                }}
+                className="w-24 rounded border border-zinc-300 p-2 text-sm text-zinc-900"
+              />
+            </label>
+            <button
+              onClick={seed}
+              disabled={seeding || !seedModelId}
+              className="rounded bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-40"
+            >
+              {seeding
+                ? `Seeding… (${seedStates.filter((s) => s.status !== "running").length}/${seedStates.length})`
+                : "Seed Database"}
+            </button>
+          </div>
+
+          {seedStates.length > 0 && (
+            <div className="mt-3 space-y-1">
+              <p className="text-xs text-zinc-500">
+                {seedStates.filter((s) => s.status === "created").length} created ·{" "}
+                {seedStates.filter((s) => s.status === "rejected").length} rejected ·{" "}
+                {seedStates.filter((s) => s.status === "failed").length} failed ·{" "}
+                {seedStates.filter((s) => s.status === "running").length} running
+              </p>
+              <div className="max-h-64 overflow-y-auto space-y-1">
+                {seedStates.map((s, i) => (
+                  <div key={i} className="flex items-start gap-2 text-xs">
+                    <span className="text-zinc-400 tabular-nums w-8 shrink-0">#{i + 1}</span>
+                    {s.status === "running" && <span className="text-zinc-400">running…</span>}
+                    {s.status === "created" && (
+                      <span className="text-emerald-700">
+                        created — level {s.level}, {s.questionsCreated} question
+                        {s.questionsCreated === 1 ? "" : "s"}
+                        {s.questionsRejected > 0 && `, ${s.questionsRejected} rejected`}
+                        {s.ttsError && (
+                          <span className="text-amber-600"> — TTS: {s.ttsError}</span>
+                        )}
+                      </span>
+                    )}
+                    {(s.status === "rejected" || s.status === "failed") && (
+                      <span className={s.status === "failed" ? "text-red-600" : "text-amber-700"}>
+                        {s.status} — {s.reason}
+                        {s.retriable && (
+                          <button
+                            onClick={() => retrySeed(i)}
+                            className="ml-2 text-blue-600 underline"
+                          >
+                            retry
+                          </button>
+                        )}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
         <button
           onClick={start}
           disabled={running || selected.size === 0}
           className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-40"
         >
-          {running ? "Running…" : `Test ${selected.size || ""} model${selected.size === 1 ? "" : "s"}`}
+          {running ? "Running…" : `Test ${selected.size || ""} Model${selected.size === 1 ? "" : "s"}`}
         </button>
 
         {/* Summary — judge model verdict */}

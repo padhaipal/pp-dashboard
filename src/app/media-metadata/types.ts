@@ -1,14 +1,17 @@
-export type MediaType = "audio" | "text" | "video" | "image" | "sticker";
+export type MediaType = "audio" | "text" | "video" | "image" | "sticker" | "flow";
 
 export type MediaTypeCounts = Record<MediaType, number>;
 
-// Fixed display order, matching pp-sketch's VALID_MEDIA_TYPES.
+// Fixed display order, matching pp-sketch's VALID_MEDIA_TYPES. "flow" is a
+// WhatsApp Flow message (comprehension question) — payload JSON in .text, no
+// S3 object, no WhatsApp preload.
 export const ALL_MEDIA_TYPES: MediaType[] = [
   "audio",
   "text",
   "video",
   "image",
   "sticker",
+  "flow",
 ];
 
 // HARDCODED list of the non-lesson state_transition_ids (onboarding, notifications,
@@ -33,13 +36,33 @@ export const NON_LESSON_STIDS: string[] = [
   // Sentence-lesson prompts (fixed `sentence` prefix — the /coverage grid only
   // enumerates per-letter/per-word prefixes; the per-word drill stid
   // `{word}-sentence-word-drillWord` DOES live in the grid). Keep in sync with
-  // literacy-lesson.machine.ts in pp-sketch.
+  // literacy-lesson.machine.ts in pp-sketch. The old
+  // sentence-sentence-complete-correct-{first,retry} stids are GONE (2026-07):
+  // a correct sentence read now leads into the comprehension state, whose
+  // dynamic `${passageId}-…`/`${answerId}-…` stids live in the comprehension
+  // table below the grid, not here.
   "sentence-start-sentence-initial",
-  "sentence-sentence-complete-correct-first",
-  "sentence-sentence-complete-correct-retry",
   "sentence-sentence-complete-maxErrors",
+  // Sentence failed but no teachable drill word (conjunct/nukta) — retry.
+  "sentence-sentence-wrong-retry",
   "sentence-word-sentence-correct-retrySentence",
 ];
+
+// One row of the paginated comprehension-stid table (dynamic
+// `${passageId}-sentence-comprehension` flow rows and
+// `${answerId}-comprehension-complete` explanation rows).
+export interface ComprehensionStidRow {
+  state_transition_id: string;
+  media_count: number;
+  created_at: string;
+}
+
+export interface ComprehensionStidsResponse {
+  rows: ComprehensionStidRow[];
+  total: number;
+  limit: number;
+  offset: number;
+}
 
 export interface CoverageRow {
   prefix: string;

@@ -22,7 +22,7 @@ type RowState =
   | { status: "ready"; counts: MediaTypeCounts };
 
 function emptyCounts(): MediaTypeCounts {
-  return { audio: 0, text: 0, video: 0, image: 0, sticker: 0 };
+  return { audio: 0, text: 0, video: 0, image: 0, sticker: 0, flow: 0 };
 }
 
 async function fetchCounts(stid: string): Promise<MediaTypeCounts> {

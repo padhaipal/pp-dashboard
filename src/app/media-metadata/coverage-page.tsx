@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { BulkCreateForm } from "./bulk-create-form";
 import { CoverageTable } from "./coverage-table";
 import { NonLessonTable } from "./non-lesson-table";
+import { ComprehensionTable } from "./comprehension-table";
 import type { CoverageResponse } from "./types";
 
 export function CoveragePage() {
@@ -49,6 +50,7 @@ export function CoveragePage() {
       />
       <NonLessonTable />
       <CoverageTable data={data} onReload={() => load()} />
+      <ComprehensionTable />
     </>
   );
 }

@@ -52,6 +52,16 @@ export function MediaIcon({ type }: { type: MediaType }) {
           <line x1="15" y1="9" x2="15.01" y2="9" />
         </svg>
       );
+    case "flow":
+      // Radio-button list — a WhatsApp Flow multiple-choice question.
+      return (
+        <svg {...common}>
+          <circle cx="6" cy="7" r="2" />
+          <path d="M11 7h9" />
+          <circle cx="6" cy="17" r="2" />
+          <path d="M11 17h9" />
+        </svg>
+      );
   }
 }
 
