@@ -16,6 +16,8 @@ export default async function LlmPage() {
     label: m.label,
     provider: m.provider,
     envKey: m.envKey,
+    // Provider-native model id — the seeding endpoint (pp-sketch) needs it.
+    model: m.model,
     priceIn: m.priceIn,
     priceOut: m.priceOut,
     available: Boolean(process.env[m.envKey]),
