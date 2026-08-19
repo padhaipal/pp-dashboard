@@ -2,9 +2,10 @@
 // next to Test Models). Requests route through the pp-sketch backend:
 // /api/proxy/media-meta-data/llm-generate → MediaMetaDataService →
 // src/interfaces/llm/<provider>. One request = one generation (LLM call →
-// validation → 100-run zero-context solvability filter → entity tree
-// insert), so the dashboard fires `count` requests client-side with a small
-// concurrency pool instead of one long request.
+// validation → 10-run passage-judge gate → 144-run zero-context solvability
+// filter → entity tree insert of ONE passage with ONE question), so the
+// dashboard fires `count` requests client-side with a small concurrency pool
+// instead of one long request.
 
 // Dashboard provider grouping → pp-sketch LLM provider id. Only these five
 // are wired in pp-sketch; models from other providers can't seed.
@@ -22,65 +23,80 @@ export const MAX_CUSTOM_VARS = 10;
 export const VAR_NAME_MAX_CHARS = 50;
 export const VAR_VALUE_MAX_CHARS = 2000;
 
-// Hardcoded <outputSchema> presets. The selected one replaces <outputSchema>
-// in the prompt. The shape MUST match pp-sketch's parseGeneratedContent
-// (media-meta-data/llm-generate.dto.ts): unknown keys are dropped, the level
-// is computed server-side from word count, and questions failing the
-// zero-context solvability filter are rejected.
-export const OUTPUT_SCHEMAS: { name: string; value: string }[] = [
+// Reading subconstructs from the SDG 4.1.1 Minimum Proficiency Levels
+// blueprint (source of the descriptions below — see ACER_REFERENCE). One JSON
+// template per subconstruct; the question_type is pinned inside the template.
+export const QUESTION_TYPE_INFO: { code: string; description: string }[] = [
+  { code: "R1.1", description: "Recognise the meaning of common Grade-level words" },
   {
-    name: "Comprehension MCQ (full, with TTS explanations)",
-    value: `Return ONLY a JSON object, no prose, exactly this shape:
-{
-  "passage": {
-    "text": "<the reading passage in Hindi>",
-    "passage_type": "narrative" | "expository"
-  },
-  "questions": [
-    {
-      "text": "<comprehension question about the passage>",
-      "question_type": "retrieve" | "infer" | "integrate" | "interpret" | "evaluate",
-      "send_as_flow": true,
-      "options": [
-        {
-          "text": "<answer option, max 300 characters>",
-          "correct": true,
-          "explanation": { "text": "<why this option is right/wrong>", "tts": true }
-        }
-      ]
-    }
-  ]
-}
-Rules: 2-4 options per question with EXACTLY one "correct": true; 1-10
-questions; a question must NOT be answerable without reading the passage.`,
+    code: "R1.2",
+    description:
+      "Retrieve explicit information in a Grade-level continuous text by direct or close word matching",
   },
   {
-    name: "Comprehension MCQ (text-only explanations)",
-    value: `Return ONLY a JSON object, no prose, exactly this shape:
-{
-  "passage": {
-    "text": "<the reading passage in Hindi>",
-    "passage_type": "narrative" | "expository"
+    code: "R1.3",
+    description:
+      "Retrieve explicit information in a Grade-level text by synonymous word matching",
   },
-  "questions": [
-    {
-      "text": "<comprehension question about the passage>",
-      "question_type": "retrieve" | "infer" | "integrate" | "interpret" | "evaluate",
-      "send_as_flow": true,
-      "options": [
-        {
-          "text": "<answer option, max 300 characters>",
-          "correct": false,
-          "explanation": { "text": "<why this option is right/wrong>", "tts": false }
-        }
-      ]
-    }
-  ]
-}
-Rules: 2-4 options per question with EXACTLY one "correct": true; 1-10
-questions; a question must NOT be answerable without reading the passage.`,
+  {
+    code: "R2.1",
+    description:
+      "Identify the meaning of unknown words and expressions in a Grade-level text",
   },
+  { code: "R2.2", description: "Make inferences in a Grade-level text" },
+  {
+    code: "R2.3",
+    description: "Identify the main and secondary ideas in a Grade-level text",
+  },
+  { code: "R3.1", description: "Identify the purpose and audience of a text" },
+  { code: "R3.2", description: "Evaluate a text with justification" },
 ];
+
+// Source of the R1.1-R3.2 descriptions above.
+export const ACER_REFERENCE = {
+  title:
+    "SDG 4.1.1 Minimum Proficiency Levels: Definition and blueprint for assessment (ACER GEM / UNESCO UIS)",
+  url: "https://research.acer.edu.au/cgi/viewcontent.cgi?article=1025&context=gem",
+  page: 26,
+};
+
+// One <outputSchema> preset per question type. The shape MUST match
+// pp-sketch's parseGeneratedContent (media-meta-data/llm-generate.dto.ts):
+// exactly one passage + one question, unknown keys are dropped, the level is
+// computed server-side from word count, every text entity is converted to
+// audio, and questions failing the passage-judge or zero-context solvability
+// gate are soft-deleted.
+function schemaFor(code: string, description: string): string {
+  return `Return ONLY a JSON object, no prose, exactly this shape:
+{
+  "passage": {
+    "text": "<the reading passage in Hindi>",
+    "passage_type": "narrative" | "expository"
+  },
+  "question": {
+    "text": "<comprehension question about the passage>",
+    "question_type": "${code}",
+    "send_as_flow": true,
+    "options": [
+      {
+        "text": "<answer option, max 300 characters>",
+        "correct": true,
+        "explanation": { "text": "<why this option is right/wrong>" }
+      }
+    ]
+  }
+}
+Rules: exactly ONE question with "question_type": "${code}"; the question must
+test this skill: "${description}"; 2-4 options with EXACTLY one
+"correct": true; every option needs an explanation; the question must NOT be
+answerable without reading the passage.`;
+}
+
+export const OUTPUT_SCHEMAS: { name: string; value: string }[] =
+  QUESTION_TYPE_INFO.map(({ code, description }) => ({
+    name: `${code} — ${description}`,
+    value: schemaFor(code, description),
+  }));
 
 export type CustomVar = { name: string; value: string };
 
@@ -90,11 +106,17 @@ export type SeedRun =
       status: "created";
       passageId?: string;
       level?: number;
-      questionsCreated: number;
-      questionsRejected: number;
       ttsError?: string;
     }
-  | { status: "rejected" | "failed"; reason: string; retriable: boolean };
+  | {
+      status: "rejected" | "failed";
+      reason: string;
+      retriable: boolean;
+      // 'discarded' = persisted soft-deleted with a gate_failure record
+      // (visible under Filter failures); 'unverified' = nothing written,
+      // retry may succeed.
+      questionStatus?: string;
+    };
 
 // <varName> substitution. Array-valued variables (a JSON array string) rotate
 // by request index: element index = requestIndex % array length. Non-array
