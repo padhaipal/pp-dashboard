@@ -6,6 +6,7 @@ import { EditableName } from "@/components/editable-name";
 import { MediaTable } from "./media-table";
 import { ScoreChart } from "./score-chart";
 import { UserMetrics } from "./user-metrics";
+import { LiteracyTests } from "./literacy-tests";
 
 export function UserMediaView({ userId }: { userId: string }) {
   const [userName, setUserName] = useState<string | null>(null);
@@ -46,6 +47,7 @@ export function UserMediaView({ userId }: { userId: string }) {
         </div>
       </div>
       <UserMetrics userId={userId} />
+      <LiteracyTests userId={userId} />
       <ScoreChart userId={userId} />
       <div className="bg-white rounded-lg border border-zinc-200 shadow-sm overflow-hidden">
         <MediaTable userId={userId} onUserLoaded={onUserLoaded} />

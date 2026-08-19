@@ -4,8 +4,10 @@ import { useMemo, useState } from "react";
 import type { CallResult, ChatMessage } from "./models";
 import { DEFAULT_SYSTEM_PROMPT, DEFAULT_USER_PROMPT } from "./default-prompts";
 import {
+  ACER_REFERENCE,
   MAX_CUSTOM_VARS,
   OUTPUT_SCHEMAS,
+  QUESTION_TYPE_INFO,
   SEED_CONCURRENCY,
   SEED_MAX_COUNT,
   SEED_PROVIDER_MAP,
@@ -15,6 +17,7 @@ import {
   type CustomVar,
   type SeedRun,
 } from "./seed";
+import { GenerationFailures } from "./generation-failures";
 
 export type ClientModel = {
   id: string;
@@ -212,8 +215,9 @@ export function LlmConsole({ models }: { models: ClientModel[] }) {
     setSeedStates((prev) => prev.map((s, idx) => (idx === i ? run : s)));
   }
 
-  // One generation per request: LLM call → validation → solvability filter →
-  // insert. Slow by nature (~1-2 min per question for the 100-run filter).
+  // One generation per request: LLM call → validation → passage-judge gate →
+  // solvability filter → insert (one passage, one question). Slow by nature
+  // (~2-3 min for the 10+144 gate runs).
   async function runSeedRequest(model: ClientModel, provider: string, i: number) {
     setSeedRun(i, { status: "running" });
     try {
@@ -233,7 +237,7 @@ export function LlmConsole({ models }: { models: ClientModel[] }) {
         passage_id?: string;
         level?: number;
         tts_error?: string;
-        questions?: { status: string }[];
+        question?: { status: string; reason?: string };
         message?: string;
       } | null;
       if (!res.ok || !json?.status) {
@@ -245,13 +249,10 @@ export function LlmConsole({ models }: { models: ClientModel[] }) {
         return;
       }
       if (json.status === "created") {
-        const questions = json.questions ?? [];
         setSeedRun(i, {
           status: "created",
           passageId: json.passage_id,
           level: json.level,
-          questionsCreated: questions.filter((q) => q.status === "created").length,
-          questionsRejected: questions.filter((q) => q.status === "rejected").length,
           ttsError: json.tts_error,
         });
       } else {
@@ -259,6 +260,7 @@ export function LlmConsole({ models }: { models: ClientModel[] }) {
           status: json.status === "rejected" ? "rejected" : "failed",
           reason: json.reason ?? "unknown",
           retriable: json.retriable === true,
+          questionStatus: json.question?.status,
         });
       }
     } catch (err) {
@@ -499,6 +501,32 @@ export function LlmConsole({ models }: { models: ClientModel[] }) {
               ))}
             </select>
           </div>
+          {/* Question-type reference: one template per reading subconstruct */}
+          <div className="mb-2 rounded border border-zinc-200 bg-zinc-50 p-3">
+            <p className="text-xs font-medium text-zinc-600 mb-1">
+              Question types (reading subconstructs)
+            </p>
+            <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5">
+              {QUESTION_TYPE_INFO.map((t) => (
+                <div key={t.code} className="contents">
+                  <dt className="text-xs font-mono text-zinc-600">{t.code}</dt>
+                  <dd className="text-xs text-zinc-600">{t.description}</dd>
+                </div>
+              ))}
+            </dl>
+            <p className="mt-2 text-xs text-zinc-500">
+              Source:{" "}
+              <a
+                href={ACER_REFERENCE.url}
+                target="_blank"
+                rel="noreferrer"
+                className="text-blue-600 underline"
+              >
+                {ACER_REFERENCE.title}
+              </a>
+              , p. {ACER_REFERENCE.page}.
+            </p>
+          </div>
           <div className="space-y-2 mb-2">
             {customVars.map((v, i) => (
               <div key={i} className="flex gap-2 items-start">
@@ -610,9 +638,10 @@ export function LlmConsole({ models }: { models: ClientModel[] }) {
           <label className="block text-sm font-medium text-zinc-700 mb-1">Seed database</label>
           <p className="text-xs text-zinc-500 mb-2">
             Sends the prompt through pp-sketch: one request per generation (LLM call → validation →
-            100-run zero-context solvability filter → passage/question/option/explanation/flow
-            entities). Expect ~1–2 min per question. Only OpenAI, Anthropic, Gemini, Mistral and
-            Sarvam models are wired.
+            10-run passage-judge gate → 144-run zero-context solvability filter → one passage with
+            one question + options/explanations/flow, all text converted to audio). Expect ~2–3 min
+            per question. Gate-failed content is kept soft-deleted under Filter failures below.
+            Only OpenAI, Anthropic, Gemini, Mistral and Sarvam models are wired.
           </p>
           <div className="flex flex-wrap items-center gap-3">
             <select
@@ -667,9 +696,7 @@ export function LlmConsole({ models }: { models: ClientModel[] }) {
                     {s.status === "running" && <span className="text-zinc-400">running…</span>}
                     {s.status === "created" && (
                       <span className="text-emerald-700">
-                        created — level {s.level}, {s.questionsCreated} question
-                        {s.questionsCreated === 1 ? "" : "s"}
-                        {s.questionsRejected > 0 && `, ${s.questionsRejected} rejected`}
+                        created — level {s.level}
                         {s.ttsError && (
                           <span className="text-amber-600"> — TTS: {s.ttsError}</span>
                         )}
@@ -677,7 +704,9 @@ export function LlmConsole({ models }: { models: ClientModel[] }) {
                     )}
                     {(s.status === "rejected" || s.status === "failed") && (
                       <span className={s.status === "failed" ? "text-red-600" : "text-amber-700"}>
-                        {s.status} — {s.reason}
+                        {s.status}
+                        {s.questionStatus === "discarded" && " (kept for troubleshooting)"} —{" "}
+                        {s.reason}
                         {s.retriable && (
                           <button
                             onClick={() => retrySeed(i)}
@@ -782,6 +811,9 @@ export function LlmConsole({ models }: { models: ClientModel[] }) {
             })}
           </div>
         )}
+
+        {/* Recent gate-failed generations — read-only troubleshooting list */}
+        <GenerationFailures />
       </div>
     </div>
   );
