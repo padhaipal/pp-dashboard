@@ -214,8 +214,9 @@ export function LlmConsole({ models }: { models: ClientModel[] }) {
   }
 
   // One generation per request: LLM call → validation → passage-judge gate →
-  // solvability filter → insert (one passage, one question). Slow by nature
-  // (~2-3 min for the 10+144 gate runs).
+  // solvability filter (narrative R1.x only) → insert (one passage, one
+  // question). Slow by nature: gate calls are paced 2s apart server-side
+  // (Sarvam rate limit), so a gated item takes ~1-2.5 min, an ungated ~30s.
   async function runSeedRequest(model: ClientModel, provider: string, i: number) {
     setSeedRun(i, { status: "running" });
     try {
@@ -646,11 +647,12 @@ export function LlmConsole({ models }: { models: ClientModel[] }) {
           <label className="block text-sm font-medium text-zinc-700 mb-1">Seed database</label>
           <p className="text-xs text-zinc-500 mb-2">
             Sends the prompt through pp-sketch: one request per generation (LLM call → validation →
-            passage-judge gate (10 valid runs, ≤14 calls) → zero-context solvability filter (144
-            valid runs, ≤300 calls) → one passage with one question + options/explanations/flow,
-            all text converted to audio). Expect ~2–3 min per question. Gate-failed content is kept
-            soft-deleted under Filter failures below. Only OpenAI, Anthropic, Gemini, Mistral and
-            Sarvam models are wired.
+            passage-judge gate (10 valid runs, ≤14 calls) → zero-context solvability filter (24
+            valid runs, ≤50 calls; narrative R1.1–R1.3 questions only) → one passage with one
+            question + options/explanations/flow, all text converted to audio). Requests run one at
+            a time and gate calls are paced 2s apart (Sarvam rate limit) — expect ~1–2.5 min per
+            gated question, ~30s otherwise. Gate-failed content is kept soft-deleted under Filter
+            failures below. Only OpenAI, Anthropic, Gemini, Mistral and Sarvam models are wired.
           </p>
           <div className="flex flex-wrap items-center gap-3">
             <select
