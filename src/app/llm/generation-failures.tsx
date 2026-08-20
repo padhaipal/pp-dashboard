@@ -17,11 +17,26 @@ type FailureItem = {
     gate?: string;
     reason?: string;
     judge_picks?: number[];
-    rate?: number;
+    // Gate observability counters (pp-sketch gate-shared.ts): valid runs are
+    // scored up to the gate's target; the split counters partition invalid
+    // runs by cause.
+    correct?: number;
     valid_runs?: number;
-    total_runs?: number;
+    total_calls?: number;
+    call_failures?: number;
+    unparseable?: number;
+    /** Pre-2026-08 rows only. */
+    rate?: number;
   };
-  solvability: { rate?: number; valid_runs?: number } | null;
+  solvability: {
+    correct?: number;
+    valid_runs?: number;
+    total_calls?: number;
+    call_failures?: number;
+    unparseable?: number;
+    /** Pre-2026-08 rows only. */
+    rate?: number;
+  } | null;
   passage_id: string | null;
   passage_preview: string | null;
   level: number | null;
@@ -136,12 +151,25 @@ export function GenerationFailures() {
                     </span>
                   </p>
                 )}
-              {item.solvability?.rate !== undefined && (
+              {item.gate_failure.total_calls !== undefined && (
                 <p className="text-zinc-600 mt-0.5">
-                  zero-context rate: {Math.round(item.solvability.rate * 100)}%
-                  of {item.solvability.valid_runs} runs
+                  {item.gate_failure.correct !== undefined &&
+                    `correct ${item.gate_failure.correct}/`}
+                  {item.gate_failure.valid_runs} valid ·{" "}
+                  {item.gate_failure.total_calls} calls (
+                  {item.gate_failure.call_failures} call failures,{" "}
+                  {item.gate_failure.unparseable} unparseable)
                 </p>
               )}
+              {/* Pre-2026-08 rows carried a rate instead of counters. */}
+              {item.gate_failure.total_calls === undefined &&
+                item.solvability?.rate !== undefined && (
+                  <p className="text-zinc-600 mt-0.5">
+                    zero-context rate:{" "}
+                    {Math.round(item.solvability.rate * 100)}% of{" "}
+                    {item.solvability.valid_runs} runs
+                  </p>
+                )}
             </div>
           ))}
         </div>

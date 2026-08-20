@@ -4,10 +4,8 @@ import { useMemo, useState } from "react";
 import type { CallResult, ChatMessage } from "./models";
 import { DEFAULT_SYSTEM_PROMPT, DEFAULT_USER_PROMPT } from "./default-prompts";
 import {
-  ACER_REFERENCE,
   MAX_CUSTOM_VARS,
   OUTPUT_SCHEMAS,
-  QUESTION_TYPE_INFO,
   SEED_CONCURRENCY,
   SEED_MAX_COUNT,
   SEED_PROVIDER_MAP,
@@ -374,6 +372,23 @@ export function LlmConsole({ models }: { models: ClientModel[] }) {
   const modelById = new Map(models.map((m) => [m.id, m]));
   const orderedResults = [...selected].filter((id) => results[id]);
 
+  // Non-blocking pre-send check: any <word> token still present in the final
+  // (substituted) prompt that matches no defined variable and is not
+  // <outputSchema> is probably a typo or a missing variable.
+  const unmatchedTokens = (() => {
+    const defined = new Set([
+      "outputSchema",
+      ...customVars.map((v) => v.name.trim()).filter(Boolean),
+    ]);
+    const tokens = new Set<string>();
+    for (const m of buildMessages()) {
+      for (const match of m.content.matchAll(/<(\w+)>/g)) {
+        if (!defined.has(match[1])) tokens.add(match[1]);
+      }
+    }
+    return [...tokens];
+  })();
+
   // Bars for the latency + cost graphs: only completed, error-free numeric
   // results. Sorted ascending (fastest / cheapest first).
   const chartData = (() => {
@@ -480,8 +495,8 @@ export function LlmConsole({ models }: { models: ClientModel[] }) {
         <div className="mb-6">
           <label className="block text-sm font-medium text-zinc-700 mb-1">Prompt variables</label>
           <p className="text-xs text-zinc-500 mb-2">
-            Reference variables in any message as{" "}
-            <code className="rounded bg-zinc-100 px-1">&lt;varName&gt;</code>.{" "}
+            Enter the name only — no angle brackets. Reference it in the prompt
+            as <code className="rounded bg-zinc-100 px-1">&lt;name&gt;</code>.{" "}
             <code className="rounded bg-zinc-100 px-1">&lt;outputSchema&gt;</code> is built in — pick a
             preset below. A value that is a JSON array rotates per request in a seed batch (element ={" "}
             <code className="rounded bg-zinc-100 px-1">requestIndex % length</code>, wrapping); Test
@@ -501,39 +516,18 @@ export function LlmConsole({ models }: { models: ClientModel[] }) {
               ))}
             </select>
           </div>
-          {/* Question-type reference: one template per reading subconstruct */}
-          <div className="mb-2 rounded border border-zinc-200 bg-zinc-50 p-3">
-            <p className="text-xs font-medium text-zinc-600 mb-1">
-              Question types (reading subconstructs)
-            </p>
-            <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5">
-              {QUESTION_TYPE_INFO.map((t) => (
-                <div key={t.code} className="contents">
-                  <dt className="text-xs font-mono text-zinc-600">{t.code}</dt>
-                  <dd className="text-xs text-zinc-600">{t.description}</dd>
-                </div>
-              ))}
-            </dl>
-            <p className="mt-2 text-xs text-zinc-500">
-              Source:{" "}
-              <a
-                href={ACER_REFERENCE.url}
-                target="_blank"
-                rel="noreferrer"
-                className="text-blue-600 underline"
-              >
-                {ACER_REFERENCE.title}
-              </a>
-              , p. {ACER_REFERENCE.page}.
-            </p>
-          </div>
           <div className="space-y-2 mb-2">
             {customVars.map((v, i) => (
               <div key={i} className="flex gap-2 items-start">
                 <input
                   value={v.name}
                   maxLength={VAR_NAME_MAX_CHARS}
-                  onChange={(e) => setCustomVar(i, { name: e.target.value })}
+                  // Strip angle brackets so a pasted <topic> stores as topic.
+                  onChange={(e) =>
+                    setCustomVar(i, {
+                      name: e.target.value.replace(/[<>]/g, ""),
+                    })
+                  }
                   placeholder="varName"
                   className="w-32 shrink-0 rounded border border-zinc-300 p-2 text-sm font-mono text-zinc-900"
                 />
@@ -562,6 +556,13 @@ export function LlmConsole({ models }: { models: ClientModel[] }) {
           >
             + Add variable{customVars.length >= MAX_CUSTOM_VARS ? ` (max ${MAX_CUSTOM_VARS})` : ""}
           </button>
+          {unmatchedTokens.length > 0 && (
+            <p className="mt-2 text-xs text-amber-700">
+              Warning: {unmatchedTokens.map((t) => `<${t}>`).join(", ")}{" "}
+              {unmatchedTokens.length === 1 ? "matches" : "match"} no defined
+              variable and will be sent as-is.
+            </p>
+          )}
         </div>
 
         {/* Model checkboxes */}
@@ -638,10 +639,11 @@ export function LlmConsole({ models }: { models: ClientModel[] }) {
           <label className="block text-sm font-medium text-zinc-700 mb-1">Seed database</label>
           <p className="text-xs text-zinc-500 mb-2">
             Sends the prompt through pp-sketch: one request per generation (LLM call → validation →
-            10-run passage-judge gate → 144-run zero-context solvability filter → one passage with
-            one question + options/explanations/flow, all text converted to audio). Expect ~2–3 min
-            per question. Gate-failed content is kept soft-deleted under Filter failures below.
-            Only OpenAI, Anthropic, Gemini, Mistral and Sarvam models are wired.
+            passage-judge gate (10 valid runs, ≤14 calls) → zero-context solvability filter (144
+            valid runs, ≤300 calls) → one passage with one question + options/explanations/flow,
+            all text converted to audio). Expect ~2–3 min per question. Gate-failed content is kept
+            soft-deleted under Filter failures below. Only OpenAI, Anthropic, Gemini, Mistral and
+            Sarvam models are wired.
           </p>
           <div className="flex flex-wrap items-center gap-3">
             <select

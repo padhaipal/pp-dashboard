@@ -2,10 +2,11 @@
 // next to Test Models). Requests route through the pp-sketch backend:
 // /api/proxy/media-meta-data/llm-generate → MediaMetaDataService →
 // src/interfaces/llm/<provider>. One request = one generation (LLM call →
-// validation → 10-run passage-judge gate → 144-run zero-context solvability
-// filter → entity tree insert of ONE passage with ONE question), so the
-// dashboard fires `count` requests client-side with a small concurrency pool
-// instead of one long request.
+// validation → passage-judge gate (10 valid runs over ≤14 calls) →
+// zero-context solvability filter (144 valid runs over ≤300 calls) → entity
+// tree insert of ONE passage with ONE question), so the dashboard fires
+// `count` requests client-side with a small concurrency pool instead of one
+// long request.
 
 // Dashboard provider grouping → pp-sketch LLM provider id. Only these five
 // are wired in pp-sketch; models from other providers can't seed.
@@ -23,9 +24,12 @@ export const MAX_CUSTOM_VARS = 10;
 export const VAR_NAME_MAX_CHARS = 50;
 export const VAR_VALUE_MAX_CHARS = 2000;
 
-// Reading subconstructs from the SDG 4.1.1 Minimum Proficiency Levels
-// blueprint (source of the descriptions below — see ACER_REFERENCE). One JSON
-// template per subconstruct; the question_type is pinned inside the template.
+// Reading subconstructs from "SDG 4.1.1 Minimum Proficiency Levels:
+// Definition and blueprint for assessment" (ACER GEM / UNESCO UIS, p. 26,
+// https://research.acer.edu.au/cgi/viewcontent.cgi?article=1025&context=gem —
+// source of the descriptions below). One JSON template per subconstruct; the
+// question_type is pinned inside the template. Used to build the
+// <outputSchema> dropdown labels.
 export const QUESTION_TYPE_INFO: { code: string; description: string }[] = [
   { code: "R1.1", description: "Recognise the meaning of common Grade-level words" },
   {
@@ -52,13 +56,6 @@ export const QUESTION_TYPE_INFO: { code: string; description: string }[] = [
   { code: "R3.2", description: "Evaluate a text with justification" },
 ];
 
-// Source of the R1.1-R3.2 descriptions above.
-export const ACER_REFERENCE = {
-  title:
-    "SDG 4.1.1 Minimum Proficiency Levels: Definition and blueprint for assessment (ACER GEM / UNESCO UIS)",
-  url: "https://research.acer.edu.au/cgi/viewcontent.cgi?article=1025&context=gem",
-  page: 26,
-};
 
 // One <outputSchema> preset per question type. The shape MUST match
 // pp-sketch's parseGeneratedContent (media-meta-data/llm-generate.dto.ts):
