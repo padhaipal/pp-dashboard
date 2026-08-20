@@ -87,12 +87,13 @@ function MediaPreview({ item }: { item: MediaItem }) {
   return <div className="text-xs text-zinc-400 italic">No content</div>;
 }
 
+// onDelete absent = view-only card: no delete affordance is rendered.
 function MediaCard({
   item,
   onDelete,
 }: {
   item: MediaItem;
-  onDelete: (id: string) => void;
+  onDelete?: (id: string) => void;
 }) {
   const [confirming, setConfirming] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -109,7 +110,7 @@ function MediaCard({
         setError(`Delete failed (${res.status})`);
         return;
       }
-      onDelete(item.id);
+      onDelete?.(item.id);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -140,34 +141,36 @@ function MediaCard({
             {formatIST(item.created_at)}
           </span>
         </div>
-        <div className="flex items-center gap-2">
-          {!confirming ? (
-            <button
-              onClick={() => setConfirming(true)}
-              disabled={deleting}
-              className="text-xs text-red-500 hover:text-red-700 disabled:opacity-40"
-            >
-              Delete
-            </button>
-          ) : (
-            <>
+        {onDelete && (
+          <div className="flex items-center gap-2">
+            {!confirming ? (
               <button
-                onClick={handleDelete}
+                onClick={() => setConfirming(true)}
                 disabled={deleting}
-                className="text-xs bg-red-500 hover:bg-red-600 text-white px-2 py-0.5 rounded disabled:opacity-40"
+                className="text-xs text-red-500 hover:text-red-700 disabled:opacity-40"
               >
-                {deleting ? "..." : "Confirm"}
+                Delete
               </button>
-              <button
-                onClick={() => setConfirming(false)}
-                disabled={deleting}
-                className="text-xs text-zinc-400 hover:text-zinc-600"
-              >
-                Cancel
-              </button>
-            </>
-          )}
-        </div>
+            ) : (
+              <>
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="text-xs bg-red-500 hover:bg-red-600 text-white px-2 py-0.5 rounded disabled:opacity-40"
+                >
+                  {deleting ? "..." : "Confirm"}
+                </button>
+                <button
+                  onClick={() => setConfirming(false)}
+                  disabled={deleting}
+                  className="text-xs text-zinc-400 hover:text-zinc-600"
+                >
+                  Cancel
+                </button>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="mb-3">
@@ -192,12 +195,17 @@ function MediaCard({
   );
 }
 
+// readOnly hides every modify affordance (+ Add media, per-item delete,
+// Delete all) — used by the comprehension table, which is view-only:
+// creation happens on /llm and deletion stays in the table itself.
 export function CoverageModal({
   stid,
   onClose,
+  readOnly = false,
 }: {
   stid: string;
   onClose: () => void;
+  readOnly?: boolean;
 }) {
   const [items, setItems] = useState<MediaItem[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -305,25 +313,29 @@ export function CoverageModal({
           {!creating && (
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <button
-                  onClick={() => {
-                    setNotice(null);
-                    setCreating(true);
-                  }}
-                  className="px-3 py-1.5 text-sm bg-emerald-500 hover:bg-emerald-600 text-white rounded"
-                >
-                  + Add media
-                </button>
-                <button
-                  onClick={() => {
-                    setNotice(null);
-                    setConfirmBulkDelete(true);
-                  }}
-                  disabled={allItems.length === 0}
-                  className="px-3 py-1.5 text-sm bg-red-500 hover:bg-red-600 text-white rounded disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  Delete all media ({allItems.length})
-                </button>
+                {!readOnly && (
+                  <>
+                    <button
+                      onClick={() => {
+                        setNotice(null);
+                        setCreating(true);
+                      }}
+                      className="px-3 py-1.5 text-sm bg-emerald-500 hover:bg-emerald-600 text-white rounded"
+                    >
+                      + Add media
+                    </button>
+                    <button
+                      onClick={() => {
+                        setNotice(null);
+                        setConfirmBulkDelete(true);
+                      }}
+                      disabled={allItems.length === 0}
+                      className="px-3 py-1.5 text-sm bg-red-500 hover:bg-red-600 text-white rounded disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      Delete all media ({allItems.length})
+                    </button>
+                  </>
+                )}
               </div>
               <button
                 onClick={load}
@@ -364,7 +376,7 @@ export function CoverageModal({
                 <MediaCard
                   key={item.id}
                   item={item}
-                  onDelete={handleDeleted}
+                  onDelete={readOnly ? undefined : handleDeleted}
                 />
               ))}
             </div>

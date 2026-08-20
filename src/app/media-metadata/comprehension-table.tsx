@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { CoverageModal } from "./coverage-modal";
 import type { ComprehensionStidsResponse } from "./types";
 
 const PAGE_SIZE = 50;
@@ -11,9 +12,12 @@ const PAGE_SIZE = 50;
 // `${answerId}-comprehension-complete` (explanation text/audio rows). These
 // are created by the /llm seeding page and will eventually number in the
 // thousands, hence server-side pagination (unlike the hardcoded
-// NON_LESSON_STIDS list). Delete-only by design: creation happens on /llm,
-// and deleting a `…-sentence-comprehension` stid tears down the whole
-// passage family server-side.
+// NON_LESSON_STIDS list). Clicking a row opens the shared CoverageModal in
+// read-only mode (view the flow JSON / explanation text + audio; only the
+// rows carrying that exact stid — passage/question/option rows have no stid
+// and don't appear). Modification stays delete-only by design: creation
+// happens on /llm, and deleting a `…-sentence-comprehension` stid tears
+// down the whole passage family server-side.
 export function ComprehensionTable() {
   const [data, setData] = useState<ComprehensionStidsResponse | null>(null);
   const [offset, setOffset] = useState(0);
@@ -21,6 +25,7 @@ export function ComprehensionTable() {
   const [error, setError] = useState<string | null>(null);
   const [confirmStid, setConfirmStid] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [openStid, setOpenStid] = useState<string | null>(null);
 
   const load = useCallback(async (nextOffset: number) => {
     setLoading(true);
@@ -106,7 +111,9 @@ export function ComprehensionTable() {
               {data.rows.map((row) => (
                 <tr
                   key={row.state_transition_id}
-                  className="border-b border-zinc-100 last:border-0"
+                  onClick={() => setOpenStid(row.state_transition_id)}
+                  className="border-b border-zinc-100 last:border-0 hover:bg-emerald-50 cursor-pointer"
+                  title={row.state_transition_id}
                 >
                   <td className="px-3 py-1.5 font-mono text-zinc-800">
                     {row.state_transition_id}
@@ -119,7 +126,11 @@ export function ComprehensionTable() {
                       timeZone: "Asia/Kolkata",
                     })}
                   </td>
-                  <td className="px-3 py-1.5 text-right">
+                  {/* Delete flow must not also open the view modal. */}
+                  <td
+                    className="px-3 py-1.5 text-right"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     {confirmStid === row.state_transition_id ? (
                       <span className="inline-flex gap-2">
                         <button
@@ -152,6 +163,13 @@ export function ComprehensionTable() {
             </tbody>
           </table>
         </div>
+      )}
+      {openStid && (
+        <CoverageModal
+          stid={openStid}
+          readOnly
+          onClose={() => setOpenStid(null)}
+        />
       )}
       {total > PAGE_SIZE && (
         <div className="flex items-center gap-3 mt-2 text-xs text-zinc-600">
