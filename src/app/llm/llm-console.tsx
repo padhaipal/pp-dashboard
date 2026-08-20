@@ -374,15 +374,22 @@ export function LlmConsole({ models }: { models: ClientModel[] }) {
 
   // Non-blocking pre-send check: any <word> token still present in the final
   // (substituted) prompt that matches no defined variable and is not
-  // <outputSchema> is probably a typo or a missing variable.
+  // <outputSchema> is probably a typo or a missing variable. Index 0 is
+  // passed explicitly so array-valued variables substitute their FIRST
+  // element (deterministic, same as Test Models and seed request #1) — never
+  // an undefined index, which substituteVariables' replaceAll would coerce
+  // to the literal string "undefined". \p{L}\p{M}\p{N} keeps the check
+  // Unicode-aware: Devanagari needs \p{M} for matras (जानवर contains ा,
+  // category Mc), while multi-word placeholders like <the reading passage in
+  // Hindi> in the schema templates stay excluded (no space in the class).
   const unmatchedTokens = (() => {
     const defined = new Set([
       "outputSchema",
       ...customVars.map((v) => v.name.trim()).filter(Boolean),
     ]);
     const tokens = new Set<string>();
-    for (const m of buildMessages()) {
-      for (const match of m.content.matchAll(/<(\w+)>/g)) {
+    for (const m of buildMessages(0)) {
+      for (const match of m.content.matchAll(/<([\p{L}\p{M}\p{N}_]+)>/gu)) {
         if (!defined.has(match[1])) tokens.add(match[1]);
       }
     }
