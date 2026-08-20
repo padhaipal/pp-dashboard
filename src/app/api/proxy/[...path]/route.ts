@@ -21,7 +21,8 @@ const ADMIN_ALLOWED: { pattern: RegExp; methods: string[] }[] = [
   { pattern: /^media-meta-data\/llm-generate$/, methods: ["POST"] },
   { pattern: /^media-meta-data\/elevenlabs-generate$/, methods: ["POST"] },
   { pattern: /^media-meta-data\/upload-static$/, methods: ["POST"] },
-  { pattern: /^media-meta-data\/[^/]+$/, methods: ["DELETE"] },
+  // GET :id = read-only single-row fetch (comprehension modal's passage row).
+  { pattern: /^media-meta-data\/[^/]+$/, methods: ["GET", "DELETE"] },
   { pattern: /^scores\/letter-bins$/, methods: ["GET"] },
 ];
 

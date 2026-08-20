@@ -6,7 +6,7 @@ import { CreateMediaForm } from "./create-media-form";
 
 interface MediaItem {
   id: string;
-  media_type: "audio" | "text" | "video" | "image" | "sticker";
+  media_type: "audio" | "text" | "video" | "image" | "sticker" | "flow";
   source: string;
   status: string;
   created_at: string;
@@ -20,6 +20,71 @@ interface MediaItem {
 
 function formatIST(iso: string) {
   return new Date(iso).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" });
+}
+
+// Mirrors pp-sketch's FlowMediaPayload (llm-generate.dto.ts) — the JSON a
+// flow row stores in its text column. Options are in their stored (original
+// generation) order; runtime sends shuffle per send.
+interface FlowPayload {
+  question_text: string;
+  options: Array<{ id: string; text: string; correct: boolean }>;
+}
+
+function parseFlowPayload(text: string): FlowPayload | null {
+  try {
+    const parsed: unknown = JSON.parse(text);
+    if (!parsed || typeof parsed !== "object") return null;
+    const p = parsed as Record<string, unknown>;
+    if (typeof p.question_text !== "string" || !Array.isArray(p.options)) {
+      return null;
+    }
+    return p as unknown as FlowPayload;
+  } catch {
+    return null;
+  }
+}
+
+const OPTION_LETTERS = ["A", "B", "C", "D"];
+
+function FlowPreview({ text }: { text: string }) {
+  const payload = parseFlowPayload(text);
+  if (!payload) {
+    // Unrecognized shape — show the raw JSON rather than nothing.
+    return (
+      <pre className="text-xs text-zinc-700 bg-zinc-50 border border-zinc-200 rounded px-3 py-2 whitespace-pre-wrap break-all">
+        {text}
+      </pre>
+    );
+  }
+  return (
+    <div className="text-sm bg-zinc-50 border border-zinc-200 rounded px-3 py-2">
+      <div className="text-zinc-900 font-medium mb-2">
+        {payload.question_text}
+      </div>
+      <ol className="flex flex-col gap-1">
+        {payload.options.map((option, i) => (
+          <li
+            key={option.id}
+            className={`flex items-baseline gap-2 rounded px-2 py-1 ${
+              option.correct
+                ? "bg-emerald-50 text-emerald-900"
+                : "text-zinc-700"
+            }`}
+          >
+            <span className="font-mono text-xs text-zinc-400 shrink-0">
+              {OPTION_LETTERS[i] ?? i + 1}.
+            </span>
+            <span>{option.text}</span>
+            {option.correct && (
+              <span className="text-xs text-emerald-600 shrink-0">
+                ✓ correct
+              </span>
+            )}
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
 }
 
 function AudioPlayer({ mediaId }: { mediaId: string }) {
@@ -83,6 +148,9 @@ function MediaPreview({ item }: { item: MediaItem }) {
         {item.text}
       </div>
     );
+  }
+  if (item.media_type === "flow" && item.text) {
+    return <FlowPreview text={item.text} />;
   }
   return <div className="text-xs text-zinc-400 italic">No content</div>;
 }
@@ -210,6 +278,7 @@ export function CoverageModal({
   const [items, setItems] = useState<MediaItem[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [passageText, setPassageText] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [confirmBulkDelete, setConfirmBulkDelete] = useState(false);
@@ -237,6 +306,31 @@ export function CoverageModal({
   useEffect(() => {
     load();
   }, [load]);
+
+  // `${passageId}-sentence-comprehension` stids: the reading passage row
+  // carries no stid (it IS the uuid prefix), so fetch it by id to show the
+  // passage next to its flow question. Best-effort — absence just hides the
+  // block.
+  useEffect(() => {
+    const match = /^([0-9a-f-]{36})-sentence-comprehension$/i.exec(stid);
+    if (!match) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/proxy/media-meta-data/${match[1]}`);
+        if (!res.ok) return;
+        const row = (await res.json()) as MediaItem;
+        if (!cancelled && row.media_type === "text" && row.text) {
+          setPassageText(row.text);
+        }
+      } catch {
+        // best-effort only
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [stid]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -358,6 +452,17 @@ export function CoverageModal({
           {notice && (
             <div className="mb-4 text-xs text-emerald-800 bg-emerald-50 border border-emerald-200 rounded px-3 py-2">
               {notice}
+            </div>
+          )}
+
+          {passageText && (
+            <div className="mb-4">
+              <div className="text-xs font-medium uppercase tracking-wide text-zinc-500 mb-1">
+                Passage
+              </div>
+              <div className="text-sm text-zinc-800 bg-white border border-zinc-200 rounded px-3 py-2 whitespace-pre-wrap">
+                {passageText}
+              </div>
             </div>
           )}
 
