@@ -3,10 +3,13 @@
 // /api/proxy/media-meta-data/llm-generate → MediaMetaDataService →
 // src/interfaces/llm/<provider>. One request = one generation (LLM call →
 // validation → passage-judge gate (10 valid runs over ≤14 calls) →
-// zero-context solvability filter (144 valid runs over ≤300 calls) → entity
-// tree insert of ONE passage with ONE question), so the dashboard fires
-// `count` requests client-side with a small concurrency pool instead of one
-// long request.
+// zero-context solvability filter (24 valid runs over ≤50 calls, narrative
+// R1.1–R1.3 questions only) → entity tree insert of ONE passage with ONE
+// question), so the dashboard fires `count` requests client-side one at a
+// time instead of one long request. Sequential on purpose: pp-sketch paces
+// sarvam-105b gate calls 2s apart to fit Sarvam's 40 req/min rate limit,
+// and each completed item is committed in its own transaction, so a cut
+// connection keeps everything created before it.
 
 // Dashboard provider grouping → pp-sketch LLM provider id. Only these five
 // are wired in pp-sketch; models from other providers can't seed.
@@ -19,7 +22,8 @@ export const SEED_PROVIDER_MAP: Record<string, string> = {
 };
 
 export const SEED_MAX_COUNT = 1000;
-export const SEED_CONCURRENCY = 3;
+// One request in flight at a time — see the header note on sarvam pacing.
+export const SEED_CONCURRENCY = 1;
 export const MAX_CUSTOM_VARS = 10;
 export const VAR_NAME_MAX_CHARS = 50;
 export const VAR_VALUE_MAX_CHARS = 2000;
