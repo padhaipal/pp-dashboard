@@ -37,6 +37,9 @@ type FailureItem = {
     /** Pre-2026-08 rows only. */
     rate?: number;
   } | null;
+  // Answer options in creation order, correct one flagged. Absent on
+  // responses from a pp-sketch older than 2026-08-20.
+  options?: { text: string | null; correct: boolean }[];
   passage_id: string | null;
   passage_preview: string | null;
   level: number | null;
@@ -139,6 +142,25 @@ export function GenerationFailures() {
                 <p className="text-zinc-500 mb-1 line-clamp-2">
                   {item.passage_preview}
                 </p>
+              )}
+              {/* Correct answer beside its distractors, always visible —
+                  "why was this guessable without the passage?" is answered
+                  by comparing them. */}
+              {item.options && item.options.length > 0 && (
+                <ul className="mb-1">
+                  {item.options.map((option, i) => (
+                    <li
+                      key={i}
+                      className={
+                        option.correct
+                          ? "font-medium text-emerald-700"
+                          : "text-zinc-600"
+                      }
+                    >
+                      {option.correct ? "✓" : "·"} {option.text}
+                    </li>
+                  ))}
+                </ul>
               )}
               <p className="text-amber-700">{item.gate_failure.reason}</p>
               {item.gate_failure.judge_picks &&

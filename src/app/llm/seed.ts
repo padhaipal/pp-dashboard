@@ -57,18 +57,25 @@ export const QUESTION_TYPE_INFO: { code: string; description: string }[] = [
 ];
 
 
-// One <outputSchema> preset per question type. The shape MUST match
-// pp-sketch's parseGeneratedContent (media-meta-data/llm-generate.dto.ts):
-// exactly one passage + one question, unknown keys are dropped, the level is
-// computed server-side from word count, every text entity is converted to
-// audio, and questions failing the passage-judge or zero-context solvability
-// gate are soft-deleted.
-function schemaFor(code: string, description: string): string {
+// One <outputSchema> preset per question type × passage type. The shape MUST
+// match pp-sketch's parseGeneratedContent
+// (media-meta-data/llm-generate.dto.ts): exactly one passage + one question,
+// unknown keys are dropped, the level is computed server-side from word
+// count, every text entity is converted to audio, and questions failing the
+// passage-judge or zero-context solvability gate are soft-deleted.
+// passage_type is pinned per preset (never delegated to the generating LLM):
+// AMPL-b scores narrative and expository as separate buckets, so which bucket
+// a generation fills is an operator decision.
+function schemaFor(
+  code: string,
+  description: string,
+  passageType: "narrative" | "expository",
+): string {
   return `Return ONLY a JSON object, no prose, exactly this shape:
 {
   "passage": {
     "text": "<the reading passage in Hindi>",
-    "passage_type": "narrative" | "expository"
+    "passage_type": "${passageType}"
   },
   "question": {
     "text": "<comprehension question about the passage>",
@@ -86,14 +93,19 @@ function schemaFor(code: string, description: string): string {
 Rules: exactly ONE question with "question_type": "${code}"; the question must
 test this skill: "${description}"; 2-4 options with EXACTLY one
 "correct": true; every option needs an explanation; the question must NOT be
-answerable without reading the passage.`;
+answerable without reading the passage; "passage_type" must be
+"${passageType}".`;
 }
 
+// R-code order primary, narrative before expository within each code — 16
+// presets. OUTPUT_SCHEMAS[0] (R1.1 · narrative) is the dropdown default.
 export const OUTPUT_SCHEMAS: { name: string; value: string }[] =
-  QUESTION_TYPE_INFO.map(({ code, description }) => ({
-    name: `${code} — ${description}`,
-    value: schemaFor(code, description),
-  }));
+  QUESTION_TYPE_INFO.flatMap(({ code, description }) =>
+    (["narrative", "expository"] as const).map((passageType) => ({
+      name: `${code} · ${passageType} — ${description}`,
+      value: schemaFor(code, description, passageType),
+    })),
+  );
 
 export type CustomVar = { name: string; value: string };
 
