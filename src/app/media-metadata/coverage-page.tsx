@@ -5,6 +5,8 @@ import { BulkCreateForm } from "./bulk-create-form";
 import { CoverageTable } from "./coverage-table";
 import { NonLessonTable } from "./non-lesson-table";
 import { ComprehensionTable } from "./comprehension-table";
+import { PassageSearch } from "./passage-search";
+import { PassageStats } from "./passage-stats";
 import type { CoverageResponse } from "./types";
 
 export function CoveragePage() {
@@ -43,6 +45,7 @@ export function CoveragePage() {
 
   return (
     <>
+      <PassageStats />
       <BulkCreateForm
         letters={data.letters}
         words={data.words}
@@ -50,6 +53,7 @@ export function CoveragePage() {
       />
       <NonLessonTable />
       <CoverageTable data={data} onReload={() => load()} />
+      <PassageSearch />
       <ComprehensionTable />
     </>
   );

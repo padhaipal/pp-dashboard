@@ -16,6 +16,7 @@ import {
   type SeedRun,
 } from "./seed";
 import { GenerationFailures } from "./generation-failures";
+import { PassageStats } from "../media-metadata/passage-stats";
 
 export type ClientModel = {
   id: string;
@@ -654,6 +655,7 @@ export function LlmConsole({ models }: { models: ClientModel[] }) {
             gated question, ~30s otherwise. Gate-failed content is kept soft-deleted under Filter
             failures below. Only OpenAI, Anthropic, Gemini, Mistral and Sarvam models are wired.
           </p>
+          <PassageStats />
           <div className="flex flex-wrap items-center gap-3">
             <select
               value={seedModelId}
