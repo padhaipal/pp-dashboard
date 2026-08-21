@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { CoverageModal } from "./coverage-modal";
+import { TypeBadges } from "./type-badges";
 import type { ComprehensionStidsResponse } from "./types";
 
 const PAGE_SIZE = 50;
@@ -116,7 +117,12 @@ export function ComprehensionTable() {
                   title={row.state_transition_id}
                 >
                   <td className="px-3 py-1.5 font-mono text-zinc-800">
-                    {row.state_transition_id}
+                    {row.state_transition_id}{" "}
+                    <TypeBadges
+                      level={row.level}
+                      passageType={row.passage_type}
+                      questionType={row.question_type}
+                    />
                   </td>
                   <td className="px-3 py-1.5 tabular-nums text-zinc-600">
                     {row.media_count}

@@ -50,15 +50,64 @@ export const NON_LESSON_STIDS: string[] = [
 
 // One row of the paginated comprehension-stid table (dynamic
 // `${passageId}-sentence-comprehension` flow rows and
-// `${answerId}-comprehension-complete` explanation rows).
+// `${answerId}-comprehension-complete` explanation rows). level /
+// passage_type / question_type are resolved server-side from the stid's
+// passage family; null when the family is partially deleted.
 export interface ComprehensionStidRow {
   state_transition_id: string;
   media_count: number;
   created_at: string;
+  level: number | null;
+  passage_type: string | null;
+  question_type: string | null;
 }
 
 export interface ComprehensionStidsResponse {
   rows: ComprehensionStidRow[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+// Filter vocabularies — mirror pp-sketch's VALID_PASSAGE_TYPES /
+// VALID_QUESTION_TYPES (llm-generate.dto.ts).
+export const PASSAGE_TYPES = ["narrative", "expository"] as const;
+export const QUESTION_TYPE_CODES = [
+  "R1.1",
+  "R1.2",
+  "R1.3",
+  "R2.1",
+  "R2.2",
+  "R2.3",
+  "R3.1",
+  "R3.2",
+] as const;
+
+// GET /media-meta-data/passage-stats
+export interface PassageStatsRow {
+  level: number | null;
+  passage_type: string | null;
+  question_type: string | null;
+  passages: number;
+}
+
+export interface PassageStatsResponse {
+  rows: PassageStatsRow[];
+}
+
+// GET /media-meta-data/passages
+export interface PassageSearchRow {
+  id: string;
+  level: number | null;
+  passage_type: string | null;
+  question_type: string | null;
+  model: string | null;
+  preview: string;
+  created_at: string;
+}
+
+export interface PassageSearchResponse {
+  rows: PassageSearchRow[];
   total: number;
   limit: number;
   offset: number;
