@@ -14,9 +14,9 @@ const DEBOUNCE_MS = 300;
 
 // Passage finder: substring search over the passage text plus
 // narrative/expository and R-code filters. A row opens the read-only
-// comprehension modal (passage + flow question); the delete action removes
-// the WHOLE passage family server-side (same endpoint as the comprehension
-// table's delete: DELETE by-state-transition-id on the flow stid).
+// comprehension modal (passage + flow question); the roll-back action
+// soft-deletes the WHOLE passage family server-side (same endpoint as the
+// comprehension table: DELETE by-state-transition-id on the flow stid).
 export function PassageSearch() {
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
@@ -101,8 +101,8 @@ export function PassageSearch() {
       <div className="mb-2 flex items-center gap-3">
         <h2 className="text-sm font-semibold text-zinc-900">Find a passage</h2>
         <span className="text-xs text-zinc-400">
-          {total} match{total === 1 ? "" : "es"} · deleting removes the whole
-          passage family
+          {total} match{total === 1 ? "" : "es"} · roll back removes the whole
+          passage family from lessons (soft delete)
         </span>
       </div>
       <div className="mb-2 flex flex-wrap items-center gap-2">
@@ -193,7 +193,7 @@ export function PassageSearch() {
                           disabled={deleting !== null}
                           className="text-red-600 hover:underline disabled:opacity-40"
                         >
-                          {deleting === row.id ? "deleting…" : "confirm delete"}
+                          {deleting === row.id ? "rolling back…" : "confirm roll back"}
                         </button>
                         <button
                           onClick={() => setConfirmId(null)}
@@ -207,7 +207,7 @@ export function PassageSearch() {
                         onClick={() => setConfirmId(row.id)}
                         className="text-zinc-400 hover:text-red-600"
                       >
-                        delete
+                        roll back
                       </button>
                     )}
                   </td>

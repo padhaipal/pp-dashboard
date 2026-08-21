@@ -16,9 +16,9 @@ const PAGE_SIZE = 50;
 // NON_LESSON_STIDS list). Clicking a row opens the shared CoverageModal in
 // read-only mode (view the flow JSON / explanation text + audio; only the
 // rows carrying that exact stid — passage/question/option rows have no stid
-// and don't appear). Modification stays delete-only by design: creation
-// happens on /llm, and deleting a `…-sentence-comprehension` stid tears
-// down the whole passage family server-side.
+// and don't appear). Modification stays roll-back-only by design: creation
+// happens on /llm, and rolling back a `…-sentence-comprehension` stid
+// soft-deletes the whole passage family server-side.
 export function ComprehensionTable() {
   const [data, setData] = useState<ComprehensionStidsResponse | null>(null);
   const [offset, setOffset] = useState(0);
@@ -84,8 +84,8 @@ export function ComprehensionTable() {
           Comprehension state transitions
         </h2>
         <span className="text-xs text-zinc-400">
-          {total} stids · created on the /llm page · deleting a
-          …-sentence-comprehension row removes the whole passage family
+          {total} stids · created on the /llm page · rolling back a
+          …-sentence-comprehension row rolls back the whole passage family
         </span>
       </div>
       {error && <div className="text-sm text-red-600 mb-2">{error}</div>}
@@ -145,8 +145,8 @@ export function ComprehensionTable() {
                           className="text-red-600 hover:underline disabled:opacity-40"
                         >
                           {deleting === row.state_transition_id
-                            ? "deleting…"
-                            : "confirm delete"}
+                            ? "rolling back…"
+                            : "confirm roll back"}
                         </button>
                         <button
                           onClick={() => setConfirmStid(null)}
@@ -160,7 +160,7 @@ export function ComprehensionTable() {
                         onClick={() => setConfirmStid(row.state_transition_id)}
                         className="text-zinc-400 hover:text-red-600"
                       >
-                        delete
+                        roll back
                       </button>
                     )}
                   </td>
