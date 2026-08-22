@@ -70,8 +70,17 @@ export interface ComprehensionStidsResponse {
 }
 
 // Filter vocabularies — mirror pp-sketch's VALID_PASSAGE_TYPES /
-// VALID_QUESTION_TYPES (llm-generate.dto.ts).
+// VALID_QUESTION_TYPES (llm-generate.dto.ts) and VALID_MEDIA_TYPES
+// (media-meta-data.dto.ts).
 export const PASSAGE_TYPES = ["narrative", "expository"] as const;
+export const MEDIA_TYPES = [
+  "audio",
+  "text",
+  "video",
+  "image",
+  "sticker",
+  "flow",
+] as const;
 export const QUESTION_TYPE_CODES = [
   "R1.1",
   "R1.2",
