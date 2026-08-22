@@ -254,8 +254,11 @@ export function MediaTable({
   }, []);
 
   return (
-    <div className="w-full">
-      <table className="w-full text-sm text-left">
+    // overflow-x-auto + min-w on the table: with 9 columns the browser
+    // otherwise crushes/clips the trailing ones (Level was invisible on
+    // laptop widths) — scroll sideways instead.
+    <div className="w-full overflow-x-auto">
+      <table className="w-full min-w-[1100px] text-sm text-left">
         <thead>
           <tr className="border-b border-zinc-200 text-zinc-500 text-xs uppercase tracking-wide">
             <th className="py-3 px-4 font-medium">Timestamp</th>
