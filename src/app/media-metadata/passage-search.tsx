@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { CoverageModal } from "./coverage-modal";
 import { TypeBadges } from "./type-badges";
 import {
+  MEDIA_TYPES,
   PASSAGE_TYPES,
   QUESTION_TYPE_CODES,
   type PassageSearchResponse,
@@ -22,6 +23,9 @@ export function PassageSearch() {
   const [debouncedQ, setDebouncedQ] = useState("");
   const [passageType, setPassageType] = useState("");
   const [questionType, setQuestionType] = useState("");
+  const [mediaType, setMediaType] = useState("");
+  const [createdAfter, setCreatedAfter] = useState("");
+  const [createdBefore, setCreatedBefore] = useState("");
   const [offset, setOffset] = useState(0);
   const [data, setData] = useState<PassageSearchResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -47,6 +51,13 @@ export function PassageSearch() {
         if (debouncedQ.trim()) params.set("q", debouncedQ.trim());
         if (passageType) params.set("passage_type", passageType);
         if (questionType) params.set("question_type", questionType);
+        if (mediaType) params.set("media_type", mediaType);
+        if (createdAfter) params.set("created_after", createdAfter);
+        // A bare date means "that whole day" — send the exclusive-ish end
+        // of day so created_before is inclusive of it.
+        if (createdBefore) {
+          params.set("created_before", `${createdBefore}T23:59:59.999`);
+        }
         const res = await fetch(
           `/api/proxy/media-meta-data/passages?${params.toString()}`,
         );
@@ -62,7 +73,7 @@ export function PassageSearch() {
         setLoading(false);
       }
     },
-    [debouncedQ, passageType, questionType],
+    [debouncedQ, passageType, questionType, mediaType, createdAfter, createdBefore],
   );
 
   // New search input or filter resets to the first page.
@@ -137,6 +148,35 @@ export function PassageSearch() {
             </option>
           ))}
         </select>
+        <select
+          value={mediaType}
+          onChange={(e) => setMediaType(e.target.value)}
+          title="Only passages whose family contains this media type"
+          className="rounded border border-zinc-300 p-2 text-sm text-zinc-900 bg-white"
+        >
+          <option value="">has any media</option>
+          {MEDIA_TYPES.map((t) => (
+            <option key={t} value={t}>
+              has {t}
+            </option>
+          ))}
+        </select>
+        <label className="flex items-center gap-1 text-xs text-zinc-500">
+          created
+          <input
+            type="date"
+            value={createdAfter}
+            onChange={(e) => setCreatedAfter(e.target.value)}
+            className="rounded border border-zinc-300 p-1.5 text-sm text-zinc-900 bg-white"
+          />
+          –
+          <input
+            type="date"
+            value={createdBefore}
+            onChange={(e) => setCreatedBefore(e.target.value)}
+            className="rounded border border-zinc-300 p-1.5 text-sm text-zinc-900 bg-white"
+          />
+        </label>
         {loading && <span className="text-xs text-zinc-400">Searching…</span>}
       </div>
       {error && <div className="mb-2 text-sm text-red-600">{error}</div>}
