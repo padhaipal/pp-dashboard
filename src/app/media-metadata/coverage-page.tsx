@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { BulkCreateForm } from "./bulk-create-form";
 import { CoverageTable } from "./coverage-table";
 import { NonLessonTable } from "./non-lesson-table";
+import { ReadingSpeedTable } from "./reading-speed-table";
 import { ComprehensionTable } from "./comprehension-table";
 import { PassageSearch } from "./passage-search";
 import { PassageStats } from "./passage-stats";
@@ -52,6 +53,7 @@ export function CoveragePage() {
         onCreated={() => load()}
       />
       <NonLessonTable />
+      <ReadingSpeedTable />
       <CoverageTable data={data} onReload={() => load()} />
       <PassageSearch />
       <ComprehensionTable />

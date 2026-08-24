@@ -46,17 +46,18 @@ export const NON_LESSON_STIDS: string[] = [
   // Sentence failed but no teachable drill word (conjunct/nukta) — retry.
   "sentence-sentence-wrong-retry",
   "sentence-word-sentence-correct-retrySentence",
-  // Reading-speed feedback (pp-sketch PR #61): the audio-reply path emits a
-  // synthetic `{n}-wpm-reading-speed` stid (0, 1–200, 200plus) for completed
-  // level-8+ sentence lessons. These three are the SEEDABLE keys, not the full
-  // family: `_-wpm-reading-speed` is the generic fallback covering every
-  // integer lookup (specific-beats-generic merge in pp-sketch's
-  // findMediaByStateTransitionId); 0 and 200plus are the corrupt-duration
-  // sentinels worth distinct content. Counts here use the exact-match
-  // /by-state-transition-id endpoint, so each row reflects only its own
-  // seeded media. Keep in sync with inbound.processor.ts in pp-sketch.
+];
+
+// Every reading-speed stid the audio-reply path can emit for a completed
+// level-8+ sentence lesson — synced with inbound.processor.ts in pp-sketch.
+// 203 entries, generic first: the `_` row is the generic fallback that
+// serves every integer at send time (specific-beats-generic merge); 0 and
+// 200plus are the corrupt-duration sentinels. Rendered in their own
+// scrollable table (reading-speed-table.tsx), NOT in NON_LESSON_STIDS.
+export const READING_SPEED_STIDS: string[] = [
   "_-wpm-reading-speed",
   "0-wpm-reading-speed",
+  ...Array.from({ length: 200 }, (_, i) => `${i + 1}-wpm-reading-speed`),
   "200plus-wpm-reading-speed",
 ];
 
