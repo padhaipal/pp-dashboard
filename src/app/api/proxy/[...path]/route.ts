@@ -17,6 +17,7 @@ const ADMIN_ALLOWED: { pattern: RegExp; methods: string[] }[] = [
   { pattern: /^media-meta-data\/coverage$/, methods: ["GET"] },
   { pattern: /^media-meta-data\/by-state-transition-id$/, methods: ["GET", "DELETE"] },
   { pattern: /^media-meta-data\/comprehension-stids$/, methods: ["GET"] },
+  { pattern: /^media-meta-data\/stid-counts$/, methods: ["GET"] },
   { pattern: /^media-meta-data\/passage-stats$/, methods: ["GET"] },
   { pattern: /^media-meta-data\/passages$/, methods: ["GET"] },
   { pattern: /^media-meta-data\/generation-failures$/, methods: ["GET"] },
