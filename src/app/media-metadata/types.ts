@@ -117,6 +117,31 @@ export interface PassageStatsResponse {
   rows: PassageStatsRow[];
 }
 
+// Per-gate filter states for /passages (quality / judge / solvability).
+// Derived server-side from stored media_details; 'skipped' only ever
+// matches solvability (non-R1.1–R1.3 questions carry a skipped marker).
+export const GATE_FILTER_STATES = [
+  "passed",
+  "failed",
+  "skipped",
+  "not_run",
+] as const;
+export type GateFilterState = (typeof GATE_FILTER_STATES)[number];
+
+// media_details.quality as recorded by the passage-quality gate (and the
+// retro sweep) on the PASSAGE row. runs = raw model responses in issue
+// order, '[call failed: …]' markers included.
+export interface PassageQualityRecord {
+  version: number;
+  verdict: "pass" | "fail" | "unverified";
+  true_votes?: number;
+  runs: string[];
+  valid_runs: number;
+  total_calls: number;
+  call_failures: number;
+  unparseable: number;
+}
+
 // GET /media-meta-data/passages
 export interface PassageSearchRow {
   id: string;
@@ -126,6 +151,7 @@ export interface PassageSearchRow {
   model: string | null;
   preview: string;
   created_at: string;
+  quality: PassageQualityRecord | null;
 }
 
 export interface PassageSearchResponse {

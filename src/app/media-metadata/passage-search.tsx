@@ -4,14 +4,47 @@ import { useCallback, useEffect, useState } from "react";
 import { CoverageModal } from "./coverage-modal";
 import { TypeBadges } from "./type-badges";
 import {
+  GATE_FILTER_STATES,
   MEDIA_TYPES,
   PASSAGE_TYPES,
   QUESTION_TYPE_CODES,
+  type PassageQualityRecord,
   type PassageSearchResponse,
 } from "./types";
 
 const PAGE_SIZE = 20;
 const DEBOUNCE_MS = 300;
+
+const VERDICT_STYLES: Record<PassageQualityRecord["verdict"], string> = {
+  pass: "bg-emerald-50 text-emerald-700",
+  fail: "bg-red-50 text-red-700",
+  unverified: "bg-amber-50 text-amber-700",
+};
+
+// Stored quality-gate record for a passage: verdict badge (with true-vote
+// tally) that expands to the raw model responses of every call.
+function QualityCell({ quality }: { quality: PassageQualityRecord | null }) {
+  if (!quality) return <span className="text-zinc-400">—</span>;
+  return (
+    <details>
+      <summary
+        className={`inline-block cursor-pointer rounded px-1.5 py-0.5 ${VERDICT_STYLES[quality.verdict]}`}
+        title="Show the raw gate responses"
+      >
+        {quality.verdict}
+        {quality.true_votes !== undefined &&
+          ` ${quality.true_votes}/${quality.valid_runs}`}
+      </summary>
+      <ol className="mt-1 max-w-xs list-decimal space-y-0.5 pl-5 font-mono text-[11px] text-zinc-600">
+        {quality.runs.map((run, i) => (
+          <li key={i} className="break-all">
+            {run}
+          </li>
+        ))}
+      </ol>
+    </details>
+  );
+}
 
 // Passage finder: substring search over the passage text plus
 // narrative/expository and R-code filters. A row opens the read-only
@@ -26,6 +59,9 @@ export function PassageSearch() {
   const [mediaType, setMediaType] = useState("");
   const [createdAfter, setCreatedAfter] = useState("");
   const [createdBefore, setCreatedBefore] = useState("");
+  const [qualityFilter, setQualityFilter] = useState("");
+  const [judgeFilter, setJudgeFilter] = useState("");
+  const [solvabilityFilter, setSolvabilityFilter] = useState("");
   const [offset, setOffset] = useState(0);
   const [data, setData] = useState<PassageSearchResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -58,6 +94,9 @@ export function PassageSearch() {
         if (createdBefore) {
           params.set("created_before", `${createdBefore}T23:59:59.999`);
         }
+        if (qualityFilter) params.set("quality", qualityFilter);
+        if (judgeFilter) params.set("judge", judgeFilter);
+        if (solvabilityFilter) params.set("solvability", solvabilityFilter);
         const res = await fetch(
           `/api/proxy/media-meta-data/passages?${params.toString()}`,
         );
@@ -73,7 +112,17 @@ export function PassageSearch() {
         setLoading(false);
       }
     },
-    [debouncedQ, passageType, questionType, mediaType, createdAfter, createdBefore],
+    [
+      debouncedQ,
+      passageType,
+      questionType,
+      mediaType,
+      createdAfter,
+      createdBefore,
+      qualityFilter,
+      judgeFilter,
+      solvabilityFilter,
+    ],
   );
 
   // New search input or filter resets to the first page.
@@ -161,6 +210,28 @@ export function PassageSearch() {
             </option>
           ))}
         </select>
+        {(
+          [
+            ["quality", qualityFilter, setQualityFilter],
+            ["judge", judgeFilter, setJudgeFilter],
+            ["solvability", solvabilityFilter, setSolvabilityFilter],
+          ] as const
+        ).map(([gate, value, setValue]) => (
+          <select
+            key={gate}
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            title={`Filter by the ${gate} gate's stored outcome`}
+            className="rounded border border-zinc-300 p-2 text-sm text-zinc-900 bg-white"
+          >
+            <option value="">{gate}: any</option>
+            {GATE_FILTER_STATES.map((s) => (
+              <option key={s} value={s}>
+                {gate}: {s}
+              </option>
+            ))}
+          </select>
+        ))}
         <label className="flex items-center gap-1 text-xs text-zinc-500">
           created
           <input
@@ -191,6 +262,7 @@ export function PassageSearch() {
                 <th className="px-3 py-2 font-medium">passage</th>
                 <th className="px-3 py-2 font-medium">type</th>
                 <th className="px-3 py-2 font-medium">model</th>
+                <th className="px-3 py-2 font-medium">quality</th>
                 <th className="px-3 py-2 font-medium">created</th>
                 <th className="px-3 py-2" />
               </tr>
@@ -215,6 +287,13 @@ export function PassageSearch() {
                   </td>
                   <td className="whitespace-nowrap px-3 py-1.5 text-zinc-500">
                     {row.model ?? "—"}
+                  </td>
+                  {/* Expanding the raw runs must not open the view modal. */}
+                  <td
+                    className="px-3 py-1.5"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <QualityCell quality={row.quality} />
                   </td>
                   <td className="whitespace-nowrap px-3 py-1.5 text-zinc-500">
                     {new Date(row.created_at).toLocaleDateString("en-IN", {
