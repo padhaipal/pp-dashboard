@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import type { CallResult, ChatMessage } from "./models";
 import { DEFAULT_SYSTEM_PROMPT, DEFAULT_USER_PROMPT } from "./default-prompts";
 import {
@@ -419,7 +420,15 @@ export function LlmConsole({ models }: { models: ClientModel[] }) {
   return (
     <div className="min-h-screen bg-zinc-50 p-6">
       <div className="max-w-5xl mx-auto">
-        <h1 className="text-xl font-semibold text-zinc-900 mb-1">LLM Playground</h1>
+        <div className="flex items-center justify-between mb-1">
+          <h1 className="text-xl font-semibold text-zinc-900">LLM Playground</h1>
+          <Link
+            href="/dashboard"
+            className="text-sm text-zinc-500 hover:text-zinc-900 underline"
+          >
+            ← Dashboard
+          </Link>
+        </div>
         <p className="text-sm text-zinc-500 mb-6">
           Compare quality, latency (TTFT + total) and cost across models. Greyed models need their
           API key set in Railway.
