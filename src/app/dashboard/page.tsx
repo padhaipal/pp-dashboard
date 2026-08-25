@@ -26,6 +26,9 @@ export default async function DashboardPage() {
             >
               Media Metadata
             </Link>
+            <Link href="/llm" className="underline hover:text-zinc-900">
+              LLM
+            </Link>
             {session.user.role === "dev" && (
               <a
                 href="/swagger"
