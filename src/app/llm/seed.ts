@@ -4,7 +4,7 @@
 // src/interfaces/llm/<provider>. One request = one generation (LLM call →
 // validation → passage-judge gate (10 valid runs over ≤14 calls) →
 // zero-context solvability filter (24 valid runs over ≤50 calls, narrative
-// R1.1–R1.3 questions only) → entity tree insert of ONE passage with ONE
+// R1.2/R1.3 questions only) → entity tree insert of ONE passage with ONE
 // question), so the dashboard fires `count` requests client-side one at a
 // time instead of one long request. Sequential on purpose: pp-sketch paces
 // sarvam-105b gate calls 2s apart to fit Sarvam's 40 req/min rate limit,
