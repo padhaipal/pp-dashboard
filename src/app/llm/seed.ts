@@ -26,7 +26,7 @@ export const SEED_MAX_COUNT = 1000;
 export const SEED_CONCURRENCY = 1;
 export const MAX_CUSTOM_VARS = 10;
 export const VAR_NAME_MAX_CHARS = 50;
-export const VAR_VALUE_MAX_CHARS = 2000;
+export const VAR_VALUE_MAX_CHARS = 10000;
 
 // Reading subconstructs from "SDG 4.1.1 Minimum Proficiency Levels:
 // Definition and blueprint for assessment" (ACER GEM / UNESCO UIS, p. 26,
