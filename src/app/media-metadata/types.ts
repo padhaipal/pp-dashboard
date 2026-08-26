@@ -36,13 +36,21 @@ export const NON_LESSON_STIDS: string[] = [
   // Sentence-lesson prompts (fixed `sentence` prefix — the /coverage grid only
   // enumerates per-letter/per-word prefixes; the per-word drill stid
   // `{word}-sentence-word-drillWord` DOES live in the grid). Keep in sync with
-  // literacy-lesson.machine.ts in pp-sketch. The old
-  // sentence-sentence-complete-correct-{first,retry} stids are GONE (2026-07):
-  // a correct sentence read now leads into the comprehension state, whose
-  // dynamic `${passageId}-…`/`${answerId}-…` stids live in the comprehension
-  // table below the grid, not here.
+  // literacy-lesson.machine.ts in pp-sketch. A correct read of a level-9+
+  // passage leads into the comprehension state, whose dynamic
+  // `${passageId}-…`/`${answerId}-…` stids live in the comprehension table
+  // below the grid, not here.
   "sentence-start-sentence-initial",
   "sentence-sentence-complete-maxErrors",
+  // Level-8 passages (<10 words, 2026-08) skip comprehension: a correct read
+  // ends the lesson with the runtime stid
+  // `${passageId}-sentence-complete-correct-{first,retry}`, which pp-sketch's
+  // findMediaByStateTransitionId resolves to these fixed rows (specific) and
+  // the `_-…` rows (generic fallback). Upload media here.
+  "sentence-sentence-complete-correct-first",
+  "sentence-sentence-complete-correct-retry",
+  "_-sentence-complete-correct-first",
+  "_-sentence-complete-correct-retry",
   // Sentence failed but no teachable drill word (conjunct/nukta) — retry.
   "sentence-sentence-wrong-retry",
   "sentence-word-sentence-correct-retrySentence",
