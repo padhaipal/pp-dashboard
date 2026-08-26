@@ -110,6 +110,24 @@ export type CallResult = {
 
 const TIME_CAP_MS = parseInt(process.env.LLM_TIME_CAP ?? "45") * 1000;
 
+// Every call specifies a temperature. Providers disagree on the absolute
+// scale, so the intent is a RATIO of the provider's maximum — mirrors
+// pp-sketch's LlmRequest.temperatureRatio / LlmProviderConfig.temperatureMax.
+// The playground's Test/Compare calls run at the mid point; seeding goes
+// through pp-sketch's llm-generate, which sets its own ratio server-side.
+export const DEFAULT_TEMPERATURE_RATIO = 0.5;
+// Keyed by ModelDef.provider. Unknown providers fall back to 2 (the OpenAI
+// convention). Anthropic's compat layer accepts 0–1 (caps higher values);
+// Mistral's schema tops out at 1.5; Cerebras at 1.5.
+export const PROVIDER_TEMPERATURE_MAX: Record<string, number> = {
+  Anthropic: 1,
+  Mistral: 1.5,
+  Cerebras: 1.5,
+};
+export function temperatureFor(def: ModelDef, ratio: number): number {
+  return ratio * (PROVIDER_TEMPERATURE_MAX[def.provider] ?? 2);
+}
+
 // Streams an OpenAI-compatible chat completion, timing TTFT + total and
 // capturing token usage for cost. Never throws — returns { error } instead so
 // the route can report per-model failures without failing the whole batch.
@@ -146,9 +164,10 @@ export async function callModel(
       body: JSON.stringify({
         model: def.model,
         messages,
+        temperature: temperatureFor(def, DEFAULT_TEMPERATURE_RATIO),
         stream: true,
         stream_options: { include_usage: true },
-        ...def.extraBody,
+        ...def.extraBody, // provider quirks by data still win (e.g. a fixed temperature)
       }),
       signal: controller.signal,
     });
