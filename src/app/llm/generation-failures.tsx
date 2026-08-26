@@ -139,7 +139,7 @@ export function GenerationFailures() {
                 <p className="text-zinc-800 mb-1">{item.question_text}</p>
               )}
               {item.passage_preview && (
-                <p className="text-zinc-500 mb-1 line-clamp-2">
+                <p className="text-zinc-500 mb-1 whitespace-pre-wrap">
                   {item.passage_preview}
                 </p>
               )}
