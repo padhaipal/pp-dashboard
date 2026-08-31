@@ -4,6 +4,7 @@ import Link from "next/link";
 import { SignOutButton } from "./sign-out-button";
 import { UserTable } from "./user-table";
 import { MetricsCharts } from "./metrics-charts";
+import { DownloadInteractions } from "./download-interactions";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -41,6 +42,7 @@ export default async function DashboardPage() {
           </div>
         </div>
         <MetricsCharts />
+        {session.user.role === "dev" && <DownloadInteractions />}
         <div className="bg-white rounded-lg border border-zinc-200 shadow-sm overflow-hidden">
           <UserTable />
         </div>
