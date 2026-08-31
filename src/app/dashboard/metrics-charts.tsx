@@ -94,17 +94,19 @@ function niceTicks(min: number, max: number): number[] {
 function downloadCsv(
   dates: string[],
   series: MetricSeries[],
-  view: View,
   from: number,
   period: Period,
 ) {
-  const header = ["date", ...series.map((s) => s.title)];
+  // Both views ship side by side, mirroring the two chart rows.
+  const header = [
+    "date",
+    ...series.map((s) => s.title),
+    ...series.map((s) => `${s.title} (accumulated)`),
+  ];
   const rows = dates.map((d, i) => [
     d,
-    ...series.map((s) => {
-      const full = view === "increment" ? s.increments : s.accumulated;
-      return String(Math.round(full[from + i] * 100) / 100);
-    }),
+    ...series.map((s) => String(Math.round(s.increments[from + i] * 100) / 100)),
+    ...series.map((s) => String(Math.round(s.accumulated[from + i] * 100) / 100)),
   ]);
   const escape = (cell: string) =>
     /[",\n]/.test(cell) ? `"${cell.replace(/"/g, '""')}"` : cell;
@@ -115,7 +117,7 @@ function downloadCsv(
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = `dashboard-metrics-${view}-${period}.csv`;
+  a.download = `dashboard-metrics-${period}.csv`;
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -344,8 +346,7 @@ function MetricChart({
 export function MetricsCharts() {
   const [daily, setDaily] = useState<SummaryDay[] | null>(null);
   const [error, setError] = useState(false);
-  const [view, setView] = useState<View>("increment");
-  const [period, setPeriod] = useState<Period>("month");
+  const [period, setPeriod] = useState<Period>("all");
 
   useEffect(() => {
     (async () => {
@@ -401,21 +402,6 @@ export function MetricsCharts() {
   return (
     <div className="mb-6">
       <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-        <div className="inline-flex rounded-md border border-zinc-200 bg-white shadow-sm overflow-hidden">
-          {(["increment", "accumulated"] as View[]).map((v) => (
-            <button
-              key={v}
-              onClick={() => setView(v)}
-              className={`px-3 py-1.5 text-xs font-medium ${
-                view === v
-                  ? "bg-zinc-900 text-white"
-                  : "text-zinc-600 hover:bg-zinc-50"
-              }`}
-            >
-              {v === "increment" ? "Increment" : "Accumulated"}
-            </button>
-          ))}
-        </div>
         <div className="flex items-center gap-2">
           <div className="inline-flex rounded-md border border-zinc-200 bg-white shadow-sm overflow-hidden">
             {PERIODS.map((p) => (
@@ -433,7 +419,7 @@ export function MetricsCharts() {
             ))}
           </div>
           <button
-            onClick={() => downloadCsv(dates, series, view, from, period)}
+            onClick={() => downloadCsv(dates, series, from, period)}
             className="rounded-md border border-zinc-200 bg-white shadow-sm px-3 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-50"
           >
             Download CSV
@@ -441,39 +427,47 @@ export function MetricsCharts() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {series.map((s) => {
-          const full = view === "increment" ? s.increments : s.accumulated;
-          const values = full.slice(from);
-          const headline =
-            yesterdayIdx >= 0 ? full[yesterdayIdx] : full[full.length - 1];
-          return (
-            <div
-              key={s.title}
-              className="bg-white rounded-lg border border-zinc-200 shadow-sm p-4"
-            >
-              <h2 className="text-sm font-medium text-zinc-500">{s.title}</h2>
-              <div className="flex items-baseline gap-2 mb-2">
-                <span className="text-3xl font-semibold text-zinc-900">
-                  {s.format(headline)}
-                </span>
-                <span className="text-xs text-zinc-400">
-                  {view === "increment" ? "yesterday" : "as of yesterday"}
-                </span>
+      {(["increment", "accumulated"] as View[]).map((view) => (
+        <div
+          key={view}
+          className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 last:mb-0"
+        >
+          {series.map((s) => {
+            const full = view === "increment" ? s.increments : s.accumulated;
+            const values = full.slice(from);
+            const headline =
+              yesterdayIdx >= 0 ? full[yesterdayIdx] : full[full.length - 1];
+            return (
+              <div
+                key={s.title}
+                className="bg-white rounded-lg border border-zinc-200 shadow-sm p-4"
+              >
+                <h2 className="text-sm font-medium text-zinc-500">
+                  {s.title}
+                  {view === "accumulated" ? " — accumulated" : ""}
+                </h2>
+                <div className="flex items-baseline gap-2 mb-2">
+                  <span className="text-3xl font-semibold text-zinc-900">
+                    {s.format(headline)}
+                  </span>
+                  <span className="text-xs text-zinc-400">
+                    {view === "increment" ? "yesterday" : "as of yesterday"}
+                  </span>
+                </div>
+                <MetricChart
+                  dates={dates}
+                  values={values}
+                  view={view}
+                  color={s.color}
+                  yLabel={s.yLabel}
+                  todayIso={todayIso}
+                  format={s.format}
+                />
               </div>
-              <MetricChart
-                dates={dates}
-                values={values}
-                view={view}
-                color={s.color}
-                yLabel={s.yLabel}
-                todayIso={todayIso}
-                format={s.format}
-              />
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      ))}
       <p className="text-[11px] text-zinc-400 mt-1.5">
         IST midnight-to-midnight buckets. Today (faded) is a partial day.
         Letters learnt can decrease when a child regresses.
