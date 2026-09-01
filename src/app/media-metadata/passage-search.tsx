@@ -55,6 +55,7 @@ export function PassageSearch() {
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
   const [passageType, setPassageType] = useState("");
+  const [levelFilter, setLevelFilter] = useState("");
   const [questionType, setQuestionType] = useState("");
   const [mediaType, setMediaType] = useState("");
   const [createdAfter, setCreatedAfter] = useState("");
@@ -86,6 +87,7 @@ export function PassageSearch() {
         });
         if (debouncedQ.trim()) params.set("q", debouncedQ.trim());
         if (passageType) params.set("passage_type", passageType);
+        if (levelFilter) params.set("level", levelFilter);
         if (questionType) params.set("question_type", questionType);
         if (mediaType) params.set("media_type", mediaType);
         if (createdAfter) params.set("created_after", createdAfter);
@@ -115,6 +117,7 @@ export function PassageSearch() {
     [
       debouncedQ,
       passageType,
+      levelFilter,
       questionType,
       mediaType,
       createdAfter,
@@ -182,6 +185,19 @@ export function PassageSearch() {
           {PASSAGE_TYPES.map((t) => (
             <option key={t} value={t}>
               {t}
+            </option>
+          ))}
+        </select>
+        <select
+          value={levelFilter}
+          onChange={(e) => setLevelFilter(e.target.value)}
+          title="Passage word-count level (media_details.level)"
+          className="rounded border border-zinc-300 p-2 text-sm text-zinc-900 bg-white"
+        >
+          <option value="">any level</option>
+          {[8, 9, 10, 11, 12, 13].map((l) => (
+            <option key={l} value={l}>
+              level {l}
             </option>
           ))}
         </select>
