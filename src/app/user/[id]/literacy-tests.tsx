@@ -3,17 +3,9 @@
 import { useEffect, useState } from "react";
 
 // Digital-proxy literacy test scores from pp-sketch's
-// GET /users/:id/literacy-test-scores. NIPUN grade 1 keeps its rolling-window
-// shape; grades 2/3 and MPL-B are snapshot tests over first attempts, with a
-// pass/fail per snapshot and a history of {at, score, passed}.
-
-type RollingScore = {
-  status: "ok" | "insufficient_data";
-  window_size: number;
-  attempts_available: number;
-  latest_score?: number;
-  history?: { at: string; score: number }[];
-};
+// GET /users/:id/literacy-test-scores. NIPUN grades 2/3 and MPL-B are
+// snapshot tests over first attempts, with a pass/fail per snapshot and a
+// history of {at, score, passed}.
 
 type SnapshotPoint = { at: string; score: number; passed: boolean };
 
@@ -25,7 +17,6 @@ type SnapshotScore = {
 };
 
 type LiteracyTestScores = {
-  nipun_grade_1: RollingScore;
   nipun_grade_2: SnapshotScore;
   nipun_grade_3: SnapshotScore;
   mpl_b: SnapshotScore;
@@ -131,27 +122,11 @@ export function LiteracyTests({ userId }: { userId: string }) {
     );
   }
   const d = state.data;
-  const g1 = d.nipun_grade_1;
 
   return (
     <div className="mb-6">
       <h2 className="text-sm font-semibold text-zinc-900 mb-2">Literacy tests</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <div className="rounded-lg border border-zinc-200 bg-white p-4">
-          <h3 className="text-sm font-semibold text-zinc-900">NIPUN grade 1</h3>
-          <p className="text-xs text-zinc-500 mb-2">
-            rolling window of {g1.window_size} level-8 first read attempts
-          </p>
-          {g1.status === "insufficient_data" ? (
-            <p className="text-xs text-zinc-400">
-              insufficient data ({g1.attempts_available} attempts)
-            </p>
-          ) : (
-            <span className="text-lg font-semibold tabular-nums text-zinc-900">
-              {pct(g1.latest_score!)}
-            </span>
-          )}
-        </div>
         <SnapshotCard
           title="NIPUN grade 2"
           sub="4 most recent level-10 R1.x first attempts · pass > 50%"
