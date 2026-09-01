@@ -26,6 +26,7 @@ interface MediaRow {
   score_changes?: ScoreChange[];
   final_state: string | null;
   level: number | null;
+  wpm: number | null;
 }
 
 // Direction of this lesson's difficulty cap relative to the previous
@@ -254,7 +255,7 @@ export function MediaTable({
   }, []);
 
   return (
-    // overflow-x-auto + min-w on the table: with 9 columns the browser
+    // overflow-x-auto + min-w on the table: with 10 columns the browser
     // otherwise crushes/clips the trailing ones (Level was invisible on
     // laptop widths) — scroll sideways instead.
     <div className="w-full overflow-x-auto">
@@ -270,6 +271,7 @@ export function MediaTable({
             <th className="py-3 px-4 font-medium">Score Change</th>
             <th className="py-3 px-4 font-medium">Final State</th>
             <th className="py-3 px-4 font-medium">Level</th>
+            <th className="py-3 px-4 font-medium">WPM</th>
           </tr>
         </thead>
         <tbody>
@@ -409,11 +411,20 @@ export function MediaTable({
                   <span className="text-zinc-400 italic text-xs">--</span>
                 )}
               </td>
+              <td className="py-2.5 px-4">
+                {row.wpm !== null ? (
+                  <span className="text-zinc-700 text-xs tabular-nums">
+                    {row.wpm}
+                  </span>
+                ) : (
+                  <span className="text-zinc-400 italic text-xs">--</span>
+                )}
+              </td>
             </tr>
           ))}
           {loading && (
             <tr>
-              <td colSpan={9} className="py-6 text-center text-zinc-400">
+              <td colSpan={10} className="py-6 text-center text-zinc-400">
                 Loading...
               </td>
             </tr>
