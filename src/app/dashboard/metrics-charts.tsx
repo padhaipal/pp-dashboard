@@ -37,6 +37,14 @@ function cumsum(values: number[]): number[] {
   return values.map((v) => (acc += v));
 }
 
+// Trailing 7-day rolling mean (window shrinks at the start of history).
+function rolling7(values: number[]): number[] {
+  return values.map((_, i) => {
+    const w = values.slice(Math.max(0, i - 6), i + 1);
+    return w.reduce((a, b) => a + b, 0) / w.length;
+  });
+}
+
 function buildSeries(daily: SummaryDay[]): MetricSeries[] {
   const users = daily.map((d) => d.users_over_5min);
   const minutes = daily.map((d) => d.active_ms / 60000);
@@ -427,47 +435,70 @@ export function MetricsCharts() {
         </div>
       </div>
 
-      {(["increment", "accumulated"] as View[]).map((view) => (
-        <div
-          key={view}
-          className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4 last:mb-0"
-        >
-          {series.map((s) => {
-            const full = view === "increment" ? s.increments : s.accumulated;
-            const values = full.slice(from);
+      {/* Three charts: DAU as a 7-day rolling-average line, plus the two
+          accumulated stocks. (The user-days "accumulated users" chart and
+          the noisy daily minutes/letters bars are gone — a running sum of
+          daily headcounts double-counts returning users.) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {(() => {
+          const [users, minutes, letters] = series;
+          const charts = [
+            {
+              title: "Daily active users (>5 min)",
+              hint: "7-day avg, yesterday",
+              values: rolling7(users.increments),
+              color: users.color,
+              yLabel: users.yLabel,
+              format: (v: number) => (Math.round(v * 10) / 10).toLocaleString(),
+            },
+            {
+              title: "Minutes spent — accumulated",
+              hint: "as of yesterday",
+              values: minutes.accumulated,
+              color: minutes.color,
+              yLabel: minutes.yLabel,
+              format: minutes.format,
+            },
+            {
+              title: "Letters learnt — accumulated",
+              hint: "as of yesterday",
+              values: letters.accumulated,
+              color: letters.color,
+              yLabel: letters.yLabel,
+              format: letters.format,
+            },
+          ];
+          return charts.map((c) => {
             const headline =
-              yesterdayIdx >= 0 ? full[yesterdayIdx] : full[full.length - 1];
+              yesterdayIdx >= 0
+                ? c.values[yesterdayIdx]
+                : c.values[c.values.length - 1];
             return (
               <div
-                key={s.title}
+                key={c.title}
                 className="bg-white rounded-lg border border-zinc-200 shadow-sm p-4"
               >
-                <h2 className="text-sm font-medium text-zinc-500">
-                  {s.title}
-                  {view === "accumulated" ? " — accumulated" : ""}
-                </h2>
+                <h2 className="text-sm font-medium text-zinc-500">{c.title}</h2>
                 <div className="flex items-baseline gap-2 mb-2">
                   <span className="text-3xl font-semibold text-zinc-900">
-                    {s.format(headline)}
+                    {c.format(headline)}
                   </span>
-                  <span className="text-xs text-zinc-400">
-                    {view === "increment" ? "yesterday" : "as of yesterday"}
-                  </span>
+                  <span className="text-xs text-zinc-400">{c.hint}</span>
                 </div>
                 <MetricChart
                   dates={dates}
-                  values={values}
-                  view={view}
-                  color={s.color}
-                  yLabel={s.yLabel}
+                  values={c.values.slice(from)}
+                  view="accumulated"
+                  color={c.color}
+                  yLabel={c.yLabel}
                   todayIso={todayIso}
-                  format={s.format}
+                  format={c.format}
                 />
               </div>
             );
-          })}
-        </div>
-      ))}
+          });
+        })()}
+      </div>
       <p className="text-[11px] text-zinc-400 mt-1.5">
         IST midnight-to-midnight buckets. Today (faded) is a partial day.
         Letters learnt can decrease when a child regresses.
