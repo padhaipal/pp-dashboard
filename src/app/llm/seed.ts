@@ -11,12 +11,14 @@
 // and each completed item is committed in its own transaction, so a cut
 // connection keeps everything created before it.
 
-// Dashboard provider grouping → pp-sketch LLM provider id. Only these five
-// are wired in pp-sketch; models from other providers can't seed.
+// Dashboard provider grouping → pp-sketch LLM provider id. Only these four
+// are wired in pp-sketch for generation; models from other providers can't
+// seed. Google is deliberately absent: it is reserved for pp-sketch's
+// realtime onboarding classifier (own key, quota and failure domain) and
+// llm-generate rejects provider 'google'.
 export const SEED_PROVIDER_MAP: Record<string, string> = {
   OpenAI: "openai",
   Anthropic: "anthropic",
-  Gemini: "google",
   Mistral: "mistral",
   Sarvam: "sarvam",
 };

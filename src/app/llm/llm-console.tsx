@@ -662,7 +662,7 @@ export function LlmConsole({ models }: { models: ClientModel[] }) {
             question + options/explanations/flow, all text converted to audio). Requests run one at
             a time and gate calls are paced 2s apart (Sarvam rate limit) — expect ~1–2.5 min per
             gated question, ~30s otherwise. Gate-failed content is kept soft-deleted under Filter
-            failures below. Only OpenAI, Anthropic, Gemini, Mistral and Sarvam models are wired.
+            failures below. Only OpenAI, Anthropic, Mistral and Sarvam models are wired.
           </p>
           <PassageStats />
           <div className="flex flex-wrap items-center gap-3">
