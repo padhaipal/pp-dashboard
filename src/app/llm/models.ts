@@ -35,11 +35,6 @@ export const MODELS: ModelDef[] = [
   { id: "anthropic-sonnet",      label: "Claude Sonnet 5",       provider: "Anthropic", envKey: "ANTHROPIC_API_KEY", baseUrl: "https://api.anthropic.com/v1",                     model: "claude-sonnet-5",                               priceIn: 3,     priceOut: 15 },
   { id: "anthropic-haiku",       label: "Claude Haiku 4.5",      provider: "Anthropic", envKey: "ANTHROPIC_API_KEY", baseUrl: "https://api.anthropic.com/v1",                     model: "claude-haiku-4-5-20251001",                     priceIn: 0.8,   priceOut: 4 },
 
-  // Google Gemini (OpenAI-compatible endpoint) — largest to smallest
-  { id: "gemini-pro",            label: "Gemini 2.5 Pro",        provider: "Gemini",    envKey: "GEMINI_API_KEY",    baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai", model: "gemini-2.5-pro",                         priceIn: 1.25,  priceOut: 10 },
-  { id: "gemini-flash",          label: "Gemini Flash (latest)", provider: "Gemini",    envKey: "GEMINI_API_KEY",    baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai", model: "gemini-flash-latest",                    priceIn: 0.3,   priceOut: 2.5 },
-  { id: "gemini-flash-lite",     label: "Gemini Flash-Lite (latest)", provider: "Gemini", envKey: "GEMINI_API_KEY",  baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai", model: "gemini-flash-lite-latest",               priceIn: 0.1,   priceOut: 0.4 },
-
   // xAI Grok (native OpenAI-compatible)
   { id: "xai-grok-4",            label: "Grok 4",                provider: "xAI",       envKey: "XAI_API_KEY",       baseUrl: "https://api.x.ai/v1",                              model: "grok-4",                                        priceIn: 3,     priceOut: 15 },
   { id: "xai-grok-3",            label: "Grok 3",                provider: "xAI",       envKey: "XAI_API_KEY",       baseUrl: "https://api.x.ai/v1",                              model: "grok-3",                                        priceIn: 3,     priceOut: 15 },
