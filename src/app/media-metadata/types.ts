@@ -23,6 +23,21 @@ export const ALL_MEDIA_TYPES: MediaType[] = [
 // hand.
 export const NON_LESSON_STIDS: string[] = [
   "welcome-message",
+  // Parent onboarding prompts (pp-sketch src/onboarding/onboarding.machine.ts,
+  // ONBOARDING_STIDS — keep in sync). Every one must be seeded: an unseeded
+  // prompt sends nothing for that turn.
+  "onboarding-ask-guardian",
+  "onboarding-ask-guardian-retry",
+  "onboarding-ask-consent",
+  "onboarding-consent-info",
+  "onboarding-consent-refused",
+  "onboarding-declined",
+  "onboarding-ask-name",
+  "onboarding-ask-age",
+  "onboarding-ask-age-retry",
+  "onboarding-ask-month",
+  "onboarding-complete",
+  "onboarding-unintelligible",
   "audio-only-request",
   "stale-lesson-restart",
   "hail-mary",
