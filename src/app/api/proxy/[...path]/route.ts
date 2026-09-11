@@ -27,6 +27,14 @@ const ADMIN_ALLOWED: { pattern: RegExp; methods: string[] }[] = [
   // GET :id = read-only single-row fetch (comprehension modal's passage row).
   { pattern: /^media-meta-data\/[^/]+$/, methods: ["GET", "DELETE"] },
   { pattern: /^scores\/letter-bins$/, methods: ["GET"] },
+  // Staff onboarding (/onboarding)
+  { pattern: /^geo-entities\/search$/, methods: ["GET"] },
+  { pattern: /^geo-entities\/[^/]+$/, methods: ["GET"] },
+  { pattern: /^geo-entities\/[^/]+\/descendants$/, methods: ["GET"] },
+  { pattern: /^users\/staff-create$/, methods: ["POST"] },
+  { pattern: /^users\/lookup$/, methods: ["GET"] },
+  // PATCH on users/:id is already allowed above.
+  { pattern: /^users\/[^/]+$/, methods: ["GET"] },
 ];
 
 function isAdminAllowed(path: string, method: string): boolean {

@@ -1,0 +1,773 @@
+state_code,district_code,udise_name,lgd_name,method
+01,0101,KUPWARA,Kupwara,name
+01,0102,BARAMULLA,Baramulla,name
+01,0103,SRINAGAR,Srinagar,name
+01,0104,BUDGAM,Budgam,name
+01,0105,PULWAMA,Pulwama,name
+01,0106,ANANTNAG,Anantnag,name
+01,0109,DODA,Doda,name
+01,0110,UDHAMPUR,Udhampur,name
+01,0111,POONCH,Poonch,name
+01,0112,RAJOURI,Rajouri,name
+01,0113,JAMMU,Jammu,name
+01,0114,KATHUA,Kathua,name
+01,0115,SHOPIAN,Shopian,name
+01,0116,BANDIPORA,Bandipora,name
+01,0117,KISHTWAR,Kishtwar,name
+01,0118,RAMBAN,Ramban,name
+01,0119,GANDERBAL,Ganderbal,name
+01,0120,KULGAM,Kulgam,name
+01,0121,REASI,Reasi,name
+01,0122,SAMBA,Samba,name
+02,0201,CHAMBA,Chamba,name
+02,0202,KANGRA,Kangra,name
+02,0203,LAHUL & SPITI,Lahul And Spiti,fuzzy
+02,0204,KULLU,Kullu,name
+02,0205,MANDI,Mandi,name
+02,0206,HAMIRPUR (H.P.),Hamirpur,fuzzy
+02,0207,UNA,Una,name
+02,0208,BILASPUR (H.P.),Bilaspur,fuzzy
+02,0209,SOLAN,Solan,name
+02,0210,SIRMAUR,Sirmaur,name
+02,0211,SHIMLA,Shimla,name
+02,0212,KINNAUR,Kinnaur,name
+03,0301,GURDASPUR,Gurdaspur,name
+03,0302,AMRITSAR,Amritsar,name
+03,0303,KAPURTHALA,Kapurthala,name
+03,0304,JALANDHAR,Jalandhar,name
+03,0305,HOSHIARPUR,Hoshiarpur,name
+03,0306,SHAHID BHAGAT SINGH NAGAR,Shahid Bhagat Singh Nagar,name
+03,0307,RUPNAGAR,Rupnagar,name
+03,0308,FATEHGARH SAHIB,Fatehgarh Sahib,name
+03,0309,LUDHIANA,Ludhiana,name
+03,0310,MOGA,Moga,name
+03,0311,FEROZEPUR,Ferozepur,name
+03,0312,SRI MUKTSAR SAHIB,Sri Muktsar Sahib,name
+03,0313,FARIDKOT,Faridkot,name
+03,0314,BATHINDA,Bathinda,name
+03,0315,MANSA,Mansa,name
+03,0316,SANGRUR,Sangrur,name
+03,0317,PATIALA,Patiala,name
+03,0318,S.A.S NAGAR,S.A.S Nagar,name
+03,0319,TARN TARAN,Tarn Taran,name
+03,0320,BARNALA,Barnala,name
+03,0321,FAZILKA,Fazilka,name
+03,0322,PATHANKOT,Pathankot,name
+03,0323,MALERKOTLA,Malerkotla,name
+04,0401,CHANDIGARH,Chandigarh,name
+05,0501,UTTARKASHI,Uttar Kashi,name
+05,0502,CHAMOLI,Chamoli,name
+05,0503,RUDRAPRAYAG,Rudra Prayag,name
+05,0504,TEHRI GARHWAL,Tehri Garhwal,name
+05,0505,DEHRADUN,Dehradun,name
+05,0506,PAURI GARHWAL,Pauri Garhwal,name
+05,0507,PITHORAGARH,Pithoragarh,name
+05,0508,BAGESHWAR,Bageshwar,name
+05,0509,ALMORA,Almora,name
+05,0510,CHAMPAWAT,Champawat,name
+05,0511,NAINITAL,Nainital,name
+05,0512,UDHAM SINGH NAGAR,Udam Singh Nagar,fuzzy
+05,0513,HARIDWAR,Haridwar,name
+06,0601,PANCHKULA,Panchkula,name
+06,0602,AMBALA,Ambala,name
+06,0603,YAMUNANAGAR,Yamunanagar,name
+06,0604,KURUKSHETRA,Kurukshetra,name
+06,0605,KAITHAL,Kaithal,name
+06,0606,KARNAL,Karnal,name
+06,0607,PANIPAT,Panipat,name
+06,0608,SONIPAT,Sonipat,name
+06,0609,JIND,Jind,name
+06,0610,FATEHABAD,Fatehabad,name
+06,0611,SIRSA,Sirsa,name
+06,0612,HISAR,Hisar,name
+06,0613,BHIWANI,Bhiwani,name
+06,0614,ROHTAK,Rohtak,name
+06,0615,JHAJJAR,Jhajjar,name
+06,0616,MAHENDRAGARH,Mahendragarh,name
+06,0617,REWARI,Rewari,name
+06,0618,GURUGRAM,Gurugram,name
+06,0619,FARIDABAD,Faridabad,name
+06,0620,NUH,Nuh,name
+06,0621,PALWAL,Palwal,name
+06,0622,CHARKHI DADRI,Charki Dadri,fuzzy
+07,0711,NORTH EAST I,North East,fuzzy
+07,0713,NORTH WEST A,North West,fuzzy
+07,0714,NORTH WEST B-I,North West,fuzzy
+07,0716,WEST B,West,fuzzy
+07,0718,SOUTH WEST B-I,South West,fuzzy
+07,0720,NEW DELHI,New Delhi,name
+07,0721,CENTRAL,Central,name
+07,0722,SOUTH EAST,South East,name
+07,0723,NORTH EAST II,North East,fuzzy
+07,0724,NORTH WEST B-II,North West,fuzzy
+07,0725,SOUTH WEST B-II,South West,fuzzy
+08,0801,GANGANAGAR,Ganganagar,name
+08,0802,HANUMANGARH,Hanumangarh,name
+08,0803,BIKANER,Bikaner,name
+08,0804,CHURU,Churu,name
+08,0805,JHUNJHUNU,Jhunjhunu,name
+08,0806,ALWAR,Alwar,name
+08,0807,BHARATPUR,Bharatpur,name
+08,0808,DHOLPUR,Dholpur,name
+08,0809,KARAULI,Karauli,name
+08,0810,SAWAI MADHOPUR,Sawai Madhopur,name
+08,0811,DAUSA,Dausa,name
+08,0812,JAIPUR,Jaipur,name
+08,0813,SIKAR,Sikar,name
+08,0814,NAGAUR,Nagaur,name
+08,0815,JODHPUR,Jodhpur,name
+08,0816,JAISALMER,Jaisalmer,name
+08,0817,BARMER,Barmer,name
+08,0818,JALORE,Jalore,name
+08,0819,SIROHI,Sirohi,name
+08,0820,PALI,Pali,name
+08,0821,AJMER,Ajmer,name
+08,0822,TONK,Tonk,name
+08,0823,BUNDI,Bundi,name
+08,0824,BHILWARA,Bhilwara,name
+08,0825,RAJSAMAND,Rajsamand,name
+08,0826,UDAIPUR,Udaipur,name
+08,0827,DUNGARPUR,Dungarpur,name
+08,0828,BANSWARA,Banswara,name
+08,0829,CHITTORGARH,Chittorgarh,name
+08,0830,KOTA,Kota,name
+08,0831,BARAN,Baran,name
+08,0832,JHALAWAR,Jhalawar,name
+08,0833,PRATAPGARH,Pratapgarh,name
+08,0835,BALOTRA,Balotra,name
+08,0836,BEAWAR,Beawar,name
+08,0837,DEEG,Deeg,name
+08,0838,DIDWANA-KUCHAMAN,Didwana Kuchaman,name
+08,0844,KHAIRTHAL-TIJARA,Khairthal-Tijara,name
+08,0845,KOTPUTLI-BEHROR,Kotputli-Behror,name
+08,0847,PHALODI,Phalodi,name
+08,0848,SALUMBAR,Salumbar,name
+09,0901,SAHARANPUR,Saharanpur,name
+09,0902,MUZAFFARNAGAR,Muzaffarnagar,name
+09,0903,BIJNOR,Bijnor,name
+09,0904,MORADABAD,Moradabad,name
+09,0905,RAMPUR,Rampur,name
+09,0906,AMROHA,Amroha,name
+09,0907,MEERUT,Meerut,name
+09,0908,BAGHPAT,Baghpat,name
+09,0909,GHAZIABAD,Ghaziabad,name
+09,0910,GAUTAM BUDDHA NAGAR,Gautam Buddha Nagar,name
+09,0911,BULANDSHAHR,Bulandshahr,name
+09,0912,ALIGARH,Aligarh,name
+09,0913,HATHRAS,Hathras,name
+09,0914,MATHURA,Mathura,name
+09,0915,AGRA,Agra,name
+09,0916,FIROZABAD,Firozabad,name
+09,0917,ETAH,Etah,name
+09,0918,MAINPURI,Mainpuri,name
+09,0919,BUDAUN,Budaun,name
+09,0920,BAREILLY,Bareilly,name
+09,0921,PILIBHIT,Pilibhit,name
+09,0922,SHAHJAHANPUR,Shahjahanpur,name
+09,0923,KHERI,Kheri,name
+09,0924,SITAPUR,Sitapur,name
+09,0925,HARDOI,Hardoi,name
+09,0926,UNNAO,Unnao,name
+09,0927,LUCKNOW,Lucknow,name
+09,0928,RAE BARELI,Rae Bareli,name
+09,0929,FARRUKHABAD,Farrukhabad,name
+09,0930,KANNAUJ,Kannauj,name
+09,0931,ETAWAH,Etawah,name
+09,0932,AURAIYA,Auraiya,name
+09,0933,KANPUR DEHAT,Kanpur Dehat,name
+09,0934,KANPUR NAGAR,Kanpur Nagar,name
+09,0935,JALAUN,Jalaun,name
+09,0936,JHANSI,Jhansi,name
+09,0937,LALITPUR,Lalitpur,name
+09,0938,HAMIRPUR,Hamirpur,name
+09,0939,MAHOBA,Mahoba,name
+09,0940,BANDA,Banda,name
+09,0941,CHITRAKOOT,Chitrakoot,name
+09,0942,FATEHPUR,Fatehpur,name
+09,0943,PRATAPGARH,Pratapgarh,name
+09,0944,KAUSHAMBI,Kaushambi,name
+09,0945,PRAYAGRAJ,Prayagraj,name
+09,0946,BARA BANKI,Barabanki,name
+09,0947,AYODHYA,Ayodhya,name
+09,0948,AMBEDKAR NAGAR,Ambedkar Nagar,name
+09,0949,SULTANPUR,Sultanpur,name
+09,0950,BAHRAICH,Bahraich,name
+09,0951,SHRAWASTI,Shravasti,fuzzy
+09,0952,BALRAMPUR,Balrampur,name
+09,0953,GONDA,Gonda,name
+09,0954,SIDDHARTHNAGAR,Siddharth Nagar,name
+09,0955,BASTI,Basti,name
+09,0956,SANT KABIR NAGAR,Sant Kabeer Nagar,fuzzy
+09,0957,MAHRAJGANJ,Maharajganj,fuzzy
+09,0958,GORAKHPUR,Gorakhpur,name
+09,0959,KUSHINAGAR,Kushi Nagar,name
+09,0960,DEORIA,Deoria,name
+09,0961,AZAMGARH,Azamgarh,name
+09,0962,MAU,Mau,name
+09,0963,BALLIA,Ballia,name
+09,0964,JAUNPUR,Jaunpur,name
+09,0965,GHAZIPUR,Ghazipur,name
+09,0966,CHANDAULI,Chandauli,name
+09,0967,VARANASI,Varanasi,name
+09,0968,SAMBHAL,Sambhal,name
+09,0969,MIRZAPUR,Mirzapur,name
+09,0970,SONBHADRA,Sonbhadra,name
+09,0971,BHADOHI,Bhadohi,name
+09,0972,KASGANJ,Kasganj,name
+09,0973,AMETHI,Amethi,name
+09,0974,SHAMLI,Shamli,name
+09,0975,HAPUR,Hapur,name
+10,1001,PASHCHIM CHAMPARAN,Pashchim Champaran,name
+10,1002,PURBA CHAMPARAN,Purbi Champaran,fuzzy
+10,1003,SHEOHAR,Sheohar,name
+10,1004,SITAMARHI,Sitamarhi,name
+10,1005,MADHUBANI,Madhubani,name
+10,1006,SUPAUL,Supaul,name
+10,1007,ARARIA,Araria,name
+10,1008,KISHANGANJ,Kishanganj,name
+10,1009,PURNIA,Purnia,name
+10,1010,KATIHAR,Katihar,name
+10,1011,MADHEPURA,Madhepura,name
+10,1012,SAHARSA,Saharsa,name
+10,1013,DARBHANGA,Darbhanga,name
+10,1014,MUZAFFARPUR,Muzaffarpur,name
+10,1015,GOPALGANJ,Gopalganj,name
+10,1016,SIWAN,Siwan,name
+10,1017,SARAN,Saran,name
+10,1018,VAISHALI,Vaishali,name
+10,1019,SAMASTIPUR,Samastipur,name
+10,1020,BEGUSARAI,Begusarai,name
+10,1021,KHAGARIA,Khagaria,name
+10,1022,BHAGALPUR,Bhagalpur,name
+10,1023,BANKA,Banka,name
+10,1024,MUNGER,Munger,name
+10,1025,LAKHISARAI,Lakhisarai,name
+10,1026,SHEIKHPURA,Sheikhpura,name
+10,1027,NALANDA,Nalanda,name
+10,1028,PATNA,Patna,name
+10,1029,BHOJPUR,Bhojpur,name
+10,1030,BUXAR,Buxar,name
+10,1031,KAIMUR (BHABUA),Kaimur (Bhabua),name
+10,1032,ROHTAS,Rohtas,name
+10,1033,JEHANABAD,Jehanabad,name
+10,1034,AURANGABAD (BIHAR),Aurangabad,fuzzy
+10,1035,GAYA,Gaya,name
+10,1036,NAWADA,Nawada,name
+10,1037,JAMUI,Jamui,name
+10,1038,ARWAL,Arwal,name
+11,1101,MANGAN,Mangan,name
+11,1102,GYALSHING,Gyalshing,name
+11,1103,NAMCHI,Namchi,name
+11,1104,GANGTOK,Gangtok,name
+11,1105,SORENG,Soreng,name
+11,1106,PAKYONG,Pakyong,name
+12,1201,TAWANG,Tawang,name
+12,1202,WEST KAMENG,West Kameng,name
+12,1203,EAST KAMENG,East Kameng,name
+12,1204,PAPUM PARE,Papum Pare,name
+12,1205,LOWER SUBANSIRI,Lower Subansiri,name
+12,1206,UPPER SUBANSIRI,Upper Subansiri,name
+12,1207,WEST SIANG,West Siang,name
+12,1208,EAST SIANG,East Siang,name
+12,1209,UPPER SIANG,Upper Siang,name
+12,1210,DIBANG VALLEY,Dibang Valley,name
+12,1211,LOHIT,Lohit,name
+12,1212,CHANGLANG,Changlang,name
+12,1213,TIRAP,Tirap,name
+12,1214,KURUNG KUMEY,Kurung Kumey,name
+12,1215,LOWER DIBANG VALLEY,Lower Dibang Valley,name
+12,1216,ANJAW,Anjaw,name
+12,1217,LONGDING,Longding,name
+12,1218,NAMSAI,Namsai,name
+12,1219,KRA DAADI,Kra Daadi,name
+12,1220,SIANG,Siang,name
+12,1221,LOWER SIANG,Lower Siang,name
+12,1222,KAMLE,Kamle,name
+12,1223,CAPITAL COMPLEX ITANAGAR,Itanagar capital complex,alias
+12,1224,PAKKE KESSANG,Pakke Kessang,name
+12,1225,SHI YOMI,Shi Yomi,name
+12,1226,LEPA RADA,Leparada,name
+13,1301,MON,Mon,name
+13,1302,TUENSANG,Tuensang,name
+13,1303,MOKOKCHUNG,Mokokchung,name
+13,1304,ZUNHEBOTO,Zunheboto,name
+13,1305,WOKHA,Wokha,name
+13,1306,DIMAPUR,Dimapur,name
+13,1307,KOHIMA,Kohima,name
+13,1308,PHEK,Phek,name
+13,1309,LONGLENG,Longleng,name
+13,1310,KIPHIRE,Kiphire,name
+13,1311,PEREN,Peren,name
+14,1401,SENAPATI,Senapati,name
+14,1402,TAMENGLONG,Tamenglong,name
+14,1403,CHURACHANDPUR,Churachandpur,name
+14,1404,BISHNUPUR,Bishnupur,name
+14,1405,THOUBAL,Thoubal,name
+14,1406,IMPHAL WEST,Imphal West,name
+14,1407,IMPHAL EAST,Imphal East,name
+14,1408,UKHRUL,Ukhrul,name
+14,1409,CHANDEL,Chandel,name
+14,1410,KANGPOKPI,Kangpokpi,name
+14,1411,TENGNOUPAL,Tengnoupal,name
+14,1412,PHERZAWL,Pherzawl,name
+14,1413,JIRIBAM,Jiribam,name
+14,1414,KAKCHING,Kakching,name
+14,1415,KAMJONG,Kamjong,name
+14,1416,NONEY,Noney,name
+15,1501,MAMIT,Mamit,name
+15,1502,KOLASIB,Kolasib,name
+15,1503,AIZAWL,Aizawl,name
+15,1504,CHAMPHAI,Champhai,name
+15,1505,SERCHHIP,Serchhip,name
+15,1506,LUNGLEI,Lunglei,name
+15,1507,LAWNGTLAI,Lawngtlai,name
+15,1508,SIAHA,Saiha,fuzzy
+15,1509,SAITUAL,Saitual,name
+15,1510,HNAHTHIAL,Hnahthial,name
+15,1511,KHAWZAWL,Khawzawl,name
+16,1601,WEST TRIPURA,West Tripura,name
+16,1602,SOUTH TRIPURA,South Tripura,name
+16,1603,DHALAI,Dhalai,name
+16,1604,NORTH TRIPURA,North Tripura,name
+16,1605,SEPAHIJALA,Sepahijala,name
+16,1606,KHOWAI,Khowai,name
+16,1607,GOMATI,Gomati,name
+16,1608,UNAKOTI,Unakoti,name
+17,1701,WEST GARO HILLS,West Garo Hills,name
+17,1702,EAST GARO HILLS,East Garo Hills,name
+17,1703,SOUTH GARO HILLS,South Garo Hills,name
+17,1704,WEST KHASI HILLS,West Khasi Hills,name
+17,1705,RI BHOI,Ri Bhoi,name
+17,1706,EAST KHASI HILLS,East Khasi Hills,name
+17,1707,WEST JAINTIA HILLS,West Jaintia Hills,name
+17,1708,NORTH GARO HILLS,North Garo Hills,name
+17,1709,EAST JAINTIA HILLS,East Jaintia Hills,name
+17,1710,SOUTH WEST KHASI HILLS,South West Khasi Hills,name
+17,1711,SOUTH WEST GARO HILLS,South West Garo Hills,name
+17,1712,EASTERN WEST KHASI HILLS,Eastern West Khasi Hills,name
+18,1801,KOKRAJHAR,Kokrajhar,name
+18,1802,DHUBRI,Dhubri,name
+18,1803,GOALPARA,Goalpara,name
+18,1804,BONGAIGAON,Bongaigaon,name
+18,1805,BARPETA,Barpeta,name
+18,1806,KAMRUP-RURAL,Kamrup,alias
+18,1807,NALBARI,Nalbari,name
+18,1808,DARRANG,Darrang,name
+18,1809,MORIGAON,Marigaon,fuzzy
+18,1810,NAGAON,Nagaon,name
+18,1811,SONITPUR,Sonitpur,name
+18,1812,LAKHIMPUR,Lakhimpur,name
+18,1813,DHEMAJI,Dhemaji,name
+18,1814,TINSUKIA,Tinsukia,name
+18,1815,DIBRUGARH,Dibrugarh,name
+18,1816,SIBSAGAR,Sivasagar,fuzzy
+18,1817,JORHAT,Jorhat,name
+18,1818,GOLAGHAT,Golaghat,name
+18,1819,KARBI ANGLONG,Karbi Anglong,name
+18,1820,DIMA HASAO,Dima Hasao,name
+18,1821,CACHAR,Cachar,name
+18,1822,SRIBHUMI,Karimganj,alias
+18,1823,HAILAKANDI,Hailakandi,name
+18,1824,BAKSA,Baksa,name
+18,1825,CHIRANG,Chirang,name
+18,1826,UDALGURI,Udalguri,name
+18,1827,KAMRUP-METRO,Kamrup Metro,name
+18,1828,BISWANATH,Biswanath,name
+18,1829,CHARAIDEO,Charaideo,name
+18,1830,HOJAI,Hojai,name
+18,1831,MAJULI,Majuli,name
+18,1832,SOUTH SALMARA-MANKACHAR,South Salmara Mancachar,fuzzy
+18,1833,WEST KARBI ANGLONG,West Karbi Anglong,name
+18,1834,TAMULPUR,Tamulpur,name
+18,1835,BAJALI,Bajali,name
+19,1901,DARJILING,Darjeeling,fuzzy
+19,1902,JALPAIGURI,Jalpaiguri,name
+19,1903,COOCHBEHAR,Coochbehar,name
+19,1904,UTTAR DINAJPUR,Dinajpur Uttar,alias
+19,1905,DAKSHIN DINAJPUR,Dinajpur Dakshin,alias
+19,1906,MALDAH,Maldah,name
+19,1907,MURSHIDABAD,Murshidabad,name
+19,1908,BIRBHUM,Birbhum,name
+19,1910,NADIA,Nadia,name
+19,1911,NORTH TWENTY FOUR PARGANAS,24 Paraganas North,alias
+19,1912,HOOGHLY,Hooghly,name
+19,1913,BANKURA,Bankura,name
+19,1914,PURULIYA,Purulia,fuzzy
+19,1916,HOWRAH,Howrah,name
+19,1917,KOLKATA,Kolkata,name
+19,1918,SOUTH TWENTY FOUR PARGANAS,24 Paraganas South,alias
+19,1919,PURBA MEDINIPUR,Medinipur East,alias
+19,1920,PASCHIM MEDINIPUR,Medinipur West,alias
+19,1922,ALIPURDUAR,Alipurduar,name
+19,1923,JHARGRAM,Jhargram,name
+19,1924,KALIMPONG,Kalimpong,name
+19,1925,PURBA BARDHAMAN,Purba Bardhaman,name
+19,1926,PASCHIM BARDHAMAN,Paschim Bardhaman,name
+20,2001,GARHWA,Garhwa,name
+20,2002,PALAMU,Palamu,name
+20,2003,CHATRA,Chatra,name
+20,2004,HAZARIBAGH,Hazaribagh,name
+20,2005,KODERMA,Koderma,name
+20,2006,GIRIDIH,Giridih,name
+20,2007,DEOGHAR,Deoghar,name
+20,2008,GODDA,Godda,name
+20,2009,SAHEBGANJ,Sahebganj,name
+20,2010,PAKUR,Pakur,name
+20,2011,DUMKA,Dumka,name
+20,2012,DHANBAD,Dhanbad,name
+20,2013,BOKARO,Bokaro,name
+20,2014,RANCHI,Ranchi,name
+20,2015,LOHARDAGA,Lohardaga,name
+20,2016,GUMLA,Gumla,name
+20,2017,WEST SINGHBHUM,West Singhbhum,name
+20,2018,EAST SINGHBHUM,East Singhbum,fuzzy
+20,2019,JAMTARA,Jamtara,name
+20,2020,SARAIKELA KHARSAWAN,Saraikela Kharsawan,name
+20,2021,SIMDEGA,Simdega,name
+20,2022,LATEHAR,Latehar,name
+20,2023,KHUNTI,Khunti,name
+20,2024,RAMGARH,Ramgarh,name
+21,2101,BARGARH,Bargarh,name
+21,2102,JHARSUGUDA,Jharsuguda,name
+21,2103,SAMBALPUR,Sambalpur,name
+21,2104,DEOGARH,Deogarh,name
+21,2105,SUNDARGARH,Sundargarh,name
+21,2106,KEONJHAR,Kendujhar,fuzzy
+21,2107,MAYURBHANJ,Mayurbhanj,name
+21,2108,BALASORE,Baleshwar,alias
+21,2109,BHADRAK,Bhadrak,name
+21,2110,KENDRAPARA,Kendrapara,name
+21,2111,JAGATSINGHAPUR,Jagatsinghapur,name
+21,2112,CUTTACK,Cuttack,name
+21,2113,JAJPUR,Jajapur,fuzzy
+21,2114,DHENKANAL,Dhenkanal,name
+21,2115,ANGUL,Anugul,fuzzy
+21,2116,NAYAGARH,Nayagarh,name
+21,2117,KHORDHA,Khordha,name
+21,2118,PURI,Puri,name
+21,2119,GANJAM,Ganjam,name
+21,2120,GAJAPATI,Gajapati,name
+21,2121,KANDHAMAL,Kandhamal,name
+21,2122,BOUDH,Boudh,name
+21,2123,SONEPUR,Sonepur,name
+21,2124,BALANGIR,Balangir,name
+21,2125,NUAPADA,Nuapada,name
+21,2126,KALAHANDI,Kalahandi,name
+21,2127,RAYAGADA,Rayagada,name
+21,2128,NABARANGPUR,Nabarangpur,name
+21,2129,KORAPUT,Koraput,name
+21,2130,MALKANGIRI,Malkangiri,name
+22,2201,KORIYA,Korea,alias
+22,2202,SURGUJA,Surguja,name
+22,2203,JASHPUR,Jashpur,name
+22,2204,RAIGARH,Raigarh,name
+22,2205,KORBA,Korba,name
+22,2206,JANJGIR - CHAMPA,Janjgir-Champa,name
+22,2207,BILASPUR,Bilaspur,name
+22,2208,KAWARDHA,Kabirdham,alias
+22,2209,RAJNANDGAON,Rajnandgaon,name
+22,2210,DURG,Durg,name
+22,2211,RAIPUR,Raipur,name
+22,2212,MAHASAMUND,Mahasamund,name
+22,2213,DHAMTARI,Dhamtari,name
+22,2214,KANKER,Kanker,name
+22,2215,BASTER,Bastar,fuzzy
+22,2216,DANTEWADA,Dantewada,name
+22,2217,KONDAGAON,Kondagaon,name
+22,2218,NARAYANPUR,Narayanpur,name
+22,2219,MUNGELI,Mungeli,name
+22,2220,BIJAPUR,Bijapur,name
+22,2221,SUKMA,Sukma,name
+22,2222,BALOD,Balod,name
+22,2223,BEMETARA,Bemetara,name
+22,2224,BALODABAZAR,Baloda Bazar,name
+22,2225,GARIABAND,Gariyaband,fuzzy
+22,2226,BALRAMPUR,Balrampur,name
+22,2227,SURAJPUR,Surajpur,name
+22,2228,GOURELA PENDRA MARVAHI,Gaurella Pendra Marwahi,fuzzy
+22,2229,SARANGARH-BILAIGARH,Sarangarh Bilaigarh,name
+22,2230,KHAIRAGARH-CHUIKHADAN-GANDAI,Khairgarh Chhuikhadan Gandai,alias
+22,2231,MANENDRAGARH-CHIRMIRI-BHARATPUR,Manendragarh Chirimiri Bharatpur,fuzzy
+22,2232,MOHLA-MANPUR-CHOWKI,Mohla Manpur Ambagarh Chouki,alias
+22,2233,SAKTI,Sakti,name
+23,2301,SHEOPUR,Sheopur,name
+23,2302,MORENA,Morena,name
+23,2303,BHIND,Bhind,name
+23,2304,GWALIOR,Gwalior,name
+23,2305,DATIA,Datia,name
+23,2306,SHIVPURI,Shivpuri,name
+23,2307,GUNA,Guna,name
+23,2308,TIKAMGARH,Tikamgarh,name
+23,2309,CHHATARPUR,Chhatarpur,name
+23,2310,PANNA,Panna,name
+23,2311,SAGAR,Sagar,name
+23,2312,DAMOH,Damoh,name
+23,2313,SATNA,Satna,name
+23,2314,REWA,Rewa,name
+23,2315,UMARIA,Umaria,name
+23,2316,SHAHDOL,Shahdol,name
+23,2317,SIDHI,Sidhi,name
+23,2318,NEEMUCH,Neemuch,name
+23,2319,MANDSAUR,Mandsaur,name
+23,2320,RATLAM,Ratlam,name
+23,2321,UJJAIN,Ujjain,name
+23,2322,SHAJAPUR,Shajapur,name
+23,2323,DEWAS,Dewas,name
+23,2324,JHABUA,Jhabua,name
+23,2325,DHAR,Dhar,name
+23,2326,INDORE,Indore,name
+23,2327,KHARGONE,Khargone,name
+23,2328,BARWANI,Barwani,name
+23,2329,KHANDWA,East Nimar,alias
+23,2330,RAJGARH,Rajgarh,name
+23,2331,VIDISHA,Vidisha,name
+23,2332,BHOPAL,Bhopal,name
+23,2333,SEHORE,Sehore,name
+23,2334,RAISEN,Raisen,name
+23,2335,BETUL,Betul,name
+23,2336,HARDA,Harda,name
+23,2337,HOSHANGABAD,Narmadapuram,alias
+23,2338,KATNI,Katni,name
+23,2339,JABALPUR,Jabalpur,name
+23,2340,NARSIMHAPUR,Narsinghpur,fuzzy
+23,2341,DINDORI,Dindori,name
+23,2342,MANDLA,Mandla,name
+23,2343,CHHINDWARA,Chhindwara,name
+23,2344,SEONI,Seoni,name
+23,2345,BALAGHAT,Balaghat,name
+23,2346,ASHOKNAGAR,Ashoknagar,name
+23,2347,ANUPPUR,Anuppur,name
+23,2348,BURHANPUR,Burhanpur,name
+23,2349,ALIRAJPUR,Alirajpur,name
+23,2350,SINGRAULI,Singrauli,name
+23,2351,AGAR MALWA,Agar Malwa,name
+23,2352,NIWARI,Niwari,name
+23,2353,MAUGANJ,Rewa,alias
+23,2354,MAIHAR,Satna,alias
+23,2355,PANDHURNA,Chhindwara,alias
+24,2401,KACHCHH,Kachchh,name
+24,2402,BANAS KANTHA,Banas Kantha,name
+24,2403,PATAN,Patan,name
+24,2404,MAHESANA,Mahesana,name
+24,2405,SABAR KANTHA,Sabar Kantha,name
+24,2406,GANDHINAGAR,Gandhinagar,name
+24,2407,AHMEDABAD,Ahmadabad,fuzzy
+24,2408,SURENDRANAGAR,Surendranagar,name
+24,2409,RAJKOT,Rajkot,name
+24,2410,JAMNAGAR,Jamnagar,name
+24,2411,PORBANDAR,Porbandar,name
+24,2412,JUNAGADH,Junagadh,name
+24,2413,AMRELI,Amreli,name
+24,2414,BHAVNAGAR,Bhavnagar,name
+24,2415,ANAND,Anand,name
+24,2416,KHEDA,Kheda,name
+24,2417,PANCH MAHALS,Panch Mahals,name
+24,2418,DAHOD,Dohad,alias
+24,2419,VADODARA,Vadodara,name
+24,2420,NARMADA,Narmada,name
+24,2421,BHARUCH,Bharuch,name
+24,2422,SURAT,Surat,name
+24,2423,DANGS,Dang,fuzzy
+24,2424,NAVSARI,Navsari,name
+24,2425,VALSAD,Valsad,name
+24,2426,TAPI,Tapi,name
+24,2427,ARVALLI,Arvalli,name
+24,2428,BOTAD,Botad,name
+24,2429,DEVBHUMI DWARKA,Devbhumi Dwarka,name
+24,2430,GIR SOMNATH,Gir Somnath,name
+24,2431,MAHISAGAR,Mahisagar,name
+24,2432,CHHOTAUDEPUR,Chhotaudepur,name
+24,2433,MORBI,Morbi,name
+27,2701,NANDURBAR,Nandurbar,name
+27,2702,DHULE,Dhule,name
+27,2703,JALGAON,Jalgaon,name
+27,2704,BULDANA,Buldhana,fuzzy
+27,2705,AKOLA,Akola,name
+27,2706,WASHIM,Washim,name
+27,2707,AMRAVATI,Amravati,name
+27,2708,WARDHA,Wardha,name
+27,2709,NAGPUR,Nagpur,name
+27,2710,BHANDARA,Bhandara,name
+27,2711,GONDIYA,Gondia,fuzzy
+27,2712,GADCHIROLI,Gadchiroli,name
+27,2713,CHANDRAPUR,Chandrapur,name
+27,2714,YAVATMAL,Yavatmal,name
+27,2715,NANDED,Nanded,name
+27,2716,HINGOLI,Hingoli,name
+27,2717,PARBHANI,Parbhani,name
+27,2718,JALNA,Jalna,name
+27,2719,CHHATRAPATI SAMBHAJINAGAR,Aurangabad,alias
+27,2720,NASHIK,Nashik,name
+27,2721,THANE,Thane,name
+27,2722,MUMBAI (SUBURBAN),Mumbai Suburban,name
+27,2723,MUMBAI II,Mumbai,fuzzy
+27,2724,RAIGARH (MAHARASHTRA),Raigad,alias
+27,2725,PUNE,Pune,name
+27,2726,AHILYANAGAR,Ahmednagar,alias
+27,2727,BID,Beed,alias
+27,2728,LATUR,Latur,name
+27,2729,DHARASHIV,Osmanabad,alias
+27,2730,SOLAPUR,Solapur,name
+27,2731,SATARA,Satara,name
+27,2732,RATNAGIRI,Ratnagiri,name
+27,2733,SINDHUDURG,Sindhudurg,name
+27,2734,KOLHAPUR,Kolhapur,name
+27,2735,SANGLI,Sangli,name
+27,2736,PALGHAR,Palghar,name
+28,2811,SRIKAKULAM,Srikakulam,name
+28,2812,VIZIANAGARAM,Vizianagaram,name
+28,2813,VISAKHAPATNAM,Visakhapatanam,fuzzy
+28,2814,EAST GODAVARI,East Godavari,name
+28,2815,WEST GODAVARI,West Godavari,name
+28,2816,KRISHNA,Krishna,name
+28,2817,GUNTUR,Guntur,name
+28,2818,PRAKASAM,Prakasam,name
+28,2819,NELLORE,Spsr Nellore,alias
+28,2820,KADAPA,Y.S.R.,alias
+28,2821,KURNOOL,Kurnool,name
+28,2822,ANANTAPUR,Anantapur,name
+28,2823,CHITTOOR,Chittoor,name
+28,2824,SRI SATYASAI,Sri Sathya Sai,fuzzy
+28,2825,ANNAMAYYA,Annamayya,name
+28,2826,NTR,Ntr,name
+28,2827,NANDYAL,Nandyal,name
+28,2828,BAPATLA,Bapatla,name
+28,2829,MANYAM,Parvathipuram Manyam,alias
+28,2830,ASR,Alluri Sitharama Raju,alias
+28,2831,KONASEEMA,Konaseema,name
+28,2832,PALNADU,Palnadu,name
+28,2833,TIRUPATI,Tirupati,name
+28,2834,KAKINADA,Kakinada,name
+28,2835,ELURU,Eluru,name
+28,2836,ANAKAPALLI,Anakapalli,name
+29,2901,BELAGAVI,Belagavi,name
+29,2902,BAGALKOT,Bagalkote,fuzzy
+29,2903,VIJAYAPURA,Vijayapura,name
+29,2904,KALBURGI,Kalaburagi,fuzzy
+29,2905,BIDAR,Bidar,name
+29,2906,RAICHUR,Raichur,name
+29,2907,KOPPAL,Koppal,name
+29,2908,GADAG,Gadag,name
+29,2909,DHARWAD,Dharwad,name
+29,2910,UTTARA KANNADA,Uttara Kannada,name
+29,2911,HAVERI,Haveri,name
+29,2912,BALLARI,Ballari,name
+29,2913,CHITRADURGA,Chitradurga,name
+29,2914,DAVANAGERE,Davangere,fuzzy
+29,2915,SHIVAMOGGA,Shivamogga,name
+29,2916,UDUPI,Udupi,name
+29,2917,CHIKKAMANGALURU,Chikkamagaluru,fuzzy
+29,2918,TUMAKURU,Tumakuru,name
+29,2919,KOLAR,Kolar,name
+29,2921,BENGALURU RURAL,Bengaluru Rural,name
+29,2922,MANDYA,Mandya,name
+29,2923,HASSAN,Hassan,name
+29,2924,DAKSHINA KANNADA,Dakshina Kannada,name
+29,2925,KODAGU,Kodagu,name
+29,2926,MYSURU,Mysuru,name
+29,2927,CHAMARAJANAGARA,Chamarajanagara,name
+29,2929,CHIKKABALLAPURA,Chikkaballapura,name
+29,2932,RAMANAGARA,Ramanagara,name
+29,2933,YADAGIRI,Yadgir,fuzzy
+29,2934,UTTARA KANNADA SIRSI,Uttara Kannada,fuzzy
+29,2935,VIJAYANAGARA,Vijayanagar,fuzzy
+30,3001,NORTH GOA,North Goa,name
+30,3002,SOUTH GOA,South Goa,name
+31,3101,LAKSHADWEEP DISTRICT,Lakshadweep District,name
+32,3201,KASARAGOD,Kasaragod,name
+32,3202,KANNUR,Kannur,name
+32,3203,WAYANAD,Wayanad,name
+32,3204,KOZHIKODE,Kozhikode,name
+32,3205,MALAPPURAM,Malappuram,name
+32,3206,PALAKKAD,Palakkad,name
+32,3207,THRISSUR,Thrissur,name
+32,3208,ERNAKULAM,Ernakulam,name
+32,3209,IDUKKI,Idukki,name
+32,3210,KOTTAYAM,Kottayam,name
+32,3211,ALAPPUZHA,Alappuzha,name
+32,3212,PATHANAMTHITTA,Pathanamthitta,name
+32,3213,KOLLAM,Kollam,name
+32,3214,THIRUVANANTHAPURAM,Thiruvananthapuram,name
+33,3301,TIRUVALLUR,Thiruvallur,fuzzy
+33,3302,CHENNAI (EXT. GCC),Chennai,alias
+33,3303,KANCHEEPURAM,Kanchipuram,fuzzy
+33,3304,VELLORE,Vellore,name
+33,3305,DHARMAPURI,Dharmapuri,name
+33,3306,TIRUVANNAMALAI,Tiruvannamalai,name
+33,3307,VILLUPURAM,Villupuram,name
+33,3308,SALEM,Salem,name
+33,3309,NAMAKKAL,Namakkal,name
+33,3310,ERODE,Erode,name
+33,3311,THE NILGIRIS,The Nilgiris,name
+33,3312,COIMBATORE,Coimbatore,name
+33,3313,DINDIGUL,Dindigul,name
+33,3314,KARUR,Karur,name
+33,3315,TIRUCHIRAPPALLI,Tiruchirappalli,name
+33,3316,PERAMBALUR,Perambalur,name
+33,3318,CUDDALORE,Cuddalore,name
+33,3319,NAGAPATTINAM,Nagapattinam,name
+33,3320,TIRUVARUR,Thiruvarur,fuzzy
+33,3321,THANJAVUR,Thanjavur,name
+33,3322,PUDUKKOTTAI,Pudukkottai,name
+33,3323,SIVAGANGAI,Sivaganga,fuzzy
+33,3324,MADURAI,Tuticorin,alias
+33,3325,THENI,Theni,name
+33,3326,VIRUDHUNAGAR,Virudhunagar,name
+33,3327,RAMANATHAPURAM,Ramanathapuram,name
+33,3328,THOOTHUKKUDI,Tuticorin,alias
+33,3329,TIRUNELVELI,Tirunelveli,name
+33,3330,KANNIYAKUMARI,Kanniyakumari,name
+33,3331,KRISHNAGIRI,Krishnagiri,name
+33,3332,ARIYALUR,Ariyalur,name
+33,3333,TIRUPPUR,Tiruppur,name
+33,3334,KALLAKURICHI,Kallakurichi,name
+33,3335,TENKASI,Tenkasi,name
+33,3336,CHENGALPATTU,Chengalpattu,name
+33,3337,TIRUPATHUR,Tirupathur,name
+33,3338,RANIPET,Ranipet,name
+33,3339,MAYILADUTHURAI,Mayiladuthurai,name
+34,3401,YANAM,Yanam,name
+34,3402,PONDICHERRY,Pondicherry,name
+34,3403,MAHE,Mahe,name
+34,3404,KARAIKAL,Karaikal,name
+35,3501,ANDAMANS,South Andamans,alias
+35,3502,NICOBARS,Nicobars,name
+35,3503,MIDDLE AND NORTH ANDAMANS,North And Middle Andaman,alias
+36,3601,ADILABAD,Adilabad,name
+36,3602,KUMURAM BHEEM ASIFABAD,Kumuram Bheem Asifabad,name
+36,3603,MANCHERIAL,Mancherial,name
+36,3604,NIRMAL,Nirmal,name
+36,3605,NIZAMABAD,Nizamabad,name
+36,3606,JAGITIAL,Jagitial,name
+36,3607,PEDDAPALLI,Peddapalli,name
+36,3608,JAYASHANKAR BHUPALAPALLY,Jayashankar Bhupalapally,name
+36,3609,BHADRADRI KOTHAGUDEM,Bhadradri Kothagudem,name
+36,3610,MAHABUBABAD,Mahabubabad,name
+36,3611,WARANGAL,Warangal,name
+36,3612,HANUMAKONDA,Hanumakonda,name
+36,3613,KARIMNAGAR,Karimnagar,name
+36,3614,RAJANNA SIRCILLA,Rajanna Sircilla,name
+36,3615,KAMAREDDY,Kamareddy,name
+36,3616,SANGAREDDY,Sangareddy,name
+36,3617,MEDAK,Medak,name
+36,3618,SIDDIPET,Siddipet,name
+36,3619,JANGAON,Jangoan,fuzzy
+36,3620,YADADRI BHUVANAGIRI,Yadadri Bhuvanagiri,name
+36,3621,MEDCHAL MALKAJGIRI,Medchal Malkajgiri,name
+36,3622,HYDERABAD,Hyderabad,name
+36,3623,RANGA REDDY,Ranga Reddy,name
+36,3624,VIKARABAD,Vikarabad,name
+36,3625,MAHABUBNAGAR,Mahabubnagar,name
+36,3626,JOGULAMBA GADWAL,Jogulamba Gadwal,name
+36,3627,WANAPARTHY,Wanaparthy,name
+36,3628,NAGARKURNOOL,Nagarkurnool,name
+36,3629,NALGONDA,Nalgonda,name
+36,3630,SURYAPET,Suryapet,name
+36,3631,KHAMMAM,Khammam,name
+36,3632,MULUGU,Mulugu,name
+36,3633,NARAYANPET,Narayanpet,name
+37,3707,LEH LADAKH,Leh Ladakh,name
+37,3708,KARGIL,Kargil,name
+38,2501,DIU,Diu,name
+38,2502,DAMAN,Daman,name
+38,2601,DADRA AND NAGAR HAVELI,Dadra And Nagar Haveli,name

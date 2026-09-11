@@ -1,0 +1,810 @@
+type,code,name,file,bytes,vertices
+country,IN,India,boundaries/country/IN.geojson,1139163,40895
+district,0101,Kupwara,boundaries/district/0101.geojson,8806,306
+district,0102,Baramulla,boundaries/district/0102.geojson,9760,340
+district,0103,Srinagar,boundaries/district/0103.geojson,8133,280
+district,0104,Budgam,boundaries/district/0104.geojson,7583,262
+district,0105,Pulwama,boundaries/district/0105.geojson,8137,281
+district,0106,Anantnag,boundaries/district/0106.geojson,13830,487
+district,0109,Doda,boundaries/district/0109.geojson,9755,340
+district,0110,Udhampur,boundaries/district/0110.geojson,11884,417
+district,0111,Poonch,boundaries/district/0111.geojson,13022,458
+district,0112,Rajouri,boundaries/district/0112.geojson,11986,421
+district,0113,Jammu,boundaries/district/0113.geojson,15711,555
+district,0114,Kathua,boundaries/district/0114.geojson,13520,476
+district,0115,Shopian,boundaries/district/0115.geojson,6654,229
+district,0116,Bandipora,boundaries/district/0116.geojson,11703,411
+district,0117,Kishtwar,boundaries/district/0117.geojson,21596,767
+district,0118,Ramban,boundaries/district/0118.geojson,4942,167
+district,0119,Ganderbal,boundaries/district/0119.geojson,13581,478
+district,0120,Kulgam,boundaries/district/0120.geojson,10571,370
+district,0121,Reasi,boundaries/district/0121.geojson,13591,479
+district,0122,Samba,boundaries/district/0122.geojson,8874,309
+district,0201,Chamba,boundaries/district/0201.geojson,20856,741
+district,0202,Kangra,boundaries/district/0202.geojson,21952,779
+district,0203,Lahul & Spiti,boundaries/district/0203.geojson,34013,1215
+district,0204,Kullu,boundaries/district/0204.geojson,16950,600
+district,0205,Mandi,boundaries/district/0205.geojson,14342,506
+district,0206,Hamirpur (H.P.),boundaries/district/0206.geojson,7644,264
+district,0207,Una,boundaries/district/0207.geojson,11481,402
+district,0208,Bilaspur (H.P.),boundaries/district/0208.geojson,11653,408
+district,0209,Solan,boundaries/district/0209.geojson,15136,534
+district,0210,Sirmaur,boundaries/district/0210.geojson,15917,562
+district,0211,Shimla,boundaries/district/0211.geojson,22350,794
+district,0212,Kinnaur,boundaries/district/0212.geojson,16739,592
+district,0301,Gurdaspur,boundaries/district/0301.geojson,14502,511
+district,0302,Amritsar,boundaries/district/0302.geojson,17611,623
+district,0303,Kapurthala,boundaries/district/0303.geojson,18043,638
+district,0304,Jalandhar,boundaries/district/0304.geojson,20404,723
+district,0305,Hoshiarpur,boundaries/district/0305.geojson,17471,617
+district,0306,Shahid Bhagat Singh Nagar,boundaries/district/0306.geojson,10854,379
+district,0307,Rupnagar,boundaries/district/0307.geojson,14074,496
+district,0308,Fatehgarh Sahib,boundaries/district/0308.geojson,9498,331
+district,0309,Ludhiana,boundaries/district/0309.geojson,15447,546
+district,0310,Moga,boundaries/district/0310.geojson,12278,431
+district,0311,Ferozepur,boundaries/district/0311.geojson,13889,489
+district,0312,Sri Muktsar Sahib,boundaries/district/0312.geojson,10012,349
+district,0313,Faridkot,boundaries/district/0313.geojson,7793,270
+district,0314,Bathinda,boundaries/district/0314.geojson,15636,552
+district,0315,Mansa,boundaries/district/0315.geojson,13785,485
+district,0316,Sangrur,boundaries/district/0316.geojson,20657,732
+district,0317,Patiala,boundaries/district/0317.geojson,27585,982
+district,0318,S.A.S Nagar,boundaries/district/0318.geojson,13677,481
+district,0319,Tarn Taran,boundaries/district/0319.geojson,12865,452
+district,0320,Barnala,boundaries/district/0320.geojson,11607,407
+district,0321,Fazilka,boundaries/district/0321.geojson,8624,299
+district,0322,Pathankot,boundaries/district/0322.geojson,9829,343
+district,0323,Malerkotla,boundaries/district/0323.geojson,7759,269
+district,0401,Chandigarh,boundaries/district/0401.geojson,3396,111
+district,0501,Uttarkashi,boundaries/district/0501.geojson,23971,852
+district,0502,Chamoli,boundaries/district/0502.geojson,19460,690
+district,0503,Rudraprayag,boundaries/district/0503.geojson,10168,355
+district,0504,Tehri Garhwal,boundaries/district/0504.geojson,21970,780
+district,0505,Dehradun,boundaries/district/0505.geojson,20939,743
+district,0506,Pauri Garhwal,boundaries/district/0506.geojson,15876,560
+district,0507,Pithoragarh,boundaries/district/0507.geojson,20968,745
+district,0508,Bageshwar,boundaries/district/0508.geojson,11718,411
+district,0509,Almora,boundaries/district/0509.geojson,17438,617
+district,0510,Champawat,boundaries/district/0510.geojson,10731,375
+district,0511,Nainital,boundaries/district/0511.geojson,17361,614
+district,0512,Udham Singh Nagar,boundaries/district/0512.geojson,24778,881
+district,0513,Haridwar,boundaries/district/0513.geojson,12195,428
+district,0601,Panchkula,boundaries/district/0601.geojson,10505,367
+district,0602,Ambala,boundaries/district/0602.geojson,16121,569
+district,0603,Yamunanagar,boundaries/district/0603.geojson,11818,414
+district,0604,Kurukshetra,boundaries/district/0604.geojson,11385,399
+district,0605,Kaithal,boundaries/district/0605.geojson,14711,519
+district,0606,Karnal,boundaries/district/0606.geojson,15261,539
+district,0607,Panipat,boundaries/district/0607.geojson,7847,272
+district,0608,Sonipat,boundaries/district/0608.geojson,9673,338
+district,0609,Jind,boundaries/district/0609.geojson,13854,488
+district,0610,Fatehabad,boundaries/district/0610.geojson,11326,397
+district,0611,Sirsa,boundaries/district/0611.geojson,11784,413
+district,0612,Hisar,boundaries/district/0612.geojson,14922,526
+district,0613,Bhiwani,boundaries/district/0613.geojson,15231,537
+district,0614,Rohtak,boundaries/district/0614.geojson,7985,277
+district,0615,Jhajjar,boundaries/district/0615.geojson,9382,327
+district,0616,Mahendragarh,boundaries/district/0616.geojson,14534,512
+district,0617,Rewari,boundaries/district/0617.geojson,10133,353
+district,0618,Gurugram,boundaries/district/0618.geojson,9005,313
+district,0619,Faridabad,boundaries/district/0619.geojson,5614,191
+district,0620,Nuh,boundaries/district/0620.geojson,12597,443
+district,0621,Palwal,boundaries/district/0621.geojson,9395,327
+district,0622,Charkhi Dadri,boundaries/district/0622.geojson,9163,319
+district,0711,North East I,boundaries/district/0711.geojson,2364,74
+district,0713,North West A,boundaries/district/0713.geojson,4061,135
+district,0714,North West B-I,boundaries/district/0714.geojson,4063,135
+district,0716,West B,boundaries/district/0716.geojson,3101,101
+district,0718,South West B-I,boundaries/district/0718.geojson,3921,130
+district,0720,New Delhi,boundaries/district/0720.geojson,3119,101
+district,0721,Central,boundaries/district/0721.geojson,4137,138
+district,0722,South East,boundaries/district/0722.geojson,2528,80
+district,0723,North East Ii,boundaries/district/0723.geojson,2365,74
+district,0724,North West B-Ii,boundaries/district/0724.geojson,4064,135
+district,0725,South West B-Ii,boundaries/district/0725.geojson,3922,130
+district,0801,Ganganagar,boundaries/district/0801.geojson,24641,876
+district,0802,Hanumangarh,boundaries/district/0802.geojson,35509,1267
+district,0803,Bikaner,boundaries/district/0803.geojson,43560,1557
+district,0804,Churu,boundaries/district/0804.geojson,44034,1574
+district,0805,Jhunjhunu,boundaries/district/0805.geojson,22721,807
+district,0806,Alwar,boundaries/district/0806.geojson,27949,995
+district,0807,Bharatpur,boundaries/district/0807.geojson,18785,664
+district,0808,Dholpur,boundaries/district/0808.geojson,14010,493
+district,0809,Karauli,boundaries/district/0809.geojson,14892,525
+district,0810,Sawai Madhopur,boundaries/district/0810.geojson,14127,497
+district,0811,Dausa,boundaries/district/0811.geojson,20586,731
+district,0812,Jaipur,boundaries/district/0812.geojson,15155,535
+district,0813,Sikar,boundaries/district/0813.geojson,25962,924
+district,0814,Nagaur,boundaries/district/0814.geojson,27389,974
+district,0815,Jodhpur,boundaries/district/0815.geojson,14209,501
+district,0816,Jaisalmer,boundaries/district/0816.geojson,19480,690
+district,0817,Barmer,boundaries/district/0817.geojson,17474,618
+district,0818,Jalore,boundaries/district/0818.geojson,22900,813
+district,0819,Sirohi,boundaries/district/0819.geojson,15315,534
+district,0820,Pali,boundaries/district/0820.geojson,23278,827
+district,0821,Ajmer,boundaries/district/0821.geojson,15928,562
+district,0822,Tonk,boundaries/district/0822.geojson,31001,1105
+district,0823,Bundi,boundaries/district/0823.geojson,17340,614
+district,0824,Bhilwara,boundaries/district/0824.geojson,28513,1009
+district,0825,Rajsamand,boundaries/district/0825.geojson,28460,1013
+district,0826,Udaipur,boundaries/district/0826.geojson,36353,1297
+district,0827,Dungarpur,boundaries/district/0827.geojson,12177,427
+district,0828,Banswara,boundaries/district/0828.geojson,13692,482
+district,0829,Chittorgarh,boundaries/district/0829.geojson,37299,1331
+district,0830,Kota,boundaries/district/0830.geojson,19351,686
+district,0831,Baran,boundaries/district/0831.geojson,20696,734
+district,0832,Jhalawar,boundaries/district/0832.geojson,26728,951
+district,0833,Pratapgarh,boundaries/district/0833.geojson,15949,563
+district,0835,Balotra,boundaries/district/0835.geojson,20006,709
+district,0836,Beawar,boundaries/district/0836.geojson,22989,810
+district,0837,Deeg,boundaries/district/0837.geojson,20912,741
+district,0838,Didwana-Kuchaman,boundaries/district/0838.geojson,23295,827
+district,0844,Khairthal-Tijara,boundaries/district/0844.geojson,11369,398
+district,0845,Kotputli-Behror,boundaries/district/0845.geojson,18942,670
+district,0847,Phalodi,boundaries/district/0847.geojson,23747,843
+district,0848,Salumbar,boundaries/district/0848.geojson,13302,468
+district,0901,Saharanpur,boundaries/district/0901.geojson,15641,552
+district,0902,Muzaffarnagar,boundaries/district/0902.geojson,14036,494
+district,0903,Bijnor,boundaries/district/0903.geojson,13976,492
+district,0904,Moradabad,boundaries/district/0904.geojson,20178,715
+district,0905,Rampur,boundaries/district/0905.geojson,22186,787
+district,0906,Amroha,boundaries/district/0906.geojson,15742,556
+district,0907,Meerut,boundaries/district/0907.geojson,13715,483
+district,0908,Baghpat,boundaries/district/0908.geojson,8607,299
+district,0909,Ghaziabad,boundaries/district/0909.geojson,9539,333
+district,0910,Gautam Buddha Nagar,boundaries/district/0910.geojson,13784,485
+district,0911,Bulandshahr,boundaries/district/0911.geojson,16849,596
+district,0912,Aligarh,boundaries/district/0912.geojson,21766,772
+district,0913,Hathras,boundaries/district/0913.geojson,16260,574
+district,0914,Mathura,boundaries/district/0914.geojson,17709,626
+district,0915,Agra,boundaries/district/0915.geojson,30166,1075
+district,0916,Firozabad,boundaries/district/0916.geojson,16028,566
+district,0917,Etah,boundaries/district/0917.geojson,24585,874
+district,0918,Mainpuri,boundaries/district/0918.geojson,20273,719
+district,0919,Budaun,boundaries/district/0919.geojson,19845,703
+district,0920,Bareilly,boundaries/district/0920.geojson,26427,941
+district,0921,Pilibhit,boundaries/district/0921.geojson,30621,1092
+district,0922,Shahjahanpur,boundaries/district/0922.geojson,36807,1314
+district,0923,Kheri,boundaries/district/0923.geojson,26946,959
+district,0924,Sitapur,boundaries/district/0924.geojson,24476,871
+district,0925,Hardoi,boundaries/district/0925.geojson,27816,990
+district,0926,Unnao,boundaries/district/0926.geojson,24916,886
+district,0927,Lucknow,boundaries/district/0927.geojson,18852,668
+district,0928,Rae Bareli,boundaries/district/0928.geojson,22555,801
+district,0929,Farrukhabad,boundaries/district/0929.geojson,17007,601
+district,0930,Kannauj,boundaries/district/0930.geojson,14552,513
+district,0931,Etawah,boundaries/district/0931.geojson,13917,490
+district,0932,Auraiya,boundaries/district/0932.geojson,10864,380
+district,0933,Kanpur Dehat,boundaries/district/0933.geojson,15902,561
+district,0934,Kanpur Nagar,boundaries/district/0934.geojson,18562,657
+district,0935,Jalaun,boundaries/district/0935.geojson,17526,620
+district,0936,Jhansi,boundaries/district/0936.geojson,39690,1418
+district,0937,Lalitpur,boundaries/district/0937.geojson,14414,508
+district,0938,Hamirpur,boundaries/district/0938.geojson,17413,616
+district,0939,Mahoba,boundaries/district/0939.geojson,24593,873
+district,0940,Banda,boundaries/district/0940.geojson,27157,967
+district,0941,Chitrakoot,boundaries/district/0941.geojson,22563,801
+district,0942,Fatehpur,boundaries/district/0942.geojson,12935,455
+district,0943,Pratapgarh,boundaries/district/0943.geojson,24665,877
+district,0944,Kaushambi,boundaries/district/0944.geojson,8747,304
+district,0945,Prayagraj,boundaries/district/0945.geojson,25776,917
+district,0946,Bara Banki,boundaries/district/0946.geojson,21160,751
+district,0947,Ayodhya,boundaries/district/0947.geojson,15552,549
+district,0948,Ambedkar Nagar,boundaries/district/0948.geojson,19286,684
+district,0949,Sultanpur,boundaries/district/0949.geojson,24418,868
+district,0950,Bahraich,boundaries/district/0950.geojson,19805,703
+district,0951,Shrawasti,boundaries/district/0951.geojson,12759,448
+district,0952,Balrampur,boundaries/district/0952.geojson,23526,836
+district,0953,Gonda,boundaries/district/0953.geojson,26095,929
+district,0954,Siddharthnagar,boundaries/district/0954.geojson,20703,734
+district,0955,Basti,boundaries/district/0955.geojson,18499,655
+district,0956,Sant Kabir Nagar,boundaries/district/0956.geojson,18453,653
+district,0957,Mahrajganj,boundaries/district/0957.geojson,17481,619
+district,0958,Gorakhpur,boundaries/district/0958.geojson,24814,882
+district,0959,Kushinagar,boundaries/district/0959.geojson,19628,695
+district,0960,Deoria,boundaries/district/0960.geojson,17491,618
+district,0961,Azamgarh,boundaries/district/0961.geojson,24936,888
+district,0962,Mau,boundaries/district/0962.geojson,14241,502
+district,0963,Ballia,boundaries/district/0963.geojson,14747,520
+district,0964,Jaunpur,boundaries/district/0964.geojson,27033,963
+district,0965,Ghazipur,boundaries/district/0965.geojson,18657,661
+district,0966,Chandauli,boundaries/district/0966.geojson,15761,556
+district,0967,Varanasi,boundaries/district/0967.geojson,11882,417
+district,0968,Sambhal,boundaries/district/0968.geojson,19227,681
+district,0969,Mirzapur,boundaries/district/0969.geojson,25277,898
+district,0970,Sonbhadra,boundaries/district/0970.geojson,23220,824
+district,0971,Bhadohi,boundaries/district/0971.geojson,12263,431
+district,0972,Kasganj,boundaries/district/0972.geojson,14095,496
+district,0973,Amethi,boundaries/district/0973.geojson,19779,701
+district,0974,Shamli,boundaries/district/0974.geojson,9248,322
+district,0975,Hapur,boundaries/district/0975.geojson,11126,390
+district,1001,Pashchim Champaran,boundaries/district/1001.geojson,20647,731
+district,1002,Purba Champaran,boundaries/district/1002.geojson,22644,804
+district,1003,Sheohar,boundaries/district/1003.geojson,8514,296
+district,1004,Sitamarhi,boundaries/district/1004.geojson,17198,609
+district,1005,Madhubani,boundaries/district/1005.geojson,24543,873
+district,1006,Supaul,boundaries/district/1006.geojson,18246,646
+district,1007,Araria,boundaries/district/1007.geojson,18843,666
+district,1008,Kishanganj,boundaries/district/1008.geojson,21705,770
+district,1009,Purnia,boundaries/district/1009.geojson,24772,881
+district,1010,Katihar,boundaries/district/1010.geojson,23259,826
+district,1011,Madhepura,boundaries/district/1011.geojson,15811,558
+district,1012,Saharsa,boundaries/district/1012.geojson,16619,587
+district,1013,Darbhanga,boundaries/district/1013.geojson,25014,889
+district,1014,Muzaffarpur,boundaries/district/1014.geojson,20270,719
+district,1015,Gopalganj,boundaries/district/1015.geojson,13583,478
+district,1016,Siwan,boundaries/district/1016.geojson,11862,416
+district,1017,Saran,boundaries/district/1017.geojson,11088,389
+district,1018,Vaishali,boundaries/district/1018.geojson,11068,388
+district,1019,Samastipur,boundaries/district/1019.geojson,20917,742
+district,1020,Begusarai,boundaries/district/1020.geojson,14194,500
+district,1021,Khagaria,boundaries/district/1021.geojson,12746,448
+district,1022,Bhagalpur,boundaries/district/1022.geojson,17043,602
+district,1023,Banka,boundaries/district/1023.geojson,16262,575
+district,1024,Munger,boundaries/district/1024.geojson,10427,365
+district,1025,Lakhisarai,boundaries/district/1025.geojson,8479,295
+district,1026,Sheikhpura,boundaries/district/1026.geojson,10593,371
+district,1027,Nalanda,boundaries/district/1027.geojson,18770,664
+district,1028,Patna,boundaries/district/1028.geojson,21754,772
+district,1029,Bhojpur,boundaries/district/1029.geojson,10380,363
+district,1030,Buxar,boundaries/district/1030.geojson,11866,416
+district,1031,Kaimur (Bhabua),boundaries/district/1031.geojson,18379,651
+district,1032,Rohtas,boundaries/district/1032.geojson,14273,503
+district,1033,Jehanabad,boundaries/district/1033.geojson,10927,382
+district,1034,Aurangabad (Bihar),boundaries/district/1034.geojson,14024,493
+district,1035,Gaya,boundaries/district/1035.geojson,27074,963
+district,1036,Nawada,boundaries/district/1036.geojson,16964,600
+district,1037,Jamui,boundaries/district/1037.geojson,16504,584
+district,1038,Arwal,boundaries/district/1038.geojson,7719,267
+district,1101,Mangan,boundaries/district/1101.geojson,12191,428
+district,1102,Gyalshing,boundaries/district/1102.geojson,5834,199
+district,1103,Namchi,boundaries/district/1103.geojson,5302,180
+district,1104,Gangtok,boundaries/district/1104.geojson,6354,218
+district,1105,Soreng,boundaries/district/1105.geojson,4111,137
+district,1106,Pakyong,boundaries/district/1106.geojson,4687,158
+district,1201,Tawang,boundaries/district/1201.geojson,9423,328
+district,1202,West Kameng,boundaries/district/1202.geojson,12518,440
+district,1203,East Kameng,boundaries/district/1203.geojson,12955,455
+district,1204,Papum Pare,boundaries/district/1204.geojson,15005,529
+district,1205,Lower Subansiri,boundaries/district/1205.geojson,9779,341
+district,1206,Upper Subansiri,boundaries/district/1206.geojson,11067,387
+district,1207,West Siang,boundaries/district/1207.geojson,3940,131
+district,1208,East Siang,boundaries/district/1208.geojson,4169,139
+district,1209,Upper Siang,boundaries/district/1209.geojson,10727,375
+district,1210,Dibang Valley,boundaries/district/1210.geojson,13068,459
+district,1211,Lohit,boundaries/district/1211.geojson,12777,449
+district,1212,Changlang,boundaries/district/1212.geojson,23214,825
+district,1213,Tirap,boundaries/district/1213.geojson,6645,229
+district,1214,Kurung Kumey,boundaries/district/1214.geojson,7339,253
+district,1215,Lower Dibang Valley,boundaries/district/1215.geojson,10856,379
+district,1216,Anjaw,boundaries/district/1216.geojson,10074,352
+district,1217,Longding,boundaries/district/1217.geojson,5650,193
+district,1218,Namsai,boundaries/district/1218.geojson,5427,185
+district,1219,Kra Daadi,boundaries/district/1219.geojson,7220,249
+district,1220,Siang,boundaries/district/1220.geojson,7495,259
+district,1221,Lower Siang,boundaries/district/1221.geojson,7122,245
+district,1222,Kamle,boundaries/district/1222.geojson,5498,187
+district,1223,Capital Complex Itanagar,boundaries/district/1223.geojson,1767,52
+district,1224,Pakke Kessang,boundaries/district/1224.geojson,7305,252
+district,1225,Shi Yomi,boundaries/district/1225.geojson,3748,124
+district,1226,Lepa Rada,boundaries/district/1226.geojson,2779,89
+district,1301,Mon,boundaries/district/1301.geojson,12736,448
+district,1302,Tuensang,boundaries/district/1302.geojson,10393,363
+district,1303,Mokokchung,boundaries/district/1303.geojson,16614,587
+district,1304,Zunheboto,boundaries/district/1304.geojson,14426,508
+district,1305,Wokha,boundaries/district/1305.geojson,11553,405
+district,1306,Dimapur,boundaries/district/1306.geojson,3243,106
+district,1307,Kohima,boundaries/district/1307.geojson,8631,300
+district,1308,Phek,boundaries/district/1308.geojson,10607,371
+district,1309,Longleng,boundaries/district/1309.geojson,9360,326
+district,1310,Kiphire,boundaries/district/1310.geojson,7543,260
+district,1311,Peren,boundaries/district/1311.geojson,12676,445
+district,1401,Senapati,boundaries/district/1401.geojson,7552,261
+district,1402,Tamenglong,boundaries/district/1402.geojson,16193,572
+district,1403,Churachandpur,boundaries/district/1403.geojson,11338,397
+district,1404,Bishnupur,boundaries/district/1404.geojson,7239,250
+district,1405,Thoubal,boundaries/district/1405.geojson,9010,313
+district,1406,Imphal West,boundaries/district/1406.geojson,11601,407
+district,1407,Imphal East,boundaries/district/1407.geojson,8171,283
+district,1408,Ukhrul,boundaries/district/1408.geojson,11027,386
+district,1409,Chandel,boundaries/district/1409.geojson,15896,561
+district,1410,Kangpokpi,boundaries/district/1410.geojson,20962,744
+district,1411,Tengnoupal,boundaries/district/1411.geojson,7761,268
+district,1412,Pherzawl,boundaries/district/1412.geojson,13632,479
+district,1413,Jiribam,boundaries/district/1413.geojson,6830,235
+district,1414,Kakching,boundaries/district/1414.geojson,13454,473
+district,1415,Kamjong,boundaries/district/1415.geojson,10828,379
+district,1416,Noney,boundaries/district/1416.geojson,8382,291
+district,1501,Mamit,boundaries/district/1501.geojson,19579,693
+district,1502,Kolasib,boundaries/district/1502.geojson,13425,472
+district,1503,Aizawl,boundaries/district/1503.geojson,21777,773
+district,1504,Champhai,boundaries/district/1504.geojson,15733,556
+district,1505,Serchhip,boundaries/district/1505.geojson,14812,522
+district,1506,Lunglei,boundaries/district/1506.geojson,21116,748
+district,1507,Lawngtlai,boundaries/district/1507.geojson,24814,881
+district,1508,Siaha,boundaries/district/1508.geojson,12032,422
+district,1509,Saitual,boundaries/district/1509.geojson,11916,418
+district,1510,Hnahthial,boundaries/district/1510.geojson,8781,305
+district,1511,Khawzawl,boundaries/district/1511.geojson,12923,455
+district,1601,West Tripura,boundaries/district/1601.geojson,8611,299
+district,1602,South Tripura,boundaries/district/1602.geojson,15252,538
+district,1603,Dhalai,boundaries/district/1603.geojson,18445,653
+district,1604,North Tripura,boundaries/district/1604.geojson,15008,529
+district,1605,Sepahijala,boundaries/district/1605.geojson,11966,420
+district,1606,Khowai,boundaries/district/1606.geojson,12492,439
+district,1607,Gomati,boundaries/district/1607.geojson,20671,734
+district,1608,Unakoti,boundaries/district/1608.geojson,8016,277
+district,1701,West Garo Hills,boundaries/district/1701.geojson,17425,616
+district,1702,East Garo Hills,boundaries/district/1702.geojson,8235,285
+district,1703,South Garo Hills,boundaries/district/1703.geojson,13530,475
+district,1704,West Khasi Hills,boundaries/district/1704.geojson,11005,385
+district,1705,Ri Bhoi,boundaries/district/1705.geojson,18792,667
+district,1706,East Khasi Hills,boundaries/district/1706.geojson,13747,484
+district,1707,West Jaintia Hills,boundaries/district/1707.geojson,11996,421
+district,1708,North Garo Hills,boundaries/district/1708.geojson,10321,361
+district,1709,East Jaintia Hills,boundaries/district/1709.geojson,11629,407
+district,1710,South West Khasi Hills,boundaries/district/1710.geojson,9059,315
+district,1711,South West Garo Hills,boundaries/district/1711.geojson,6703,230
+district,1712,Eastern West Khasi Hills,boundaries/district/1712.geojson,5641,192
+district,1801,Kokrajhar,boundaries/district/1801.geojson,11411,400
+district,1802,Dhubri,boundaries/district/1802.geojson,18628,660
+district,1803,Goalpara,boundaries/district/1803.geojson,10766,377
+district,1804,Bongaigaon,boundaries/district/1804.geojson,10425,364
+district,1805,Barpeta,boundaries/district/1805.geojson,13122,462
+district,1806,Kamrup-Rural,boundaries/district/1806.geojson,20841,740
+district,1807,Nalbari,boundaries/district/1807.geojson,9401,328
+district,1808,Darrang,boundaries/district/1808.geojson,10938,383
+district,1809,Morigaon,boundaries/district/1809.geojson,8109,281
+district,1810,Nagaon,boundaries/district/1810.geojson,25879,921
+district,1811,Sonitpur,boundaries/district/1811.geojson,7360,254
+district,1812,Lakhimpur,boundaries/district/1812.geojson,13644,480
+district,1813,Dhemaji,boundaries/district/1813.geojson,11436,400
+district,1814,Tinsukia,boundaries/district/1814.geojson,15712,554
+district,1815,Dibrugarh,boundaries/district/1815.geojson,15826,559
+district,1816,Sibsagar,boundaries/district/1816.geojson,10556,369
+district,1817,Jorhat,boundaries/district/1817.geojson,18169,643
+district,1818,Golaghat,boundaries/district/1818.geojson,29103,1038
+district,1819,Karbi Anglong,boundaries/district/1819.geojson,44769,1601
+district,1820,Dima Hasao,boundaries/district/1820.geojson,23743,844
+district,1821,Cachar,boundaries/district/1821.geojson,18763,665
+district,1822,Sribhumi,boundaries/district/1822.geojson,9918,346
+district,1823,Hailakandi,boundaries/district/1823.geojson,13045,458
+district,1824,Baksa,boundaries/district/1824.geojson,11594,407
+district,1825,Chirang,boundaries/district/1825.geojson,9440,328
+district,1826,Udalguri,boundaries/district/1826.geojson,11800,414
+district,1827,Kamrup-Metro,boundaries/district/1827.geojson,9003,313
+district,1828,Biswanath,boundaries/district/1828.geojson,6407,220
+district,1829,Charaideo,boundaries/district/1829.geojson,7874,273
+district,1830,Hojai,boundaries/district/1830.geojson,11206,393
+district,1831,Majuli,boundaries/district/1831.geojson,6847,236
+district,1832,South Salmara-Mankachar,boundaries/district/1832.geojson,9545,332
+district,1833,West Karbi Anglong,boundaries/district/1833.geojson,17593,623
+district,1834,Tamulpur,boundaries/district/1834.geojson,7685,266
+district,1835,Bajali,boundaries/district/1835.geojson,7409,256
+district,1901,Darjiling,boundaries/district/1901.geojson,15704,554
+district,1902,Jalpaiguri,boundaries/district/1902.geojson,22160,787
+district,1903,Coochbehar,boundaries/district/1903.geojson,48499,1734
+district,1904,Uttar Dinajpur,boundaries/district/1904.geojson,41666,1487
+district,1905,Dakshin Dinajpur,boundaries/district/1905.geojson,20337,721
+district,1906,Maldah,boundaries/district/1906.geojson,20705,734
+district,1907,Murshidabad,boundaries/district/1907.geojson,24518,872
+district,1908,Birbhum,boundaries/district/1908.geojson,32503,1160
+district,1910,Nadia,boundaries/district/1910.geojson,29686,1058
+district,1911,North Twenty Four Parganas,boundaries/district/1911.geojson,26315,935
+district,1912,Hooghly,boundaries/district/1912.geojson,25161,895
+district,1913,Bankura,boundaries/district/1913.geojson,20927,742
+district,1914,Puruliya,boundaries/district/1914.geojson,25094,893
+district,1916,Howrah,boundaries/district/1916.geojson,9935,347
+district,1917,Kolkata,boundaries/district/1917.geojson,4004,133
+district,1918,South Twenty Four Parganas,boundaries/district/1918.geojson,55618,1980
+district,1919,Purba Medinipur,boundaries/district/1919.geojson,14127,496
+district,1920,Paschim Medinipur,boundaries/district/1920.geojson,23958,851
+district,1922,Alipurduar,boundaries/district/1922.geojson,15310,540
+district,1923,Jhargram,boundaries/district/1923.geojson,17676,625
+district,1924,Kalimpong,boundaries/district/1924.geojson,6494,223
+district,1925,Purba Bardhaman,boundaries/district/1925.geojson,27590,982
+district,1926,Paschim Bardhaman,boundaries/district/1926.geojson,9999,348
+district,2001,Garhwa,boundaries/district/2001.geojson,13585,478
+district,2002,Palamu,boundaries/district/2002.geojson,17462,618
+district,2003,Chatra,boundaries/district/2003.geojson,24568,873
+district,2004,Hazaribagh,boundaries/district/2004.geojson,28755,1024
+district,2005,Koderma,boundaries/district/2005.geojson,12153,426
+district,2006,Giridih,boundaries/district/2006.geojson,19282,684
+district,2007,Deoghar,boundaries/district/2007.geojson,13325,469
+district,2008,Godda,boundaries/district/2008.geojson,13866,487
+district,2009,Sahebganj,boundaries/district/2009.geojson,12860,452
+district,2010,Pakur,boundaries/district/2010.geojson,15813,559
+district,2011,Dumka,boundaries/district/2011.geojson,16446,582
+district,2012,Dhanbad,boundaries/district/2012.geojson,7033,242
+district,2013,Bokaro,boundaries/district/2013.geojson,17515,619
+district,2014,Ranchi,boundaries/district/2014.geojson,25846,919
+district,2015,Lohardaga,boundaries/district/2015.geojson,10552,369
+district,2016,Gumla,boundaries/district/2016.geojson,22582,802
+district,2017,West Singhbhum,boundaries/district/2017.geojson,20649,732
+district,2018,East Singhbhum,boundaries/district/2018.geojson,16492,582
+district,2019,Jamtara,boundaries/district/2019.geojson,13532,476
+district,2020,Saraikela Kharsawan,boundaries/district/2020.geojson,13929,490
+district,2021,Simdega,boundaries/district/2021.geojson,15136,534
+district,2022,Latehar,boundaries/district/2022.geojson,20431,723
+district,2023,Khunti,boundaries/district/2023.geojson,16410,580
+district,2024,Ramgarh,boundaries/district/2024.geojson,13431,472
+district,2101,Bargarh,boundaries/district/2101.geojson,22397,794
+district,2102,Jharsuguda,boundaries/district/2102.geojson,11940,419
+district,2103,Sambalpur,boundaries/district/2103.geojson,23975,852
+district,2104,Deogarh,boundaries/district/2104.geojson,15783,557
+district,2105,Sundargarh,boundaries/district/2105.geojson,28931,1030
+district,2106,Keonjhar,boundaries/district/2106.geojson,25845,919
+district,2107,Mayurbhanj,boundaries/district/2107.geojson,32394,1155
+district,2108,Balasore,boundaries/district/2108.geojson,24450,868
+district,2109,Bhadrak,boundaries/district/2109.geojson,14403,504
+district,2110,Kendrapara,boundaries/district/2110.geojson,15723,553
+district,2111,Jagatsinghapur,boundaries/district/2111.geojson,8635,299
+district,2112,Cuttack,boundaries/district/2112.geojson,24259,862
+district,2113,Jajpur,boundaries/district/2113.geojson,17492,619
+district,2114,Dhenkanal,boundaries/district/2114.geojson,14274,503
+district,2115,Angul,boundaries/district/2115.geojson,21828,774
+district,2116,Nayagarh,boundaries/district/2116.geojson,15583,550
+district,2117,Khordha,boundaries/district/2117.geojson,26422,940
+district,2118,Puri,boundaries/district/2118.geojson,14395,507
+district,2119,Ganjam,boundaries/district/2119.geojson,22811,811
+district,2120,Gajapati,boundaries/district/2120.geojson,21253,753
+district,2121,Kandhamal,boundaries/district/2121.geojson,23022,818
+district,2122,Boudh,boundaries/district/2122.geojson,11331,397
+district,2123,Sonepur,boundaries/district/2123.geojson,10804,378
+district,2124,Balangir,boundaries/district/2124.geojson,20717,735
+district,2125,Nuapada,boundaries/district/2125.geojson,14979,528
+district,2126,Kalahandi,boundaries/district/2126.geojson,25547,909
+district,2127,Rayagada,boundaries/district/2127.geojson,32055,1143
+district,2128,Nabarangpur,boundaries/district/2128.geojson,21884,777
+district,2129,Koraput,boundaries/district/2129.geojson,30969,1105
+district,2130,Malkangiri,boundaries/district/2130.geojson,16760,592
+district,2201,Koriya,boundaries/district/2201.geojson,12819,450
+district,2202,Surguja,boundaries/district/2202.geojson,14989,529
+district,2203,Jashpur,boundaries/district/2203.geojson,18203,645
+district,2204,Raigarh,boundaries/district/2204.geojson,17982,637
+district,2205,Korba,boundaries/district/2205.geojson,15470,546
+district,2206,Janjgir - Champa,boundaries/district/2206.geojson,17738,626
+district,2207,Bilaspur,boundaries/district/2207.geojson,16515,584
+district,2208,Kawardha,boundaries/district/2208.geojson,19429,688
+district,2209,Rajnandgaon,boundaries/district/2209.geojson,16903,596
+district,2210,Durg,boundaries/district/2210.geojson,13456,473
+district,2211,Raipur,boundaries/district/2211.geojson,10589,371
+district,2212,Mahasamund,boundaries/district/2212.geojson,17790,629
+district,2213,Dhamtari,boundaries/district/2213.geojson,15922,561
+district,2214,Kanker,boundaries/district/2214.geojson,19404,687
+district,2215,Baster,boundaries/district/2215.geojson,16636,589
+district,2216,Dantewada,boundaries/district/2216.geojson,13119,462
+district,2217,Kondagaon,boundaries/district/2217.geojson,14057,495
+district,2218,Narayanpur,boundaries/district/2218.geojson,13692,481
+district,2219,Mungeli,boundaries/district/2219.geojson,18935,671
+district,2220,Bijapur,boundaries/district/2220.geojson,20213,717
+district,2221,Sukma,boundaries/district/2221.geojson,16892,597
+district,2222,Balod,boundaries/district/2222.geojson,17620,623
+district,2223,Bemetara,boundaries/district/2223.geojson,17777,629
+district,2224,Balodabazar,boundaries/district/2224.geojson,14058,495
+district,2225,Gariaband,boundaries/district/2225.geojson,16882,597
+district,2226,Balrampur,boundaries/district/2226.geojson,23033,818
+district,2227,Surajpur,boundaries/district/2227.geojson,21885,776
+district,2228,Gourela Pendra Marvahi,boundaries/district/2228.geojson,9878,344
+district,2229,Sarangarh-Bilaigarh,boundaries/district/2229.geojson,9969,347
+district,2230,Khairagarh-Chuikhadan-Gandai,boundaries/district/2230.geojson,14325,504
+district,2231,Manendragarh-Chirmiri-Bharatpur,boundaries/district/2231.geojson,22117,784
+district,2232,Mohla-Manpur-Chowki,boundaries/district/2232.geojson,12820,450
+district,2233,Sakti,boundaries/district/2233.geojson,10410,364
+district,2301,Sheopur,boundaries/district/2301.geojson,19143,677
+district,2302,Morena,boundaries/district/2302.geojson,22350,793
+district,2303,Bhind,boundaries/district/2303.geojson,26706,949
+district,2304,Gwalior,boundaries/district/2304.geojson,14622,516
+district,2305,Datia,boundaries/district/2305.geojson,23479,833
+district,2306,Shivpuri,boundaries/district/2306.geojson,32645,1165
+district,2307,Guna,boundaries/district/2307.geojson,25255,898
+district,2308,Tikamgarh,boundaries/district/2308.geojson,16060,567
+district,2309,Chhatarpur,boundaries/district/2309.geojson,37625,1343
+district,2310,Panna,boundaries/district/2310.geojson,39376,1405
+district,2311,Sagar,boundaries/district/2311.geojson,43934,1570
+district,2312,Damoh,boundaries/district/2312.geojson,26063,927
+district,2313,Satna,boundaries/district/2313.geojson,46219,1649
+district,2314,Rewa,boundaries/district/2314.geojson,28818,1025
+district,2315,Umaria,boundaries/district/2315.geojson,16958,600
+district,2316,Shahdol,boundaries/district/2316.geojson,20242,717
+district,2317,Sidhi,boundaries/district/2317.geojson,17785,630
+district,2318,Neemuch,boundaries/district/2318.geojson,23077,820
+district,2319,Mandsaur,boundaries/district/2319.geojson,19494,691
+district,2320,Ratlam,boundaries/district/2320.geojson,20819,738
+district,2321,Ujjain,boundaries/district/2321.geojson,25769,915
+district,2322,Shajapur,boundaries/district/2322.geojson,14863,524
+district,2323,Dewas,boundaries/district/2323.geojson,37588,1342
+district,2324,Jhabua,boundaries/district/2324.geojson,11971,421
+district,2325,Dhar,boundaries/district/2325.geojson,18070,640
+district,2326,Indore,boundaries/district/2326.geojson,23198,824
+district,2327,Khargone,boundaries/district/2327.geojson,23550,836
+district,2328,Barwani,boundaries/district/2328.geojson,15454,545
+district,2329,Khandwa,boundaries/district/2329.geojson,20150,715
+district,2330,Rajgarh,boundaries/district/2330.geojson,14837,523
+district,2331,Vidisha,boundaries/district/2331.geojson,28592,1017
+district,2332,Bhopal,boundaries/district/2332.geojson,14885,525
+district,2333,Sehore,boundaries/district/2333.geojson,33657,1200
+district,2334,Raisen,boundaries/district/2334.geojson,32761,1169
+district,2335,Betul,boundaries/district/2335.geojson,24937,886
+district,2336,Harda,boundaries/district/2336.geojson,9769,341
+district,2337,Hoshangabad,boundaries/district/2337.geojson,18107,641
+district,2338,Katni,boundaries/district/2338.geojson,27392,975
+district,2339,Jabalpur,boundaries/district/2339.geojson,22136,786
+district,2340,Narsimhapur,boundaries/district/2340.geojson,22868,812
+district,2341,Dindori,boundaries/district/2341.geojson,26818,954
+district,2342,Mandla,boundaries/district/2342.geojson,25012,890
+district,2343,Chhindwara,boundaries/district/2343.geojson,33951,1211
+district,2344,Seoni,boundaries/district/2344.geojson,25809,918
+district,2345,Balaghat,boundaries/district/2345.geojson,27049,963
+district,2346,Ashoknagar,boundaries/district/2346.geojson,15625,551
+district,2347,Anuppur,boundaries/district/2347.geojson,23434,832
+district,2348,Burhanpur,boundaries/district/2348.geojson,10009,349
+district,2349,Alirajpur,boundaries/district/2349.geojson,18687,661
+district,2350,Singrauli,boundaries/district/2350.geojson,19303,684
+district,2351,Agar Malwa,boundaries/district/2351.geojson,12747,448
+district,2352,Niwari,boundaries/district/2352.geojson,19881,704
+district,2353,Mauganj,boundaries/district/2353.geojson,28821,1025
+district,2354,Maihar,boundaries/district/2354.geojson,46220,1649
+district,2355,Pandhurna,boundaries/district/2355.geojson,33950,1211
+district,2401,Kachchh,boundaries/district/2401.geojson,76042,2724
+district,2402,Banas Kantha,boundaries/district/2402.geojson,35437,1264
+district,2403,Patan,boundaries/district/2403.geojson,28529,1016
+district,2404,Mahesana,boundaries/district/2404.geojson,25291,900
+district,2405,Sabar Kantha,boundaries/district/2405.geojson,22687,805
+district,2406,Gandhinagar,boundaries/district/2406.geojson,18801,665
+district,2407,Ahmedabad,boundaries/district/2407.geojson,28033,999
+district,2408,Surendranagar,boundaries/district/2408.geojson,33352,1189
+district,2409,Rajkot,boundaries/district/2409.geojson,35596,1268
+district,2410,Jamnagar,boundaries/district/2410.geojson,30230,1076
+district,2411,Porbandar,boundaries/district/2411.geojson,10072,352
+district,2412,Junagadh,boundaries/district/2412.geojson,21952,779
+district,2413,Amreli,boundaries/district/2413.geojson,28444,1009
+district,2414,Bhavnagar,boundaries/district/2414.geojson,18784,665
+district,2415,Anand,boundaries/district/2415.geojson,12731,447
+district,2416,Kheda,boundaries/district/2416.geojson,20697,733
+district,2417,Panch Mahals,boundaries/district/2417.geojson,17365,614
+district,2418,Dahod,boundaries/district/2418.geojson,14933,525
+district,2419,Vadodara,boundaries/district/2419.geojson,16868,596
+district,2420,Narmada,boundaries/district/2420.geojson,15962,564
+district,2421,Bharuch,boundaries/district/2421.geojson,30195,1076
+district,2422,Surat,boundaries/district/2422.geojson,19401,688
+district,2423,Dangs,boundaries/district/2423.geojson,10514,367
+district,2424,Navsari,boundaries/district/2424.geojson,13316,469
+district,2425,Valsad,boundaries/district/2425.geojson,19807,702
+district,2426,Tapi,boundaries/district/2426.geojson,21871,777
+district,2427,Arvalli,boundaries/district/2427.geojson,17358,613
+district,2428,Botad,boundaries/district/2428.geojson,13402,471
+district,2429,Devbhumi Dwarka,boundaries/district/2429.geojson,27987,996
+district,2430,Gir Somnath,boundaries/district/2430.geojson,16486,582
+district,2431,Mahisagar,boundaries/district/2431.geojson,14943,526
+district,2432,Chhotaudepur,boundaries/district/2432.geojson,20884,741
+district,2433,Morbi,boundaries/district/2433.geojson,20692,734
+district,2501,Diu,boundaries/district/2501.geojson,2462,77
+district,2502,Daman,boundaries/district/2502.geojson,2296,72
+district,2601,Dadra And Nagar Haveli,boundaries/district/2601.geojson,9385,326
+district,2701,Nandurbar,boundaries/district/2701.geojson,24707,879
+district,2702,Dhule,boundaries/district/2702.geojson,22323,792
+district,2703,Jalgaon,boundaries/district/2703.geojson,31150,1109
+district,2704,Buldana,boundaries/district/2704.geojson,27792,989
+district,2705,Akola,boundaries/district/2705.geojson,22084,784
+district,2706,Washim,boundaries/district/2706.geojson,19131,678
+district,2707,Amravati,boundaries/district/2707.geojson,32449,1157
+district,2708,Wardha,boundaries/district/2708.geojson,18460,654
+district,2709,Nagpur,boundaries/district/2709.geojson,27859,992
+district,2710,Bhandara,boundaries/district/2710.geojson,20200,717
+district,2711,Gondiya,boundaries/district/2711.geojson,20553,729
+district,2712,Gadchiroli,boundaries/district/2712.geojson,25813,918
+district,2713,Chandrapur,boundaries/district/2713.geojson,20420,724
+district,2714,Yavatmal,boundaries/district/2714.geojson,30933,1104
+district,2715,Nanded,boundaries/district/2715.geojson,33036,1180
+district,2716,Hingoli,boundaries/district/2716.geojson,16424,580
+district,2717,Parbhani,boundaries/district/2717.geojson,20017,709
+district,2718,Jalna,boundaries/district/2718.geojson,24479,869
+district,2719,Chhatrapati Sambhajinagar,boundaries/district/2719.geojson,31117,1107
+district,2720,Nashik,boundaries/district/2720.geojson,34766,1240
+district,2721,Thane,boundaries/district/2721.geojson,16590,586
+district,2722,Mumbai (Suburban),boundaries/district/2722.geojson,4604,154
+district,2723,Mumbai Ii,boundaries/district/2723.geojson,2870,92
+district,2724,Raigarh (Maharashtra),boundaries/district/2724.geojson,27771,988
+district,2725,Pune,boundaries/district/2725.geojson,37703,1346
+district,2726,Ahilyanagar,boundaries/district/2726.geojson,50236,1795
+district,2727,Bid,boundaries/district/2727.geojson,33508,1194
+district,2728,Latur,boundaries/district/2728.geojson,17172,607
+district,2729,Dharashiv,boundaries/district/2729.geojson,25524,907
+district,2730,Solapur,boundaries/district/2730.geojson,44176,1579
+district,2731,Satara,boundaries/district/2731.geojson,31493,1123
+district,2732,Ratnagiri,boundaries/district/2732.geojson,29778,1061
+district,2733,Sindhudurg,boundaries/district/2733.geojson,24776,881
+district,2734,Kolhapur,boundaries/district/2734.geojson,35914,1282
+district,2735,Sangli,boundaries/district/2735.geojson,32234,1149
+district,2736,Palghar,boundaries/district/2736.geojson,18372,650
+district,2811,Srikakulam,boundaries/district/2811.geojson,26664,948
+district,2812,Vizianagaram,boundaries/district/2812.geojson,23897,849
+district,2813,Visakhapatnam,boundaries/district/2813.geojson,7716,267
+district,2814,East Godavari,boundaries/district/2814.geojson,20013,710
+district,2815,West Godavari,boundaries/district/2815.geojson,11982,420
+district,2816,Krishna,boundaries/district/2816.geojson,15487,545
+district,2817,Guntur,boundaries/district/2817.geojson,13243,466
+district,2818,Prakasam,boundaries/district/2818.geojson,21286,755
+district,2819,Nellore,boundaries/district/2819.geojson,16928,599
+district,2820,Kadapa,boundaries/district/2820.geojson,18797,665
+district,2821,Kurnool,boundaries/district/2821.geojson,19359,686
+district,2822,Anantapur,boundaries/district/2822.geojson,23812,846
+district,2823,Chittoor,boundaries/district/2823.geojson,42187,1507
+district,2824,Sri Satyasai,boundaries/district/2824.geojson,32902,1174
+district,2825,Annamayya,boundaries/district/2825.geojson,24267,863
+district,2826,Ntr,boundaries/district/2826.geojson,12501,440
+district,2827,Nandyal,boundaries/district/2827.geojson,21941,778
+district,2828,Bapatla,boundaries/district/2828.geojson,17935,635
+district,2829,Manyam,boundaries/district/2829.geojson,26195,932
+district,2830,Asr,boundaries/district/2830.geojson,42104,1506
+district,2831,Konaseema,boundaries/district/2831.geojson,13709,483
+district,2832,Palnadu,boundaries/district/2832.geojson,18678,661
+district,2833,Tirupati,boundaries/district/2833.geojson,25071,892
+district,2834,Kakinada,boundaries/district/2834.geojson,17750,629
+district,2835,Eluru,boundaries/district/2835.geojson,27541,980
+district,2836,Anakapalli,boundaries/district/2836.geojson,17610,624
+district,2901,Belagavi,boundaries/district/2901.geojson,33223,1185
+district,2902,Bagalkot,boundaries/district/2902.geojson,17691,626
+district,2903,Vijayapura,boundaries/district/2903.geojson,16904,598
+district,2904,Kalburgi,boundaries/district/2904.geojson,27863,991
+district,2905,Bidar,boundaries/district/2905.geojson,20164,714
+district,2906,Raichur,boundaries/district/2906.geojson,13976,493
+district,2907,Koppal,boundaries/district/2907.geojson,14654,516
+district,2908,Gadag,boundaries/district/2908.geojson,16199,572
+district,2909,Dharwad,boundaries/district/2909.geojson,14970,528
+district,2910,Uttara Kannada,boundaries/district/2910.geojson,29136,1034
+district,2911,Haveri,boundaries/district/2911.geojson,14633,517
+district,2912,Ballari,boundaries/district/2912.geojson,14954,527
+district,2913,Chitradurga,boundaries/district/2913.geojson,19818,703
+district,2914,Davanagere,boundaries/district/2914.geojson,15439,545
+district,2915,Shivamogga,boundaries/district/2915.geojson,24689,879
+district,2916,Udupi,boundaries/district/2916.geojson,13055,459
+district,2917,Chikkamangaluru,boundaries/district/2917.geojson,21435,761
+district,2918,Tumakuru,boundaries/district/2918.geojson,34444,1228
+district,2919,Kolar,boundaries/district/2919.geojson,19041,675
+district,2921,Bengaluru Rural,boundaries/district/2921.geojson,18745,663
+district,2922,Mandya,boundaries/district/2922.geojson,19348,685
+district,2923,Hassan,boundaries/district/2923.geojson,24214,861
+district,2924,Dakshina Kannada,boundaries/district/2924.geojson,20062,711
+district,2925,Kodagu,boundaries/district/2925.geojson,18642,660
+district,2926,Mysuru,boundaries/district/2926.geojson,24540,873
+district,2927,Chamarajanagara,boundaries/district/2927.geojson,20417,724
+district,2929,Chikkaballapura,boundaries/district/2929.geojson,17032,602
+district,2932,Ramanagara,boundaries/district/2932.geojson,15821,558
+district,2933,Yadagiri,boundaries/district/2933.geojson,17253,611
+district,2934,Uttara Kannada Sirsi,boundaries/district/2934.geojson,29142,1034
+district,2935,Vijayanagara,boundaries/district/2935.geojson,17267,609
+district,3001,North Goa,boundaries/district/3001.geojson,10476,366
+district,3002,South Goa,boundaries/district/3002.geojson,12752,448
+district,3101,Lakshadweep District,boundaries/district/3101.geojson,6150,203
+district,3201,Kasaragod,boundaries/district/3201.geojson,12285,431
+district,3202,Kannur,boundaries/district/3202.geojson,13997,493
+district,3203,Wayanad,boundaries/district/3203.geojson,11333,397
+district,3204,Kozhikode,boundaries/district/3204.geojson,11270,395
+district,3205,Malappuram,boundaries/district/3205.geojson,14595,515
+district,3206,Palakkad,boundaries/district/3206.geojson,23012,817
+district,3207,Thrissur,boundaries/district/3207.geojson,14855,523
+district,3208,Ernakulam,boundaries/district/3208.geojson,14937,533
+district,3209,Idukki,boundaries/district/3209.geojson,23237,847
+district,3210,Kottayam,boundaries/district/3210.geojson,12321,449
+district,3211,Alappuzha,boundaries/district/3211.geojson,8583,309
+district,3212,Pathanamthitta,boundaries/district/3212.geojson,17528,643
+district,3213,Kollam,boundaries/district/3213.geojson,12942,472
+district,3214,Thiruvananthapuram,boundaries/district/3214.geojson,9612,347
+district,3301,Tiruvallur,boundaries/district/3301.geojson,27833,990
+district,3302,Chennai (Ext. Gcc),boundaries/district/3302.geojson,5125,173
+district,3303,Kancheepuram,boundaries/district/3303.geojson,15804,558
+district,3304,Vellore,boundaries/district/3304.geojson,15154,534
+district,3305,Dharmapuri,boundaries/district/3305.geojson,19448,689
+district,3306,Tiruvannamalai,boundaries/district/3306.geojson,29280,1043
+district,3307,Villupuram,boundaries/district/3307.geojson,22097,783
+district,3308,Salem,boundaries/district/3308.geojson,33383,1190
+district,3309,Namakkal,boundaries/district/3309.geojson,15918,562
+district,3310,Erode,boundaries/district/3310.geojson,27305,971
+district,3311,The Nilgiris,boundaries/district/3311.geojson,11977,419
+district,3312,Coimbatore,boundaries/district/3312.geojson,24668,877
+district,3313,Dindigul,boundaries/district/3313.geojson,26276,935
+district,3314,Karur,boundaries/district/3314.geojson,15570,550
+district,3315,Tiruchirappalli,boundaries/district/3315.geojson,28937,1031
+district,3316,Perambalur,boundaries/district/3316.geojson,10555,369
+district,3318,Cuddalore,boundaries/district/3318.geojson,19771,699
+district,3319,Nagapattinam,boundaries/district/3319.geojson,12707,446
+district,3320,Tiruvarur,boundaries/district/3320.geojson,21616,766
+district,3321,Thanjavur,boundaries/district/3321.geojson,30807,1091
+district,3322,Pudukkottai,boundaries/district/3322.geojson,33708,1203
+district,3323,Sivagangai,boundaries/district/3323.geojson,27481,999
+district,3324,Madurai,boundaries/district/3324.geojson,18435,675
+district,3325,Theni,boundaries/district/3325.geojson,14719,529
+district,3326,Virudhunagar,boundaries/district/3326.geojson,23274,857
+district,3327,Ramanathapuram,boundaries/district/3327.geojson,26606,973
+district,3328,Thoothukkudi,boundaries/district/3328.geojson,18440,675
+district,3329,Tirunelveli,boundaries/district/3329.geojson,19363,712
+district,3330,Kanniyakumari,boundaries/district/3330.geojson,9614,348
+district,3331,Krishnagiri,boundaries/district/3331.geojson,23184,824
+district,3332,Ariyalur,boundaries/district/3332.geojson,9308,324
+district,3333,Tiruppur,boundaries/district/3333.geojson,28827,1027
+district,3334,Kallakurichi,boundaries/district/3334.geojson,15873,560
+district,3335,Tenkasi,boundaries/district/3335.geojson,16094,590
+district,3336,Chengalpattu,boundaries/district/3336.geojson,11969,420
+district,3337,Tirupathur,boundaries/district/3337.geojson,12072,423
+district,3338,Ranipet,boundaries/district/3338.geojson,15401,544
+district,3339,Mayiladuthurai,boundaries/district/3339.geojson,8818,306
+district,3401,Yanam,boundaries/district/3401.geojson,1221,33
+district,3402,Pondicherry,boundaries/district/3402.geojson,15072,527
+district,3403,Mahe,boundaries/district/3403.geojson,1930,58
+district,3404,Karaikal,boundaries/district/3404.geojson,7468,256
+district,3501,Andamans,boundaries/district/3501.geojson,106310,3772
+district,3502,Nicobars,boundaries/district/3502.geojson,58325,2121
+district,3503,Middle And North Andamans,boundaries/district/3503.geojson,207388,7369
+district,3601,Adilabad,boundaries/district/3601.geojson,11736,412
+district,3602,Kumuram Bheem Asifabad,boundaries/district/3602.geojson,12758,447
+district,3603,Mancherial,boundaries/district/3603.geojson,11344,397
+district,3604,Nirmal,boundaries/district/3604.geojson,13583,478
+district,3605,Nizamabad,boundaries/district/3605.geojson,10444,365
+district,3606,Jagitial,boundaries/district/3606.geojson,8236,285
+district,3607,Peddapalli,boundaries/district/3607.geojson,6171,211
+district,3608,Jayashankar Bhupalapally,boundaries/district/3608.geojson,9510,331
+district,3609,Bhadradri Kothagudem,boundaries/district/3609.geojson,15676,553
+district,3610,Mahabubabad,boundaries/district/3610.geojson,10424,364
+district,3611,Warangal,boundaries/district/3611.geojson,7621,264
+district,3612,Hanumakonda,boundaries/district/3612.geojson,8511,296
+district,3613,Karimnagar,boundaries/district/3613.geojson,9066,315
+district,3614,Rajanna Sircilla,boundaries/district/3614.geojson,7635,263
+district,3615,Kamareddy,boundaries/district/3615.geojson,16628,588
+district,3616,Sangareddy,boundaries/district/3616.geojson,22823,810
+district,3617,Medak,boundaries/district/3617.geojson,14207,500
+district,3618,Siddipet,boundaries/district/3618.geojson,12399,435
+district,3619,Jangaon,boundaries/district/3619.geojson,9446,329
+district,3620,Yadadri Bhuvanagiri,boundaries/district/3620.geojson,11569,405
+district,3621,Medchal Malkajgiri,boundaries/district/3621.geojson,7642,264
+district,3622,Hyderabad,boundaries/district/3622.geojson,4274,143
+district,3623,Ranga Reddy,boundaries/district/3623.geojson,17752,628
+district,3624,Vikarabad,boundaries/district/3624.geojson,14653,516
+district,3625,Mahabubnagar,boundaries/district/3625.geojson,12983,456
+district,3626,Jogulamba Gadwal,boundaries/district/3626.geojson,6961,240
+district,3627,Wanaparthy,boundaries/district/3627.geojson,8651,300
+district,3628,Nagarkurnool,boundaries/district/3628.geojson,13183,463
+district,3629,Nalgonda,boundaries/district/3629.geojson,11318,397
+district,3630,Suryapet,boundaries/district/3630.geojson,8970,312
+district,3631,Khammam,boundaries/district/3631.geojson,18362,651
+district,3632,Mulugu,boundaries/district/3632.geojson,8582,298
+district,3633,Narayanpet,boundaries/district/3633.geojson,11354,392
+district,3707,Leh Ladakh,boundaries/district/3707.geojson,65220,2337
+district,3708,Kargil,boundaries/district/3708.geojson,31323,1117
+state,01,JAMMU & KASHMIR,boundaries/state/01.geojson,49768,1782
+state,02,HIMACHAL PRADESH,boundaries/state/02.geojson,62724,2247
+state,03,PUNJAB,boundaries/state/03.geojson,71608,2567
+state,04,CHANDIGARH,boundaries/state/04.geojson,3389,111
+state,05,UTTARAKHAND,boundaries/state/05.geojson,60994,2186
+state,06,HARYANA,boundaries/state/06.geojson,96049,3446
+state,07,DELHI,boundaries/state/07.geojson,8224,286
+state,08,RAJASTHAN,boundaries/state/08.geojson,155389,5581
+state,09,UTTAR PRADESH,boundaries/state/09.geojson,237854,8549
+state,10,BIHAR,boundaries/state/10.geojson,120123,4313
+state,11,SIKKIM,boundaries/state/11.geojson,18371,651
+state,12,ARUNACHAL PRADESH,boundaries/state/12.geojson,66268,2375
+state,13,NAGALAND,boundaries/state/13.geojson,42130,1506
+state,14,MANIPUR,boundaries/state/14.geojson,34420,1229
+state,15,MIZORAM,boundaries/state/15.geojson,58675,2101
+state,16,TRIPURA,boundaries/state/16.geojson,44150,1578
+state,17,MEGHALAYA,boundaries/state/17.geojson,56084,2010
+state,18,ASSAM,boundaries/state/18.geojson,121158,4352
+state,19,WEST BENGAL,boundaries/state/19.geojson,258601,9287
+state,20,JHARKHAND,boundaries/state/20.geojson,118999,4273
+state,21,ODISHA,boundaries/state/21.geojson,126102,4521
+state,22,CHHATTISGARH,boundaries/state/22.geojson,114974,4127
+state,23,MADHYA PRADESH,boundaries/state/23.geojson,278721,10019
+state,24,GUJARAT,boundaries/state/24.geojson,185141,6648
+state,27,MAHARASHTRA,boundaries/state/27.geojson,185263,6657
+state,29,KARNATAKA,boundaries/state/29.geojson,149713,5375
+state,30,GOA,boundaries/state/30.geojson,15846,559
+state,31,LAKSHADWEEP,boundaries/state/31.geojson,6134,203
+state,32,KERALA,boundaries/state/32.geojson,59376,2150
+state,33,TAMILNADU,boundaries/state/33.geojson,124415,4500
+state,34,PUDUCHERRY,boundaries/state/34.geojson,24781,874
+state,35,ANDAMAN & NICOBAR ISLANDS,boundaries/state/35.geojson,372213,13291
+state,36,TELANGANA,boundaries/state/36.geojson,69827,2503
+state,37,LADAKH,boundaries/state/37.geojson,160456,5766
+state,38,DADRA & NAGAR HAVELI AND DAMAN & DIU,boundaries/state/38.geojson,62914,2254
+state,39,"Dadra,Nagar Haveli,Daman & Diu",boundaries/state/39.geojson,13549,475

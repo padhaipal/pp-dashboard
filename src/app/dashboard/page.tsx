@@ -29,6 +29,9 @@ export default async function DashboardPage() {
             <Link href="/llm" className="underline hover:text-zinc-900">
               LLM
             </Link>
+            <Link href="/onboarding" className="underline hover:text-zinc-900">
+              Onboarding
+            </Link>
             {session.user.role === "dev" && (
               <a
                 href="/swagger"
