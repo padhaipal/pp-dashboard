@@ -13,6 +13,7 @@ export const PROFILE: PublicProfile = {
   geo_entity: { id: "g-in", type: "country", code: "IN", name: "India", has_boundary: true, lat: null, lng: null },
   ancestors: [],
   share_link: "https://lifteracy.ai/d/u1",
+  explainer_url: "https://example.com/explainer",
 };
 
 export const CHILD_UP: Child = {

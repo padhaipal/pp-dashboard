@@ -36,6 +36,9 @@ export type PublicProfile = {
   geo_entity: GeoRef | null;
   ancestors: Ancestor[]; // root first
   share_link: string;
+  // "What is Lifteracy?" clip, resolved server-side from the
+  // lifteracy-explainer stid; null when unseeded → the link is omitted.
+  explainer_url: string | null;
 };
 
 export type Child = GeoRef & {

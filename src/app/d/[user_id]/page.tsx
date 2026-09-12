@@ -37,7 +37,6 @@ export default async function PublicDashboardPage({ params }: { params: Promise<
     <TeacherDashboard
       profile={profile}
       incompleteStates={incompleteStates}
-      explainerUrl={process.env.NEXT_PUBLIC_EXPLAINER_VIDEO_URL ?? null}
       avatarSvg={avatarSvg}
     />
   );

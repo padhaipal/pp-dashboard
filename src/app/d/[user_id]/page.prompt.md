@@ -2,5 +2,5 @@
 2.) `const { user_id } = await params` (Next 16 async params). Fetch `${process.env.PP_SKETCH_INTERNAL_URL}/users/${user_id}/public` with `cache: "no-store"`. 404 → render exactly "This link is not active" (`INACTIVE_LINK_TEXT`). Network error / other non-2xx → "The dashboard is temporarily unavailable. Please try again shortly." The public payload never contains `external_id`.
 3.) Reads `public/boundaries/districts_without_boundary.csv` with `fs` via `readIncompleteStates()` (incomplete-states.ts) and passes the distinct 2-digit `state_code`s as the `incompleteStates` string[] prop. No build script.
 4.) Renders the header avatar server-side: `renderAvatarSvg(AVATAR_STYLE, seedFor(profile.avatar_seed, profile.id))` → inline SVG string prop `avatarSvg` (null if rendering throws).
-5.) Mounts `<TeacherDashboard profile incompleteStates explainerUrl={process.env.NEXT_PUBLIC_EXPLAINER_VIDEO_URL ?? null} avatarSvg />`.
+5.) Mounts `<TeacherDashboard profile incompleteStates avatarSvg />`. The explainer link comes from `profile.explainer_url` in that payload (pp-sketch resolves the `lifteracy-explainer` stid from media_metadata) — there is no build-time video env var.
 6.) Only Next-recognised names are exported (`metadata`, `dynamic`, default) — helpers live in sibling modules.

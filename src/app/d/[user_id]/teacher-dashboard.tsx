@@ -45,7 +45,6 @@ import { ReportCardModal, RepImproved, RepKpis, RepLatest, RepMeta, RepQuote, Re
 export type TeacherDashboardProps = {
   profile: PublicProfile;
   incompleteStates: string[];
-  explainerUrl: string | null;
   // server-rendered SVG for the profile's current seed (header only)
   avatarSvg?: string | null;
 };
@@ -71,7 +70,7 @@ const H = "text-center text-2xl font-extrabold tracking-tight sm:text-4xl";
 const CARD = "rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-8";
 const inputCls = "w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none";
 
-export function TeacherDashboard({ profile: initialProfile, incompleteStates, explainerUrl, avatarSvg }: TeacherDashboardProps) {
+export function TeacherDashboard({ profile: initialProfile, incompleteStates, avatarSvg }: TeacherDashboardProps) {
   const [profile, setProfile] = useState<PublicProfile>(initialProfile);
   const [metric, setMetric] = useState<Metric>(DEFAULT_METRIC);
   const [range, setRange] = useState<Range>(DEFAULT_RANGE);
@@ -246,7 +245,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates, ex
         </div>
       </div>
 
-      <MvpShareBar shareLink={profile.share_link} explainerUrl={explainerUrl} />
+      <MvpShareBar shareLink={profile.share_link} explainerUrl={profile.explainer_url} />
 
       {!entity ? (
         <div className="mx-auto max-w-6xl px-3 py-10 text-center text-sm text-zinc-500 sm:px-6">This user is not linked to a location yet.</div>

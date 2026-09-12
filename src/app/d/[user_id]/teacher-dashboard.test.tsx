@@ -13,7 +13,7 @@ describe("TeacherDashboard", () => {
   it("empty root renders the header, the share link and the no-results message", async () => {
     const { fn } = makeFetch({ scores: EMPTY_SCORES });
     vi.stubGlobal("fetch", vi.fn(fn));
-    render(<TeacherDashboard profile={PROFILE} incompleteStates={["28"]} explainerUrl="https://example.com/explainer" />);
+    render(<TeacherDashboard profile={PROFILE} incompleteStates={["28"]} />);
 
     expect(await screen.findByText(EMPTY_ROOT_TEXT)).toBeDefined();
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Asha Verma");
@@ -23,10 +23,19 @@ describe("TeacherDashboard", () => {
     expect(screen.queryByTestId("root-kpis")).toBeNull();
   });
 
+  it("omits the What is Lifteracy? link when the explainer clip is unseeded", async () => {
+    const { fn } = makeFetch({ scores: EMPTY_SCORES });
+    vi.stubGlobal("fetch", vi.fn(fn));
+    render(<TeacherDashboard profile={{ ...PROFILE, explainer_url: null }} incompleteStates={[]} />);
+
+    expect(await screen.findByTestId("share-link")).toBeDefined();
+    expect(screen.queryByRole("link", { name: /What is Lifteracy\?/ })).toBeNull();
+  });
+
   it("black (incomplete) states are not drillable and show the tooltip", async () => {
     const { fn, calls } = makeFetch();
     vi.stubGlobal("fetch", vi.fn(fn));
-    const { container } = render(<TeacherDashboard profile={PROFILE} incompleteStates={["28"]} explainerUrl={null} />);
+    const { container } = render(<TeacherDashboard profile={PROFILE} incompleteStates={["28"]} />);
 
     const ap = await waitFor(() => {
       const p = container.querySelector('path[data-code="28"]');
@@ -58,7 +67,7 @@ describe("TeacherDashboard", () => {
   it("builds the CSV link from the current metric and range", async () => {
     const { fn } = makeFetch();
     vi.stubGlobal("fetch", vi.fn(fn));
-    render(<TeacherDashboard profile={PROFILE} incompleteStates={[]} explainerUrl={null} />);
+    render(<TeacherDashboard profile={PROFILE} incompleteStates={[]} />);
 
     const link = await screen.findByTestId("csv-link");
     expect(link.getAttribute("href")).toBe("/api/proxy/geo-entities/g-in/scores.csv?metric=nipun_g3&range=30");
