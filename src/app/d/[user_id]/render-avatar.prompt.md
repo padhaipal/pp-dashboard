@@ -1,0 +1,3 @@
+1.) Server-only DiceBear v10 rendering: `renderAvatarSvg(style, seed, size = 128)` → SVG string via `new Avatar(new Style(definition), { seed, size, ... }).toString()` with definitions imported from `@dicebear/styles/sprouts.json` and `@dicebear/styles/notionists.json`.
+2.) Sprouts is DiceBear's "animated" style, but its `animation` component's only weighted variant is `none` (the CSS-animated variants have weight 0), so output is static by default; `animationVariant: ["none"]` is passed explicitly to guarantee no `@keyframes`. Notionists is the accepted fallback style.
+3.) Requires Node 22+ (`@dicebear/core` engines); used by the `/api/avatar` route (runtime nodejs) and the `/d/[user_id]` server page.

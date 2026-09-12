@@ -38,6 +38,11 @@ export const NON_LESSON_STIDS: string[] = [
   "onboarding-ask-month",
   "onboarding-complete",
   "onboarding-unintelligible",
+  // "What is Lifteracy?" explainer clip: sent to parents over WhatsApp and
+  // linked from the teacher dashboard, which resolves it by this stid
+  // (pp-sketch EXPLAINER_VIDEO_STATE_TRANSITION_ID). Unseeded → the
+  // dashboard omits the link.
+  "lifteracy-explainer",
   "audio-only-request",
   "stale-lesson-restart",
   "hail-mary",

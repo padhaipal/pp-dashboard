@@ -1,0 +1,2 @@
+1.) Server-only. `readIncompleteStates()` reads `public/boundaries/districts_without_boundary.csv` (columns `state_code,district_code,udise_name,reason`; 9 rows across states 12, 19, 28, 29) with `fs` from `process.cwd()` and returns the sorted distinct 2-digit `state_code`s (missing file → `[]`).
+2.) `parseIncompleteStates(csv)` is the pure parser (header-driven, pads codes to 2 digits). Consumed by the `/d/[user_id]` page and passed to `TeacherDashboard` as `incompleteStates`; those states render black and are not drillable on the map. No build script.

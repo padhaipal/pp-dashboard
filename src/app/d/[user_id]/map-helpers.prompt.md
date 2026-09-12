@@ -1,0 +1,5 @@
+1.) Planar geometry helpers ported from mvp2.html for the d3 + SVG map. All ring maths runs on PROJECTED coordinates so polygon winding never matters: `stripClose`, `ringArea`, `bboxOf`, `unionBbox`, `centroidOf`, `largestRing(feature, proj)`, `exteriorRings(feature, proj)`, `toPath`, `ringsToPath`, `planarAreaKm2(feature)`.
+2.) `fitMercator(features, w, h, pad)` — d3 `geoMercator` rotated to the features' circular-mean longitude, scaled/translated to the projected bbox (not `geoBounds`/`fitExtent`). Returns null when nothing projects.
+3.) `pointsFeature(points)` — a small bbox polygon around lon/lat points (≥ ~0.005° padding) so levels with no polygon (block → school dots) can still be framed.
+4.) Jitter rule: schools with null coords plot at the BLOCK's point offset by `jitterLatLng(code, lat, lng)` — deterministic (`codeHash(code)`, a 32-bit string hash used ONLY here), distance ≤ `JITTER_MAX_M = 300` metres, angle from the hash.
+5.) `boundaryUrl(type, code)` → `/boundaries/{country|state|district}/{code}.geojson` (committed files under public/boundaries; codes: `IN`, 2-digit state, 4-digit district).

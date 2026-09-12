@@ -1,0 +1,3 @@
+1.) Isomorphic avatar helpers (no DiceBear import here). `AVATAR_STYLE = "sprouts"`, `AVATAR_STYLES = ["sprouts", "notionists"]`, `AVATAR_PKG_MAJOR = 10` (major of @dicebear/core + @dicebear/styles).
+2.) `avatarUrl(seed)` → `/api/avatar/${AVATAR_STYLE}-v${AVATAR_PKG_MAJOR}/${seed}` (e.g. `/api/avatar/sprouts-v10/abc`). api.dicebear.com is never called.
+3.) `SEED_RE = /^[A-Za-z0-9-]{1,64}$/`; `seedFor(avatar_seed, fallback)` returns the seed when valid else a sanitised fallback (the user id); `randomSeed()` = `crypto.randomUUID()` (fallback Math.random base36); `parseStyleParam("sprouts-v10")` strips a `-vN` suffix and returns the style or null.

@@ -10,6 +10,8 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@dicebear/core": "^10.7.0",
+    "@dicebear/styles": "^10.6.0",
     "@opentelemetry/api": "^1.9.1",
     "@opentelemetry/api-logs": "^0.218.0",
     "@opentelemetry/auto-instrumentations-node": "^0.77.0",
@@ -21,6 +23,8 @@
     "@opentelemetry/sdk-node": "^0.219.0",
     "@opentelemetry/sdk-trace-node": "^2.8.0",
     "chart.js": "^4.5.1",
+    "d3": "^7.9.0",
+    "jspdf": "^4.2.1",
     "next": "16.2.3",
     "next-auth": "^5.0.0-beta.30",
     "react": "19.2.4",
@@ -31,6 +35,7 @@
     "@tailwindcss/postcss": "^4",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.3",
+    "@types/d3": "^7.4.3",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

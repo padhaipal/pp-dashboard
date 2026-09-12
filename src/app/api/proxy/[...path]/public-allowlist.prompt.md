@@ -1,0 +1,3 @@
+1.) `PUBLIC_ALLOWED: { pattern: RegExp; methods: string[] }[]` — pp-sketch paths the proxy (route.ts) forwards WITHOUT a session, checked BEFORE `auth()`: `users/:id/public` GET, `users/:id/profile` PATCH, `geo-entities/:id/scores` and `scores.csv` GET, `geo-entities/:id/spotlight` GET. Everything else still requires a dev/admin session as before.
+2.) `isPublicAllowed(path, method)` — exported for tests (Next route files may only export handler names, hence the sibling module).
+3.) NEVER add `^users/[^/]+$` (staff detail returns `staff_notes`) or `users/:id/profile` GET. The proxy already passes upstream `Content-Type`, `Content-Disposition` and `Cache-Control` through, so the CSV download and avatar/immutable caching work end to end.
