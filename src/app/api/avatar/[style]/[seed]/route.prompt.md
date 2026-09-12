@@ -1,0 +1,3 @@
+1.) `GET /api/avatar/[style]/[seed]` (runtime nodejs, async `params`). `style` ∈ {`sprouts`, `notionists`}, optionally suffixed `-vN` (e.g. `sprouts-v10`, stripped by `parseStyleParam`) → otherwise 404 "Not found". `seed` must match `/^[A-Za-z0-9-]{1,64}$/` → otherwise 400 "Bad seed".
+2.) Responds `200` with the DiceBear SVG from `renderAvatarSvg(style, seed)` (Sprouts forced static), headers `Content-Type: image/svg+xml` and `Cache-Control: public, max-age=31536000, immutable`. Never calls api.dicebear.com.
+3.) Used by the dashboard header, the profile "Shuffle" preview, spotlight cards and modals via `avatarUrl(seed)` from src/app/d/[user_id]/avatar.ts.

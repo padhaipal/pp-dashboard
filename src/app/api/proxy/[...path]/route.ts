@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { logger } from "@/lib/logger";
 import { NextRequest } from "next/server";
+import { isPublicAllowed } from "./public-allowlist";
 
 export const runtime = "nodejs";
 
@@ -53,17 +54,19 @@ function buildProxyRequestHeaders(req: NextRequest): Headers {
 }
 
 async function proxyToSketch(req: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
-  const session = await auth();
-  if (!session) {
-    return new Response("Unauthorized", { status: 401 });
-  }
-
   const { path } = await params;
   const joined = path.join("/");
-  const role = session.user.role;
 
-  if (role !== "dev" && !(role === "admin" && isAdminAllowed(joined, req.method))) {
-    return new Response("Unauthorized", { status: 401 });
+  // Public teacher-dashboard endpoints (/d/[user_id]) need no session.
+  if (!isPublicAllowed(joined, req.method)) {
+    const session = await auth();
+    if (!session || !session.user) {
+      return new Response("Unauthorized", { status: 401 });
+    }
+    const role = session.user.role;
+    if (role !== "dev" && !(role === "admin" && isAdminAllowed(joined, req.method))) {
+      return new Response("Unauthorized", { status: 401 });
+    }
   }
   const qs = req.nextUrl.search;
   const target = `${process.env.PP_SKETCH_INTERNAL_URL}/${path.join("/")}${qs}`;
