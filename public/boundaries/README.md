@@ -21,6 +21,11 @@ as public-domain release assets by `yashveeeeeeer/india-geodata`:
 District keys come from the distinct `(state_code, district_code, district)` tuples in
 `DavidChristopherNelson/india-school-coordinates` (781 districts present in the register).
 
+State files are keyed by UDISE state code. The LGD layer's `STCODE11` differs for three
+states — Andhra Pradesh 37, Ladakh 38, DNH & DD 39 (UDISE 28, 37, 38) — so `build.py`
+must remap them; an earlier build shipped AP's polygon as `37` and had no `28`.
+`src/app/d/[user_id]/boundaries.test.ts` guards this.
+
 ## National outline — read before changing
 
 `country/IN.geojson` is the unary union of the 36 official LGD state polygons. It is NOT
