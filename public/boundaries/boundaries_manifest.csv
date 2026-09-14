@@ -797,6 +797,7 @@ state,22,CHHATTISGARH,boundaries/state/22.geojson,114974,4127
 state,23,MADHYA PRADESH,boundaries/state/23.geojson,278721,10019
 state,24,GUJARAT,boundaries/state/24.geojson,185141,6648
 state,27,MAHARASHTRA,boundaries/state/27.geojson,185263,6657
+state,28,ANDHRA PRADESH,boundaries/state/28.geojson,160464,5766
 state,29,KARNATAKA,boundaries/state/29.geojson,149713,5375
 state,30,GOA,boundaries/state/30.geojson,15846,559
 state,31,LAKSHADWEEP,boundaries/state/31.geojson,6134,203
@@ -805,6 +806,5 @@ state,33,TAMILNADU,boundaries/state/33.geojson,124415,4500
 state,34,PUDUCHERRY,boundaries/state/34.geojson,24781,874
 state,35,ANDAMAN & NICOBAR ISLANDS,boundaries/state/35.geojson,372213,13291
 state,36,TELANGANA,boundaries/state/36.geojson,69827,2503
-state,37,LADAKH,boundaries/state/37.geojson,160456,5766
-state,38,DADRA & NAGAR HAVELI AND DAMAN & DIU,boundaries/state/38.geojson,62914,2254
-state,39,"Dadra,Nagar Haveli,Daman & Diu",boundaries/state/39.geojson,13549,475
+state,37,LADAKH,boundaries/state/37.geojson,62884,2254
+state,38,DADRA & NAGAR HAVELI AND DAMAN & DIU,boundaries/state/38.geojson,13555,475
