@@ -34,7 +34,6 @@ export const NON_LESSON_STIDS: string[] = [
   "onboarding-declined",
   "onboarding-ask-name",
   "onboarding-ask-age",
-  "onboarding-ask-age-retry",
   "onboarding-ask-month",
   "onboarding-complete",
   "onboarding-unintelligible",
