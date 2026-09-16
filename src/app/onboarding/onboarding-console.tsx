@@ -318,6 +318,11 @@ function StaffForm({
       </div>
       <div>
         <span className={labelCls}>Geo entity</span>
+        <p className="text-xs text-zinc-500 mb-1">
+          Codes nest, e.g. a school in Lucknow, Uttar Pradesh: school P.S. NARHI <code>09270904601</code> · block
+          NAGAR KSHETRA ZONE-3 <code>092712</code> · district LUCKNOW <code>0927</code> · state UTTAR PRADESH{" "}
+          <code>09</code>. Pick the type, then search by name or code.
+        </p>
         <GeoPicker
           value={values.geo}
           disabled={busy}
@@ -334,6 +339,10 @@ function StaffForm({
         <label htmlFor={`${uid}-role`} className={labelCls}>
           Role
         </label>
+        <p className="text-xs text-zinc-500 mb-1">
+          Filled in from the geo entity type ({GEO_TYPES.map((t) => `${t}: ${DEFAULT_ROLE_TITLE[t]}`).join(", ")});
+          type over it to use a different title.
+        </p>
         <input
           id={`${uid}-role`}
           value={values.roleTitle}

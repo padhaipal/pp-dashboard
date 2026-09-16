@@ -4,6 +4,7 @@
 4.) Shared `StaffForm` (used by Create and Edit):
   a.) Full name (required), WhatsApp number (required; after the first blur show "Will be saved as <normalised>" under the input, updating live).
   b.) Geo entity picker: `<select>` of type school|block|district|state|country (default school, no cluster) + search input; debounced 300 ms; once the trimmed query has >= 2 chars call GET geo-entities/search?q=&type=. Rows render `name · type · code · parent_name` (parent_name null → "—") and are clickable. A selection replaces the picker with an emerald chip `name · type · code[ · parent_name]` and a "Clear" button. Results are keyed by `type:query` so stale/other-type results never show; "No matches" only after a fetch for the current key returned empty.
+  b2.) Hint text under the "Geo entity" label: an example school in Lucknow, Uttar Pradesh with its nested codes (school 09270904601 · block 092712 · district 0927 · state 09). Hint under "Role": lists DEFAULT_ROLE_TITLE per type and says the title can be overtyped.
   c.) Role input: when a geo entity is selected and the operator has not typed a role by hand (`roleTouched` false), prefill from DEFAULT_ROLE_TITLE[geo.type]. Typing sets roleTouched = true. Edit mode starts with roleTouched = true when the record already has a role_title.
   d.) Notes textarea.
   e.) Submit button disabled until name (trimmed), normalised phone and a geo selection are all present; also while busy; Edit additionally disables it when nothing changed.
