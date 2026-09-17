@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { TeacherDashboard } from "./teacher-dashboard";
 import { EMPTY_ROOT_TEXT, INCOMPLETE_TOOLTIP } from "./dashboard-types";
-import { EMPTY_SCORES, PROFILE, PROFILE_SCHOOL, SCORES_CLASS, SCORES_SCHOOL, makeFetch } from "./test-fixtures";
+import { CHILD_UP, EMPTY_SCORES, PROFILE, PROFILE_SCHOOL, SCORES, SCORES_CLASS, SCORES_SCHOOL, makeFetch } from "./test-fixtures";
 
 describe("TeacherDashboard", () => {
   afterEach(() => {
@@ -199,5 +199,48 @@ describe("TeacherDashboard", () => {
     expect(screen.getByTestId("location-title").textContent).toBe("भारत");
     expect(window.localStorage.getItem("lifteracy-dashboard-lang")).toBe("hi");
     window.localStorage.removeItem("lifteracy-dashboard-lang");
+  });
+
+  it("block level: private schools are diamonds, government schools dots, with a legend and tooltip hint", async () => {
+    const block = { ...PROFILE, geo_entity: { id: "g-blk", type: "block" as const, code: "090101", name: "SADAR", has_boundary: false, lat: 26.85, lng: 80.95 } };
+    const school = (id: string, code: string, name: string, lat: number, lng: number, management_group: "government" | "private") => ({
+      ...CHILD_UP,
+      id,
+      type: "school" as const,
+      code,
+      name,
+      has_boundary: false,
+      lat,
+      lng,
+      management_group,
+    });
+    const scores = {
+      ...SCORES,
+      entity: block.geo_entity,
+      child_type: "school" as const,
+      children: [school("g-s1", "09010100101", "PS Govt", 26.86, 80.96, "government"), school("g-s2", "09010100102", "Little Stars", 26.84, 80.94, "private")],
+      most_improved: [],
+    };
+    const { fn } = makeFetch({ scoresById: { "g-blk": scores } });
+    vi.stubGlobal("fetch", vi.fn(fn));
+    const { container } = render(<TeacherDashboard profile={block} incompleteStates={[]} />);
+
+    const priv = await waitFor(() => {
+      const el = container.querySelector('rect[data-id="g-s2"]');
+      if (!el) throw new Error("not drawn yet");
+      return el;
+    });
+    expect(priv.getAttribute("data-management")).toBe("private");
+    expect(container.querySelector('circle[data-id="g-s1"]')).not.toBeNull();
+    expect(container.querySelector('rect[data-id="g-s1"]')).toBeNull();
+    // same colour scale for both (score colour, not a management colour)
+    expect(priv.getAttribute("fill")).toBe(container.querySelector('circle[data-id="g-s1"]')!.getAttribute("fill"));
+    const legend = screen.getByTestId("school-kind-legend").textContent ?? "";
+    expect(legend).toContain("Government school");
+    expect(legend).toContain("Private school");
+    fireEvent.mouseEnter(priv);
+    expect(screen.getByRole("tooltip").textContent).toContain("private school");
+    // no border at block level, tiles underneath
+    expect(screen.getByTestId("tile-underlay")).toBeDefined();
   });
 });
