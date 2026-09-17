@@ -1,17 +1,18 @@
 "use client";
 
-// d3 + SVG choropleth for the public dashboard (no tiles, no external hosts).
-// Boundaries come from /public/boundaries/{type}/{code}.geojson, fetched on
-// demand per drill level and cached for the page's lifetime.
+// d3 + SVG choropleth for the public dashboard. Boundaries come from
+// /public/boundaries/{type}/{code}.geojson, fetched on demand per drill level
+// and cached for the page's lifetime. The district and block views sit on
+// mvp2's CARTO Positron street underlay (the one external host).
 //
 // Level → what is drawn
 //   country  : every child state polygon (state/{code}); incomplete states black
 //   state    : state outline + child district polygons; districts without a
 //              boundary file (has_boundary false) render as labels at lat/lng
-//   district : district outline + one label per block at its lat/lng (no polygon)
-//   block    : parent district outline + one dot per school at lat/lng; schools
-//              with null coords sit at the block's point + deterministic jitter
-//   school   : no map (the student table replaces it)
+//   district : tiles + district border + one label per block at its lat/lng
+//   block    : tiles, NO border, one dot per school at lat/lng; schools with
+//              null coords sit at the block's point + deterministic jitter
+//   school   : no map (teacher cards, then student tiles, replace it)
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { T } from "./i18n";
@@ -42,8 +43,8 @@ import {
 
 export type GeoMapProps = {
   entity: GeoRef;
-  parentDistrict: GeoRef | null;
-  childType: Exclude<ChildType, "student">;
+  parentDistrict?: GeoRef | null; // no longer read: the block level draws no district border
+  childType: Exclude<ChildType, "student" | "teacher">;
   childrenRows: Child[];
   incompleteStates: Set<string>;
   hoverId: string | null;
@@ -56,6 +57,9 @@ export type GeoMapProps = {
 };
 
 const same: T = (s) => s;
+
+// mvp2's underlay provider: CARTO Positron without labels (swap freely).
+const tileUrl = (z: number, x: number, y: number) => `https://${"abc"[(x + y) % 3]}.basemaps.cartocdn.com/light_nolabels/${z}/${x}/${y}.png`;
 
 type BoundaryCache = Map<string, Feature | null>;
 const cache: BoundaryCache = new Map();
@@ -109,7 +113,7 @@ export function areaFill(d: string, child: Child, incomplete: boolean) {
 type Tip = { x: number; y: number; title: string; sub: string | null };
 
 export function GeoMap(props: GeoMapProps) {
-  const { entity, parentDistrict, childType, childrenRows, incompleteStates, hoverId, setHoverId, selectedId, onSelect, onDrill, metricLabel, t = same } = props;
+  const { entity, childType, childrenRows, incompleteStates, hoverId, setHoverId, selectedId, onSelect, onDrill, metricLabel, t = same } = props;
   const wrapRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 640, h: 420 });
   const [geo, setGeo] = useState<{ key: string; outline: Feature | null; byCode: Map<string, Feature> } | null>(null);
@@ -134,19 +138,17 @@ export function GeoMap(props: GeoMapProps) {
   }, []);
 
   // ---- which boundary files this level needs ----
+  // Block level (childType school) draws NO border — the schools sit straight
+  // on the street underlay, as in mvp2.
   const wants = useMemo(() => {
     const outline: string | null =
       childType === "district"
         ? boundaryUrl("state", entity.code)
         : childType === "block"
           ? boundaryUrl("district", entity.code)
-          : childType === "school"
-            ? parentDistrict
-              ? boundaryUrl("district", parentDistrict.code)
-              : null
-            : entity.type === "country"
-              ? boundaryUrl("country", entity.code)
-              : null;
+          : entity.type === "country"
+            ? boundaryUrl("country", entity.code)
+            : null;
     const kids: { code: string; url: string }[] = [];
     if (childType === "state" || childType === "district") {
       for (const c of childrenRows) {
@@ -159,7 +161,7 @@ export function GeoMap(props: GeoMapProps) {
       }
     }
     return { outline, kids, key: `${entity.id}|${childType}|${kids.map((k) => k.code).join(",")}` };
-  }, [entity, parentDistrict, childType, childrenRows, incompleteStates]);
+  }, [entity, childType, childrenRows, incompleteStates]);
 
   useEffect(() => {
     let cancelled = false;
@@ -215,6 +217,58 @@ export function GeoMap(props: GeoMapProps) {
     if (!feats.length) return null;
     return fitMercator(feats, size.w, size.h, 14);
   }, [ready, points, size]);
+
+  // ---- CARTO Positron underlay for the district (blocks) and block
+  // (schools) views only — mvp2's slippy-tile math. The projection is plain
+  // Mercator with a central-meridian rotation, so tiles project to
+  // axis-aligned rects: each <image> is placed by projecting its NW/SE
+  // corners. Zoom picked so one tile is ≈≤520 px; padded 40 % for panning;
+  // hard cap 120 tiles.
+  const tiles = useMemo(() => {
+    if (!proj || !proj.invert || (childType !== "block" && childType !== "school")) return null;
+    const nwLL = proj.invert([0, 0]),
+      seLL = proj.invert([size.w, size.h]);
+    if (!nwLL || !seLL) return null;
+    const P2 = (z: number) => 2 ** z;
+    const lon2tx = (lon: number, z: number) => Math.floor(((lon + 180) / 360) * P2(z));
+    const lat2ty = (lat: number, z: number) => {
+      const r = (lat * Math.PI) / 180;
+      return Math.floor(((1 - Math.log(Math.tan(r) + 1 / Math.cos(r)) / Math.PI) / 2) * P2(z));
+    };
+    const tx2lon = (x: number, z: number) => (x / P2(z)) * 360 - 180;
+    const ty2lat = (y: number, z: number) => {
+      const n = Math.PI - (2 * Math.PI * y) / P2(z);
+      return (180 / Math.PI) * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
+    };
+    const cLon = (nwLL[0] + seLL[0]) / 2,
+      cLat = (nwLL[1] + seLL[1]) / 2;
+    let z = 6;
+    for (; z < 15; z++) {
+      const x = lon2tx(cLon, z),
+        y = lat2ty(cLat, z);
+      const a = proj([tx2lon(x, z), ty2lat(y, z)]),
+        b = proj([tx2lon(x + 1, z), ty2lat(y + 1, z)]);
+      if (a && b && Math.abs(b[0] - a[0]) <= 520) break;
+    }
+    const padLon = Math.abs(seLL[0] - nwLL[0]) * 0.4,
+      padLat = Math.abs(nwLL[1] - seLL[1]) * 0.4;
+    const x0 = lon2tx(Math.min(nwLL[0], seLL[0]) - padLon, z),
+      x1 = lon2tx(Math.max(nwLL[0], seLL[0]) + padLon, z);
+    const y0 = lat2ty(Math.min(89, Math.max(nwLL[1], seLL[1]) + padLat), z),
+      y1 = lat2ty(Math.max(-89, Math.min(nwLL[1], seLL[1]) - padLat), z);
+    const maxIdx = P2(z) - 1;
+    const out: { key: string; href: string; x: number; y: number; w: number; h: number }[] = [];
+    for (let x = Math.max(0, x0); x <= Math.min(maxIdx, x1); x++) {
+      for (let y = Math.max(0, y0); y <= Math.min(maxIdx, y1); y++) {
+        const nw = proj([tx2lon(x, z), ty2lat(y, z)]),
+          se = proj([tx2lon(x + 1, z), ty2lat(y + 1, z)]);
+        if (!nw || !se) continue;
+        out.push({ key: `${z}/${x}/${y}`, href: tileUrl(z, x, y), x: nw[0], y: nw[1], w: se[0] - nw[0], h: se[1] - nw[1] });
+        if (out.length >= 120) return out;
+      }
+    }
+    return out.length ? out : null;
+  }, [proj, childType, size]);
 
   const project = useCallback(
     (c: [number, number]) => {
@@ -297,7 +351,16 @@ export function GeoMap(props: GeoMapProps) {
         style={{ cursor: dragging ? "grabbing" : "default" }}
       >
         <g transform={`translate(${tf.x},${tf.y}) scale(${k})`} style={{ transition: dragging ? "none" : "transform .25s ease" }}>
-          {outlineD && <path d={outlineD} fill="#ffffff" fillOpacity={0.6} stroke="#334155" strokeWidth={1.4 / k} pointerEvents="none" />}
+          {/* street/landmark underlay (district + block views only) */}
+          {tiles && (
+            <g pointerEvents="none" data-testid="tile-underlay">
+              {tiles.map((tl) => (
+                <image key={tl.key} href={tl.href} x={tl.x} y={tl.y} width={tl.w} height={tl.h} preserveAspectRatio="none" />
+              ))}
+            </g>
+          )}
+          {/* the district border sits over the underlay at district level; none at block level */}
+          {outlineD && <path d={outlineD} fill={tiles ? "none" : "#ffffff"} fillOpacity={0.6} stroke="#334155" strokeWidth={1.4 / k} pointerEvents="none" />}
 
           {areas.map((a) => {
             const on = hoverId === a.child.id || selectedId === a.child.id;
@@ -431,6 +494,10 @@ export function GeoMap(props: GeoMapProps) {
           <div className="font-semibold">{tip.title}</div>
           {tip.sub && <div>{tip.sub}</div>}
         </div>
+      )}
+
+      {tiles && (
+        <div className="pointer-events-none absolute bottom-1 right-14 z-20 rounded bg-white/80 px-1.5 py-0.5 text-[9px] text-zinc-500">© OpenStreetMap contributors © CARTO</div>
       )}
 
       {/* small NIPUN dot legend (mvp2: bottom-left; the up-a-level button sits bottom-right, in the card) */}

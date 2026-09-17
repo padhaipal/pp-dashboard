@@ -85,7 +85,8 @@ export function RepKpis({
   return (
     <div className="flex flex-col gap-3 sm:flex-row" data-testid="root-kpis">
       {card(fmtPctInt(root.pass_rate), `${t("average")} ${metricLabel}`, nipColor(root.pass_rate), "pass")}
-      {showUsing && card(`${usingN} ${t("of")} ${totalN}`, `${t(nounP)} ${t("using Lifteracy")}`, "#16a34a", "using")}
+      {/* the share of children on Lifteracy follows the same red / amber / green rule as a score */}
+      {showUsing && card(`${usingN} ${t("of")} ${totalN}`, `${t(nounP)} ${t("using Lifteracy")}`, nipColor(totalN > 0 ? (usingN / totalN) * 100 : null), "using")}
     </div>
   );
 }
@@ -247,7 +248,10 @@ export function RepLatest({
 
 // ------------------------------------------------------------------ most improved
 
-export function RepImproved({
+// Anything rankable by delta: geo children, teachers, or (class view) students.
+export type ImprovedRow = { id: string; name: string; delta: number | null };
+
+export function RepImproved<R extends ImprovedRow>({
   mostImproved,
   hoverId,
   setHoverId,
@@ -255,12 +259,12 @@ export function RepImproved({
   onSelect,
   onPick,
 }: {
-  mostImproved: Child[];
+  mostImproved: R[];
   hoverId: string | null;
   setHoverId: (id: string | null) => void;
   selId: string | null;
-  onSelect: (c: Child) => void;
-  onPick: (c: Child) => void;
+  onSelect: (c: R) => void;
+  onPick: (c: R) => void;
 }) {
   const mobile = useIsMobile();
   const arr = mostImproved.filter((c) => c.delta != null);
@@ -415,7 +419,7 @@ export function RepMeta({
         </div>
       </div>,
       fmtPctInt(pct),
-      null,
+      pct == null ? null : <MvpTrend delta={student.delta} suffix={suffix} />,
     );
   }
   if (!child) return <p className="text-sm text-zinc-400">{t("Hover or click a row or map area to see its details.")}</p>;

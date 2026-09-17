@@ -8,7 +8,16 @@ export const PUBLIC_ALLOWED: { pattern: RegExp; methods: string[] }[] = [
   { pattern: /^users\/[^/]+\/profile$/, methods: ["PATCH"] },
   { pattern: /^geo-entities\/[^/]+\/scores(\.csv)?$/, methods: ["GET"] },
   { pattern: /^geo-entities\/[^/]+\/spotlight$/, methods: ["GET"] },
+  // Student modal on /d: score history, recent voice notes (phone stripped
+  // by route.ts for sessionless callers) and one note's audio bytes.
+  { pattern: /^users\/[^/]+\/literacy-test-scores$/, methods: ["GET"] },
+  { pattern: /^users\/[^/]+\/media$/, methods: ["GET"] },
+  { pattern: /^media-meta-data\/[^/]+\/audio$/, methods: ["GET"] },
 ];
+
+// Public media responses carry the student's phone; sessionless callers get
+// it removed (route.ts).
+export const PUBLIC_MEDIA_RE = /^users\/[^/]+\/media$/;
 
 export function isPublicAllowed(path: string, method: string): boolean {
   return PUBLIC_ALLOWED.some((r) => r.pattern.test(path) && r.methods.includes(method));
