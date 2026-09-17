@@ -5,12 +5,14 @@
 export type Metric = "nipun_g2" | "nipun_g3" | "mpl_b";
 export type Range = 30 | 90;
 export type GeoType = "country" | "state" | "district" | "block" | "school";
-export type ChildType = "state" | "district" | "block" | "school" | "student";
+// school → teacher (the referrers of its students) → student
+export type ChildType = "state" | "district" | "block" | "school" | "teacher" | "student";
 export type Bin = "high" | "mid" | "low" | "none";
 
 export type GeoRef = {
   id: string;
-  type: GeoType;
+  // "teacher" = a teacher's user id standing in as the level below a school
+  type: GeoType | "teacher";
   code: string;
   name: string;
   has_boundary: boolean;
@@ -49,6 +51,8 @@ export type Child = GeoRef & {
   delta: number | null;
   bin: Bin;
   official: Official;
+  // teacher rows only: how many students the teacher referred
+  students?: number;
 };
 
 export type StudentChild = {
@@ -60,7 +64,24 @@ export type StudentChild = {
   in_band: boolean;
   active: boolean;
   last_active_at: string | null;
+  delta: number | null; // points vs the row ≤ as_of − range
 };
+
+// GET users/:id/literacy-test-scores — per-test snapshot history (score 0-1).
+export type TestSnapshotPoint = { at: string; score: number; passed: boolean };
+export type SnapshotTestScore = { status: "ok" | "insufficient_data"; attempts_available: number; latest?: TestSnapshotPoint; history?: TestSnapshotPoint[] };
+export type LiteracyTestScores = { nipun_grade_2: SnapshotTestScore; nipun_grade_3: SnapshotTestScore; mpl_b: SnapshotTestScore };
+export const TEST_KEY_OF: Record<Metric, keyof LiteracyTestScores> = { nipun_g2: "nipun_grade_2", nipun_g3: "nipun_grade_3", mpl_b: "mpl_b" };
+
+// GET users/:id/media — the student's recent voice notes (newest first).
+export type MediaRow = {
+  id: string;
+  created_at: string;
+  has_audio: boolean;
+  answer: string | null;
+  answer_correct: boolean | null;
+};
+export type UserMedia = { user: { name: string | null }; media: MediaRow[] };
 
 export type SeriesPoint = { date: string; pass_rate: number | null; n: number };
 
@@ -108,13 +129,17 @@ export const CHILD_NOUN: Record<ChildType, [string, string]> = {
   district: ["District", "districts"],
   block: ["Block", "blocks"],
   school: ["School", "schools"],
+  teacher: ["Teacher", "teachers"],
   student: ["Student", "students"],
 };
+// mvp2's REP_OFFICER: the officer who leads each child unit (school-level
+// children are teachers, so the school's spotlight is the "Teacher Spotlight").
 export const CHILD_OFFICER: Record<ChildType, string> = {
   state: "DGSE",
   district: "BSA",
   block: "BEO",
   school: "Principal",
+  teacher: "Teacher",
   student: "Teacher",
 };
 
@@ -186,6 +211,10 @@ export const csvUrl = (id: string, metric: Metric, range: Range) =>
 export const spotlightUrl = (id: string, metric: Metric, range: Range) =>
   `/api/proxy/geo-entities/${encodeURIComponent(id)}/spotlight?metric=${metric}&range=${range}`;
 export const profileUrl = (id: string) => `/api/proxy/users/${encodeURIComponent(id)}/profile`;
+// student modal: per-test history, recent voice notes and one note's audio
+export const testScoresUrl = (id: string) => `/api/proxy/users/${encodeURIComponent(id)}/literacy-test-scores`;
+export const mediaUrl = (id: string) => `/api/proxy/users/${encodeURIComponent(id)}/media`;
+export const audioUrl = (mediaId: string) => `/api/proxy/media-meta-data/${encodeURIComponent(mediaId)}/audio`;
 
 // ------------------------------------------------------------------ formatting
 
@@ -197,8 +226,8 @@ export const fmtDelta = (v: number | null) => (v == null ? "—" : `${v >= 0 ? "
 // Geo names arrive UPPERCASE from UDISE ("UTTAR PRADESH"); mvp2's location
 // title shows them in title case. School names keep their own casing
 // ("PRI.SCH. ICHHA NAGAR"), exactly as mvp2 does.
-export function displayName(name: string, type: GeoType | "student"): string {
-  if (type === "school" || type === "student") return name;
+export function displayName(name: string, type: GeoType | "teacher" | "student"): string {
+  if (type === "school" || type === "teacher" || type === "student") return name;
   return name
     .toLowerCase()
     .split(/(\s+|-)/)
