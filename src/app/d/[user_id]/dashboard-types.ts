@@ -18,9 +18,14 @@ export type GeoRef = {
   has_boundary: boolean;
   lat: number | null;
   lng: number | null;
+  // schools only: UDISE management; the map marks private schools
+  management_group?: ManagementGroup | null;
 };
 
-export type Ancestor = { id: string; type: GeoType; code: string; name: string };
+export type ManagementGroup = "government" | "government_aided" | "private" | "other";
+export const isPrivateSchool = (g: GeoRef) => g.type === "school" && g.management_group === "private";
+
+export type Ancestor ={ id: string; type: GeoType; code: string; name: string };
 
 export type Official = {
   name: string | null;

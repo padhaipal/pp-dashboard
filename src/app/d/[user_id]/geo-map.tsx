@@ -20,6 +20,7 @@ import {
   childFill,
   INCOMPLETE_FILL,
   INCOMPLETE_TOOLTIP,
+  isPrivateSchool,
   UNCOVERED,
   fmtPct,
   type Child,
@@ -320,7 +321,7 @@ export function GeoMap(props: GeoMapProps) {
   const tipFor = (c: Child, incomplete: boolean): [string, string | null] =>
     incomplete
       ? [c.name, INCOMPLETE_TOOLTIP]
-      : [c.name, c.using_lifteracy ? `${fmtPct(c.pass_rate)} · n=${c.n}` : t("Not using Lifteracy")];
+      : [c.name, (c.using_lifteracy ? `${fmtPct(c.pass_rate)} · n=${c.n}` : t("Not using Lifteracy")) + (isPrivateSchool(c) ? ` · ${t("private school")}` : "")];
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (e.pointerType !== "mouse") return;
@@ -456,35 +457,47 @@ export function GeoMap(props: GeoMapProps) {
             projected.map((p) => {
               const on = hoverId === p.child.id || selectedId === p.child.id;
               const [t1, t2] = tipFor(p.child, false);
-              return (
-                <circle
+              const r = (on ? 9 : 6) / k;
+              // same colour scale for every school; private schools get a
+              // diamond instead of a dot (subtle — the legend explains it)
+              const common = {
+                fill: childFill(p.child),
+                stroke: selectedId === p.child.id ? "#2563eb" : on ? "#0f172a" : "#ffffff",
+                strokeWidth: (on ? 2 : 1.2) / k,
+                "data-id": p.child.id,
+                "data-jittered": p.jittered ? "true" : undefined,
+                "data-management": p.child.management_group ?? undefined,
+                style: { cursor: "pointer" } as const,
+                onMouseEnter: (e: React.MouseEvent) => {
+                  setHoverId(p.child.id);
+                  showTip(e, t1, p.jittered ? `${t2 ?? ""} · approximate location` : t2);
+                },
+                onMouseLeave: () => {
+                  setHoverId(null);
+                  hideTip();
+                },
+                onClick: (e: React.MouseEvent) => {
+                  e.stopPropagation();
+                  if (!moved.current) onSelect(p.child);
+                },
+                onDoubleClick: (e: React.MouseEvent) => {
+                  e.stopPropagation();
+                  onDrill(p.child);
+                },
+              };
+              return isPrivateSchool(p.child) ? (
+                <rect
                   key={p.child.id}
-                  cx={p.xy[0]}
-                  cy={p.xy[1]}
-                  r={(on ? 9 : 6) / k}
-                  fill={childFill(p.child)}
-                  stroke={selectedId === p.child.id ? "#2563eb" : on ? "#0f172a" : "#ffffff"}
-                  strokeWidth={(on ? 2 : 1.2) / k}
-                  data-id={p.child.id}
-                  data-jittered={p.jittered ? "true" : undefined}
-                  style={{ cursor: "pointer" }}
-                  onMouseEnter={(e) => {
-                    setHoverId(p.child.id);
-                    showTip(e, t1, p.jittered ? `${t2 ?? ""} · approximate location` : t2);
-                  }}
-                  onMouseLeave={() => {
-                    setHoverId(null);
-                    hideTip();
-                  }}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    if (!moved.current) onSelect(p.child);
-                  }}
-                  onDoubleClick={(e) => {
-                    e.stopPropagation();
-                    onDrill(p.child);
-                  }}
+                  x={p.xy[0] - r}
+                  y={p.xy[1] - r}
+                  width={2 * r}
+                  height={2 * r}
+                  rx={r / 4}
+                  transform={`rotate(45 ${p.xy[0]} ${p.xy[1]})`}
+                  {...common}
                 />
+              ) : (
+                <circle key={p.child.id} cx={p.xy[0]} cy={p.xy[1]} r={r} {...common} />
               );
             })}
         </g>
@@ -525,6 +538,19 @@ export function GeoMap(props: GeoMapProps) {
           <div className="flex items-center gap-1.5">
             <span className="h-2.5 w-2.5 rounded-full" style={{ background: INCOMPLETE_FILL }} />
             {t("Boundaries pending")}
+          </div>
+        )}
+        {/* block level: marker shape = management (colour stays the score) */}
+        {childType === "school" && (
+          <div className="mt-1.5 space-y-0.5 border-t border-zinc-200 pt-1.5 text-zinc-500" data-testid="school-kind-legend">
+            <div className="flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rounded-full bg-zinc-400" />
+              {t("Government school")}
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 rotate-45 rounded-[2px] bg-zinc-400" />
+              {t("Private school")}
+            </div>
           </div>
         )}
       </div>
