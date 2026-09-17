@@ -10,11 +10,12 @@ import { AvatarImg, MvpTrend } from "./mvp-widgets";
 import {
   ACCENT,
   binColor,
-  binOf,
   CHILD_NOUN,
   CHILD_OFFICER,
   fmtPct,
+  fmtPctInt,
   METRIC_BY,
+  nipColor,
   UNCOVERED,
   type Child,
   type ChildType,
@@ -24,8 +25,12 @@ import {
   type SeriesPoint,
   type SpotlightEntry,
   type SpotlightResponse,
+  type StudentChild,
 } from "./dashboard-types";
+import type { T } from "./i18n";
 import { IconClose, IconPdf } from "./icons";
+
+const same: T = (s) => s;
 
 export function useIsMobile(bp = 640): boolean {
   const [m, setM] = useState(false);
@@ -50,58 +55,48 @@ const fmtDay = (iso: string) => {
 
 // ------------------------------------------------------------------ KPIs
 
+// mvp2's headline cards: the average of the toggled metric (nipColor) and, above
+// school level, "{usingN} of {totalN} {nounP} using Lifteracy".
 export function RepKpis({
   root,
   metricLabel,
   nounP,
   usingN,
   totalN,
-  asOf,
-  range,
   showUsing = true,
+  t = same,
 }: {
   root: RootStats;
   metricLabel: string;
   nounP: string;
   usingN: number;
   totalN: number;
-  asOf: string | null;
-  range: Range;
   showUsing?: boolean;
+  t?: T;
 }) {
-  const card = (big: React.ReactNode, label: string, color?: string, key?: string) => (
-    <div key={key ?? label} className="flex-1 rounded-xl bg-zinc-50 px-3 py-5 text-center sm:px-4 sm:py-6">
-      <div className="text-4xl font-extrabold tracking-tight sm:text-5xl" style={color ? { color } : undefined}>
+  const card = (big: string, label: string, color: string, key: string) => (
+    <div key={key} className="flex-1 rounded-xl bg-zinc-50 px-4 py-6 text-center">
+      <div className="whitespace-nowrap text-5xl font-extrabold tracking-tight" style={{ color }}>
         {big}
       </div>
-      <div className="mt-1.5 text-sm font-medium leading-tight text-zinc-500">{label}</div>
+      <div className="mt-1.5 whitespace-nowrap text-sm font-medium leading-tight text-zinc-500">{label}</div>
     </div>
   );
-  const bin = binOf(root.pass_rate);
   return (
-    <div>
-      <div className="flex flex-col gap-3 sm:flex-row" data-testid="root-kpis">
-        {card(
-          <span className="whitespace-nowrap">
-            {fmtPct(root.pass_rate)} <span className="text-lg font-semibold text-zinc-400">· n={root.n ?? 0}</span>
-          </span>,
-          `${metricLabel} pass rate`,
-          binColor(bin),
-          "pass",
-        )}
-        {card(String(root.students_active ?? 0), "students active", "#2563eb", "active")}
-        {card(<MvpTrend delta={root.delta} suffix={`last ${range} days`} />, "change", undefined, "delta")}
-        {showUsing && card(`${usingN} of ${totalN}`, `${nounP} using Lifteracy`, "#16a34a", "using")}
-      </div>
-      <div className="mt-2 text-center text-xs text-zinc-400">as of {asOf ?? "—"}</div>
+    <div className="flex flex-col gap-3 sm:flex-row" data-testid="root-kpis">
+      {card(fmtPctInt(root.pass_rate), `${t("average")} ${metricLabel}`, nipColor(root.pass_rate), "pass")}
+      {showUsing && card(`${usingN} ${t("of")} ${totalN}`, `${t(nounP)} ${t("using Lifteracy")}`, "#16a34a", "using")}
     </div>
   );
 }
 
 // ------------------------------------------------------------------ trend
 
-export function RepTrend({ series, label }: { series: SeriesPoint[]; label: string }) {
+// mvp2's spaghetti chart with the one series the API exposes: the root average
+// (navy, labelled "Average" at its end point) over the 80 % target.
+export function RepTrend({ series, label, t = same }: { series: SeriesPoint[]; label?: string; t?: T }) {
   const mobile = useIsMobile();
+  const yLabel = label ?? t("Oral Literacy NIPUN Proxy percentage pass rate");
   const W = mobile ? 440 : 900,
     H = mobile ? 300 : 280,
     mL = mobile ? 36 : 46,
@@ -140,24 +135,23 @@ export function RepTrend({ series, label }: { series: SeriesPoint[]; label: stri
         </g>
       ))}
       <text transform={`translate(12 ${mT + ih / 2}) rotate(-90)`} textAnchor="middle" fontSize={mobile ? 11 : 8.5} fill="#64748b">
-        {label}
+        {yLabel}
       </text>
       {li < 0 ? (
         <text x={W / 2} y={H / 2} textAnchor="middle" fontSize={mobile ? 16 : 13} fill="#94a3b8">
-          No results in this window
+          {t("No results in this window")}
         </text>
       ) : (
         <>
-          <path d={d} fill="none" stroke="#1e3a5f" strokeWidth={mobile ? 3.8 : 2.8} />
-          {series.map((s, i) => (s.pass_rate == null ? null : <circle key={i} cx={x(i)} cy={y(s.pass_rate)} r={mobile ? 4 : 3} fill="#1e3a5f" />))}
-          <text x={x(li) - 4} y={y(series[li].pass_rate!) - 7} textAnchor="end" fontSize={mobile ? 15 : 11} fontWeight="800" fill="#1e3a5f">
-            {series[li].pass_rate!.toFixed(1)}%
+          <path d={d} fill="none" stroke="#1e3a5f" strokeWidth={mobile ? 3.8 : 2.8} pointerEvents="none" />
+          <text x={x(li) - 4} y={y(series[li].pass_rate!) - 7} textAnchor="end" fontSize={mobile ? 15 : 11} fontWeight="800" fill="#1e3a5f" pointerEvents="none">
+            {t("Average")}
           </text>
         </>
       )}
-      <line x1={mL} x2={W - mR} y1={y(80)} y2={y(80)} stroke="#ef4444" strokeWidth={mobile ? 2 : 1.3} strokeDasharray="5 3" />
-      <text x={mL + 3} y={y(80) - 4} fontSize={mobile ? 12 : 9} fill="#ef4444" fontWeight="700">
-        80% NIPUN target
+      <line x1={mL} x2={W - mR} y1={y(80)} y2={y(80)} stroke="#ef4444" strokeWidth={mobile ? 2 : 1.3} strokeDasharray="5 3" pointerEvents="none" />
+      <text x={mL + 3} y={y(80) - 4} fontSize={mobile ? 12 : 9} fill="#ef4444" fontWeight="700" pointerEvents="none">
+        {t("80% NIPUN target")}
       </text>
       {series.map((s, i) =>
         i % every === 0 || i === n - 1 ? (
@@ -270,9 +264,10 @@ export function RepImproved({
 }) {
   const mobile = useIsMobile();
   const arr = mostImproved.filter((c) => c.delta != null);
-  if (!arr.length) return <p className="text-sm text-zinc-400">Not enough data yet (needs n ≥ 5).</p>;
+  // mvp2 renders nothing under the heading until there is something to rank.
+  if (!arr.length) return null;
   const W = mobile ? 440 : 900,
-    rowH = mobile ? 30 : 22,
+    rowH = mobile ? 30 : 19,
     mT = 6,
     mL = mobile ? 130 : 168,
     mR = mobile ? 52 : 44,
@@ -315,31 +310,49 @@ export function RepImproved({
 
 // ------------------------------------------------------------------ spotlight quote
 
-export function RepQuote({ kind, entry, nounS, officer }: { kind: "top" | "improved"; entry: SpotlightEntry; nounS: string; officer: string }) {
-  const title = kind === "top" ? `Top ${nounS.toLowerCase()}` : "Most improved";
+export function RepQuote({
+  kind,
+  entry,
+  nounS,
+  officer,
+  range,
+  t = same,
+}: {
+  kind: "top" | "improved";
+  entry: SpotlightEntry;
+  nounS: string;
+  officer: string;
+  range?: Range;
+  t?: T;
+}) {
+  const title = kind === "top" ? `${t("Top")} ${t(nounS).toLowerCase()}` : t("Most improved");
   if (!entry) {
     return (
       <div className="rounded-lg border border-dashed border-zinc-200 bg-zinc-50 px-4 py-4 text-sm text-zinc-400">
         <div className="mb-1 text-[11px] font-bold uppercase tracking-wide text-zinc-400">{title}</div>
-        No {nounS.toLowerCase()} qualifies yet.
+        {t("No")} {t(nounS).toLowerCase()} {t("qualifies yet.")}
       </div>
     );
   }
   const { child, official } = entry;
-  const head = kind === "top" ? `${title} — ${fmtPct(child.pass_rate)}` : `${title} — ${child.delta != null && child.delta >= 0 ? "+" : ""}${child.delta?.toFixed(1) ?? "—"} pts`;
+  const when = range ? `${t("last")} ${range} ${t("days")}` : t("this week");
+  const head =
+    kind === "top"
+      ? `${title} — ${fmtPctInt(child.pass_rate)}`
+      : `${title} — ${child.delta != null && child.delta >= 0 ? "+" : ""}${child.delta?.toFixed(1) ?? "—"} ${t("pts")} ${when}`;
   return (
     <div className="flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-100/80 px-4 py-4" data-testid={`spotlight-${kind}`}>
-      <AvatarImg seed={official?.avatar_seed ?? child.id} size={56} ring="#16a34a" />
+      <AvatarImg seed={official?.avatar_seed ?? child.id} size={56} className="h-14 w-14" ring="#16a34a" ringWidth={2} />
       <div className="min-w-0 text-[12px] leading-snug text-zinc-700">
         <div className="mb-1 text-[11px] font-bold uppercase tracking-wide text-emerald-700">{head}</div>
-        <div className="text-lg font-extrabold leading-tight text-zinc-900">{official?.name ?? "No Lifteracy user yet"}</div>
+        <div className="text-lg font-extrabold leading-tight text-zinc-900">{official?.name ?? t("No Lifteracy user yet")}</div>
         <div className="mb-2 text-[11px] font-semibold text-zinc-500">
-          {official?.role_title ?? officer} · {child.name}
+          {official?.role_title ?? t(officer)} · {child.name}
         </div>
         {official?.spotlight_message ? (
           <div className="italic text-zinc-700">“{official.spotlight_message}”</div>
         ) : (
-          <div className="italic text-zinc-400">No spotlight message yet.</div>
+          <div className="italic text-zinc-400">{t("No spotlight message yet.")}</div>
         )}
       </div>
     </div>
@@ -348,35 +361,79 @@ export function RepQuote({ kind, entry, nounS, officer }: { kind: "top" | "impro
 
 // ------------------------------------------------------------------ detail card
 
-export function RepMeta({ child, metricLabel, officer }: { child: Child | null; metricLabel: string; officer: string }) {
-  if (!child) return <p className="text-sm text-zinc-400">Hover or click a row or map area to see its details.</p>;
-  const col = child.using_lifteracy ? binColor(child.bin) : UNCOVERED;
-  return (
+// mvp2's RepMeta: left half tinted by the score (avatar, name, official, role),
+// right half ONE headline figure — the toggled metric — with the trend arrow.
+// `student` is the school-level subject (no official, no avatar: privacy).
+export function RepMeta({
+  child,
+  student,
+  metricLabel,
+  officer,
+  range,
+  t = same,
+}: {
+  child?: Child | null;
+  student?: StudentChild | null;
+  metricLabel: string;
+  officer: string;
+  range?: Range;
+  t?: T;
+}) {
+  const suffix = range ? `${t("last")} ${range} ${t("days")}` : "";
+  const box = (col: string, left: React.ReactNode, big: string, trend: React.ReactNode) => (
     <div className="flex flex-col gap-5 sm:flex-row sm:items-stretch" data-testid="rep-meta">
-      <div className="flex flex-1 items-center gap-4 rounded-xl px-4 py-4 sm:px-5 sm:py-5" style={{ background: col + "1f", border: "1px solid " + col + "55" }}>
-        {child.official && <AvatarImg seed={child.official.avatar_seed} size={72} ring={col} />}
-        <div className="min-w-0">
-          <div className="truncate text-xl font-bold leading-tight text-zinc-900" title={child.name}>
-            {child.name}
-          </div>
-          <div className="mt-0.5 text-sm font-medium text-zinc-700">{child.official?.name ?? "No Lifteracy user yet"}</div>
-          <div className="text-[12px] text-zinc-500">{child.official?.role_title ?? officer}</div>
-        </div>
+      <div className="flex flex-1 items-center gap-4 rounded-xl px-5 py-5" style={{ background: col + "1f", border: "1px solid " + col + "55" }}>
+        {left}
       </div>
       <div className="grid flex-1 grid-cols-1 gap-3">
         <div className="flex min-w-0 flex-col items-center justify-center rounded-lg bg-zinc-50 px-2 py-4 text-center">
-          <div className="flex w-full flex-wrap items-center justify-center gap-3">
+          <div className="flex w-full items-center justify-center gap-3">
             <div className="text-4xl font-extrabold tracking-tight" style={{ color: col }}>
-              {child.using_lifteracy ? fmtPct(child.pass_rate) : "—"}
+              {big}
             </div>
-            {child.using_lifteracy && <MvpTrend delta={child.delta} />}
+            {trend}
           </div>
           <div className="mt-1.5 w-full text-[13px] leading-tight text-zinc-500">
-            Latest {metricLabel} · n={child.n} · {child.students_active} students active
+            {t("Latest")} {metricLabel}
           </div>
         </div>
       </div>
     </div>
+  );
+  if (student) {
+    const pct = student.score == null ? null : student.score * 100;
+    const col = nipColor(pct);
+    return box(
+      col,
+      <div className="min-w-0">
+        <div className="truncate text-xl font-bold leading-tight text-zinc-900" title={student.label}>
+          {student.label}
+        </div>
+        <div className="mt-0.5 text-sm font-medium text-zinc-700">{t("Student")}</div>
+        <div className="text-[12px] text-zinc-500">
+          {student.attempts} {t("attempts")}
+        </div>
+      </div>,
+      fmtPctInt(pct),
+      null,
+    );
+  }
+  if (!child) return <p className="text-sm text-zinc-400">{t("Hover or click a row or map area to see its details.")}</p>;
+  const col = child.using_lifteracy ? nipColor(child.pass_rate) : UNCOVERED;
+  return box(
+    col,
+    <>
+      {child.official && <AvatarImg seed={child.official.avatar_seed} size={80} className="h-20 w-20" ring={col} />}
+      <div className="min-w-0">
+        <div className="truncate text-xl font-bold leading-tight text-zinc-900" title={child.name}>
+          {child.name}
+        </div>
+        <div className="mt-0.5 text-sm font-medium text-zinc-700">{child.official?.name ?? t("No Lifteracy user yet")}</div>
+        <div className="text-[12px] text-zinc-500">{child.official?.role_title ?? t(officer)}</div>
+      </div>
+    </>,
+    child.using_lifteracy ? fmtPctInt(child.pass_rate) : "—",
+    child.using_lifteracy ? <MvpTrend delta={child.delta} suffix={suffix} /> : null,
   );
 }
 
@@ -390,7 +447,7 @@ export type ReportData = {
   asOf: string | null;
   root: RootStats;
   series: SeriesPoint[];
-  childType: Exclude<ChildType, "student">;
+  childType: ChildType;
   childrenRows: Child[];
   mostImproved: Child[];
   spotlight: SpotlightResponse | null;
@@ -467,12 +524,8 @@ export async function exportReportPdf(data: ReportData, root: HTMLElement | null
   // KPIs
   y += 20;
   const usingN = data.childrenRows.filter((c) => c.using_lifteracy).length;
-  const kpis: [string, string, [number, number, number]][] = [
-    [`${fmtPct(data.root.pass_rate)} · n=${data.root.n ?? 0}`, `${metricLabel} pass rate`, rgb(binColor(binOf(data.root.pass_rate)))],
-    [String(data.root.students_active ?? 0), "students active", [37, 99, 235]],
-    [data.root.delta == null ? "—" : `${data.root.delta >= 0 ? "+" : ""}${data.root.delta.toFixed(1)} pts`, `change, last ${data.range} days`, [80, 80, 80]],
-    [`${usingN} of ${data.childrenRows.length}`, `${nounP} using Lifteracy`, [22, 163, 74]],
-  ];
+  const kpis: [string, string, [number, number, number]][] = [[fmtPctInt(data.root.pass_rate), `average ${metricLabel}`, rgb(nipColor(data.root.pass_rate))]];
+  if (data.childType !== "student") kpis.push([`${usingN} of ${data.childrenRows.length}`, `${nounP} using Lifteracy`, [22, 163, 74]]);
   const kw = (CW - 10 * (kpis.length - 1)) / kpis.length,
     kh = 58;
   kpis.forEach((k, i) => {
@@ -649,7 +702,7 @@ export function ReportCardModal({ data, onClose }: { data: ReportData; onClose: 
               {metricLabel} · {data.range} days · as of {data.asOf ?? "—"}
             </div>
           </div>
-          <RepKpis root={data.root} metricLabel={metricLabel} nounP={nounP} usingN={usingN} totalN={data.childrenRows.length} asOf={data.asOf} range={data.range} />
+          <RepKpis root={data.root} metricLabel={metricLabel} nounP={nounP} usingN={usingN} totalN={data.childrenRows.length} showUsing={data.childType !== "student"} />
           <div>
             <div className="mb-1 text-sm font-semibold text-zinc-800">Trend</div>
             <RepTrend series={data.series} label={`${metricLabel} pass rate`} />

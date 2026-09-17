@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
-import { AVATAR_STYLE, seedFor } from "./avatar";
 import { INACTIVE_LINK_TEXT, type PublicProfile } from "./dashboard-types";
 import { readIncompleteStates } from "./incomplete-states";
-import { renderAvatarSvg } from "./render-avatar";
 import { TeacherDashboard } from "./teacher-dashboard";
 
 // Public, unauthenticated dashboard for a Lifteracy user (teacher / official).
@@ -25,21 +23,8 @@ export default async function PublicDashboardPage({ params }: { params: Promise<
   const profile = (await res.json()) as PublicProfile;
   // States with a district lacking a boundary polygon → black, non-drillable on the map.
   const incompleteStates = readIncompleteStates();
-  const seed = seedFor(profile.avatar_seed, profile.id);
-  let avatarSvg: string | null = null;
-  try {
-    avatarSvg = renderAvatarSvg(AVATAR_STYLE, seed);
-  } catch {
-    avatarSvg = null;
-  }
 
-  return (
-    <TeacherDashboard
-      profile={profile}
-      incompleteStates={incompleteStates}
-      avatarSvg={avatarSvg}
-    />
-  );
+  return <TeacherDashboard profile={profile} incompleteStates={incompleteStates} />;
 }
 
 function Message({ text }: { text: string }) {

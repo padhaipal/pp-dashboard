@@ -172,6 +172,11 @@ export function binOf(passRate: number | null): Bin {
   return passRate >= 80 ? "high" : passRate >= 50 ? "mid" : "low";
 }
 
+// mvp2's `nipColor`: the three-step green / amber / red used for every card,
+// tint, headline figure and legend swatch (the map keeps the continuous scale).
+// `v` is a percentage 0–100; null → UNCOVERED grey.
+export const nipColor = (v: number | null): string => (v == null ? UNCOVERED : v >= 80 ? "#16a34a" : v >= 50 ? "#f59e0b" : "#dc2626");
+
 // ------------------------------------------------------------------ urls
 
 export const scoresUrl = (id: string, metric: Metric, range: Range) =>
@@ -185,6 +190,20 @@ export const profileUrl = (id: string) => `/api/proxy/users/${encodeURIComponent
 // ------------------------------------------------------------------ formatting
 
 export const fmtPct = (v: number | null) => (v == null ? "—" : `${v.toFixed(1)}%`);
+// mvp2 headline figures are whole percentages ("69%").
+export const fmtPctInt = (v: number | null) => (v == null ? "—" : `${Math.round(v)}%`);
 export const fmtDelta = (v: number | null) => (v == null ? "—" : `${v >= 0 ? "+" : ""}${v.toFixed(1)}`);
+
+// Geo names arrive UPPERCASE from UDISE ("UTTAR PRADESH"); mvp2's location
+// title shows them in title case. School names keep their own casing
+// ("PRI.SCH. ICHHA NAGAR"), exactly as mvp2 does.
+export function displayName(name: string, type: GeoType | "student"): string {
+  if (type === "school" || type === "student") return name;
+  return name
+    .toLowerCase()
+    .split(/(\s+|-)/)
+    .map((w) => (w.length ? w.charAt(0).toUpperCase() + w.slice(1) : w))
+    .join("");
+}
 export const EMPTY_ROOT_TEXT = "No results yet — share your link to get started.";
 export const INACTIVE_LINK_TEXT = "This link is not active";

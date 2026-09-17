@@ -14,6 +14,7 @@
 //   school   : no map (the student table replaces it)
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { T } from "./i18n";
 import {
   childFill,
   INCOMPLETE_FILL,
@@ -51,7 +52,10 @@ export type GeoMapProps = {
   onSelect: (c: Child) => void;
   onDrill: (c: Child) => void;
   metricLabel: string;
+  t?: T;
 };
+
+const same: T = (s) => s;
 
 type BoundaryCache = Map<string, Feature | null>;
 const cache: BoundaryCache = new Map();
@@ -105,7 +109,7 @@ export function areaFill(d: string, child: Child, incomplete: boolean) {
 type Tip = { x: number; y: number; title: string; sub: string | null };
 
 export function GeoMap(props: GeoMapProps) {
-  const { entity, parentDistrict, childType, childrenRows, incompleteStates, hoverId, setHoverId, selectedId, onSelect, onDrill, metricLabel } = props;
+  const { entity, parentDistrict, childType, childrenRows, incompleteStates, hoverId, setHoverId, selectedId, onSelect, onDrill, metricLabel, t = same } = props;
   const wrapRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 640, h: 420 });
   const [geo, setGeo] = useState<{ key: string; outline: Feature | null; byCode: Map<string, Feature> } | null>(null);
@@ -257,7 +261,7 @@ export function GeoMap(props: GeoMapProps) {
   const tipFor = (c: Child, incomplete: boolean): [string, string | null] =>
     incomplete
       ? [c.name, INCOMPLETE_TOOLTIP]
-      : [c.name, c.using_lifteracy ? `${fmtPct(c.pass_rate)} · n=${c.n}` : "Not using Lifteracy"];
+      : [c.name, c.using_lifteracy ? `${fmtPct(c.pass_rate)} · n=${c.n}` : t("Not using Lifteracy")];
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (e.pointerType !== "mouse") return;
@@ -276,21 +280,12 @@ export function GeoMap(props: GeoMapProps) {
     drag.current = null;
     setDragging(false);
   };
-  const zoomBy = (factor: number) =>
-    setTf((t) => {
-      const k = Math.min(40, Math.max(0.5, t.k * factor));
-      const s = k / t.k;
-      const cx = size.w / 2,
-        cy = size.h / 2;
-      return { k, x: cx - (cx - t.x) * s, y: cy - (cy - t.y) * s };
-    });
-
   const k = tf.k;
   const noun = { state: "state", district: "district", block: "block", school: "school" }[childType];
 
   return (
-    <div ref={wrapRef} className="relative h-[340px] w-full overflow-hidden bg-[#eaf0f6] sm:h-[460px]" data-testid="geo-map" data-level={entity.type}>
-      {!ready && <div className="absolute inset-0 flex items-center justify-center text-sm text-zinc-400">Loading boundaries…</div>}
+    <div ref={wrapRef} className="relative h-full w-full overflow-hidden bg-[#eaf0f6]" data-testid="geo-map" data-level={entity.type}>
+      {!ready && <div className="absolute inset-0 flex items-center justify-center text-sm text-zinc-400">{t("Loading boundaries…")}</div>}
       <svg
         width={size.w}
         height={size.h}
@@ -438,14 +433,16 @@ export function GeoMap(props: GeoMapProps) {
         </div>
       )}
 
-      {/* legend */}
-      <div className="pointer-events-none absolute bottom-2 left-2 z-10 rounded-lg border border-zinc-200 bg-white/95 px-2.5 py-2 text-[10px] leading-tight text-zinc-600 shadow">
-        <div className="mb-1 font-semibold text-zinc-700">Latest {metricLabel}</div>
+      {/* small NIPUN dot legend (mvp2: bottom-left; the up-a-level button sits bottom-right, in the card) */}
+      <div className="pointer-events-none absolute bottom-3 left-3 z-20 rounded-lg border border-zinc-200 bg-white/95 px-2.5 py-2 text-[10px] leading-tight text-zinc-600 shadow">
+        <div className="mb-1 font-semibold text-zinc-700">
+          {t("Latest")} {metricLabel}
+        </div>
         {[
-          ["≥80", "rgb(34,197,94)"],
-          ["50–79", "rgb(234,179,8)"],
-          ["<50", "rgb(239,68,68)"],
-          ["Not using Lifteracy", UNCOVERED],
+          ["≥80", "#16a34a"],
+          ["50–79", "#f59e0b"],
+          ["<50", "#dc2626"],
+          [t("Not using Lifteracy"), UNCOVERED],
         ].map(([l, c]) => (
           <div key={l} className="flex items-center gap-1.5">
             <span className="h-2.5 w-2.5 rounded-full" style={{ background: c }} />
@@ -455,23 +452,9 @@ export function GeoMap(props: GeoMapProps) {
         {childType === "state" && incompleteStates.size > 0 && (
           <div className="flex items-center gap-1.5">
             <span className="h-2.5 w-2.5 rounded-full" style={{ background: INCOMPLETE_FILL }} />
-            Boundaries pending
+            {t("Boundaries pending")}
           </div>
         )}
-      </div>
-
-      {/* zoom */}
-      <div className="absolute right-2 top-2 z-10 flex flex-col overflow-hidden rounded-lg border border-zinc-300 bg-white shadow-md">
-        <button type="button" onClick={() => zoomBy(1.4)} className="h-8 w-8 text-base font-bold text-zinc-700 hover:bg-zinc-100" aria-label="Zoom in">
-          +
-        </button>
-        <button type="button" onClick={() => zoomBy(1 / 1.4)} className="h-8 w-8 border-t border-zinc-200 text-base font-bold text-zinc-700 hover:bg-zinc-100" aria-label="Zoom out">
-          −
-        </button>
-      </div>
-
-      <div className="pointer-events-none absolute bottom-2 right-2 z-10 rounded-full bg-zinc-900/80 px-2.5 py-1 text-[10px] font-medium text-white">
-        double-click a {noun} to drill in
       </div>
     </div>
   );
