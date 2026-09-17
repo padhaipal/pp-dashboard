@@ -151,10 +151,21 @@ describe("TeacherDashboard", () => {
     expect(calls.some((u) => u.includes("/geo-entities/t-1/scores"))).toBe(true);
     expect(tiles.length).toBe(2);
     expect(screen.getByTestId("location-title").textContent).toBe("India  -  Uttar Pradesh  -  JHS CHINHAT  -  Asha");
-    expect(tiles[0].textContent).toContain("Student 1");
+    // full, uncensored names; a nameless student shows the label as a muted placeholder
+    expect(tiles[0].textContent).toContain("Rani Devi");
+    expect(tiles[0].textContent).not.toContain("Student 1");
     expect(tiles[0].textContent).toContain("90%");
     expect(tiles[0].textContent).toContain("▲ +5.0%");
+    expect(tiles[1].textContent).toContain("Student 2");
     expect(tiles[1].textContent).toContain("—");
+    // the teacher renames a student in place: click the name → input → Enter → PATCH users/:id/profile
+    fireEvent.click(tiles[1].querySelector('[data-testid="student-name"]')!);
+    const input = screen.getByTestId("student-name-input") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "Mohan Kumar" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    await waitFor(() => expect(tiles[1].textContent).toContain("Mohan Kumar"));
+    expect(calls).toContain("PATCH /api/proxy/users/s-2/profile");
+    expect(screen.queryByRole("dialog")).toBeNull(); // renaming never opens the modal
     // class view: Performance only — no Detail, no Spotlight (section or nav link)
     expect(screen.getByText("Student Performance", { selector: "div" })).toBeDefined();
     expect(screen.queryByText("Student Detail", { selector: "div" })).toBeNull();
@@ -166,7 +177,10 @@ describe("TeacherDashboard", () => {
     // click a tile → the student's dashboard modal: title, chart toggles, one sentence per voice note with audio
     fireEvent.click(tiles[0]);
     const dialog = await screen.findByRole("dialog");
-    expect(screen.getByTestId("student-modal-title").textContent).toBe("Student 1 · Student");
+    expect(screen.getByTestId("student-modal-title").textContent).toContain("Rani Devi");
+    expect(screen.getByTestId("student-modal-title").textContent).toContain("· Student");
+    // the name is editable in the modal header too
+    expect(screen.getByTestId("student-modal-title").querySelector('[data-testid="student-name"]')).not.toBeNull();
     await waitFor(() => expect(screen.getAllByTestId("audio-button").length).toBe(1));
     expect(calls.some((u) => u.includes("/users/s-1/literacy-test-scores"))).toBe(true);
     expect(calls.some((u) => u.includes("/users/s-1/media"))).toBe(true);

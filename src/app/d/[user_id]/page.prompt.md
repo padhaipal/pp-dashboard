@@ -3,3 +3,4 @@
 3.) Reads `public/boundaries/districts_without_boundary.csv` with `fs` via `readIncompleteStates()` (incomplete-states.ts) and passes the distinct 2-digit `state_code`s as the `incompleteStates` string[] prop. No build script.
 4.) Mounts `<TeacherDashboard profile incompleteStates />`. No server-rendered avatar any more: mvp2's report has no profile header, so the only avatar on the page is the client-side `AvatarImg` in Your Profile (`/api/avatar/...`). `profile.explainer_url` is still in the payload but unused (mvp2 has no "What is Lifteracy?" link).
 5.) Only Next-recognised names are exported (`metadata`, `dynamic`, default) — helpers live in sibling modules.
+6.) `error.tsx` beside the page is the route's client error boundary: shows the error message + digest (so a teacher's screenshot is actionable) with Try again / Reload, instead of Next's bare "This page couldn't load".

@@ -62,7 +62,8 @@ export type Child = GeoRef & {
 
 export type StudentChild = {
   student_id: string;
-  label: string;
+  label: string; // first name, else "Student N"
+  name: string | null; // full name as stored; edited from the class view
   score: number | null; // 0-1
   passed: boolean | null;
   attempts: number;
