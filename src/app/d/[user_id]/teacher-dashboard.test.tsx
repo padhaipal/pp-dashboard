@@ -257,4 +257,20 @@ describe("TeacherDashboard", () => {
     // no border at block level, tiles underneath
     expect(screen.getByTestId("tile-underlay")).toBeDefined();
   });
+
+  it("zoom in / out buttons scale the map around its centre (every map level)", async () => {
+    const { fn } = makeFetch();
+    vi.stubGlobal("fetch", vi.fn(fn));
+    const { container } = render(<TeacherDashboard profile={PROFILE} incompleteStates={[]} />);
+    await waitFor(() => {
+      if (!container.querySelector('path[data-code="09"]')) throw new Error("not drawn yet");
+    });
+    const scaleOf = () => Number(/scale\(([\d.]+)\)/.exec(container.querySelector('[data-testid="geo-map"] svg > g')!.getAttribute("transform")!)![1]);
+    expect(scaleOf()).toBe(1);
+    fireEvent.click(screen.getByRole("button", { name: "Zoom in" }));
+    expect(scaleOf()).toBeCloseTo(1.4, 5);
+    fireEvent.click(screen.getByRole("button", { name: "Zoom out" }));
+    fireEvent.click(screen.getByRole("button", { name: "Zoom out" }));
+    expect(scaleOf()).toBeCloseTo(1 / 1.4, 5);
+  });
 });
