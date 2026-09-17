@@ -5,31 +5,34 @@
 // opens from a child row. Every number comes from the pp-sketch API.
 
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { avatarUrl, seedFor } from "./avatar";
 import {
   ACCENT,
+  audioUrl,
+  binColor,
   CHILD_OFFICER,
   csvUrl,
   DEFAULT_RANGE,
-  fmtPct,
+  mediaUrl,
   METRIC_BY,
   METRICS,
-  nipColor,
   RANGES,
   scoresUrl,
-  UNCOVERED,
-  binColor,
+  TEST_KEY_OF,
+  testScoresUrl,
   type Child,
   type ChildType,
+  type LiteracyTestScores,
+  type MediaRow,
   type Metric,
   type Range,
   type ScoresResponse,
   type SeriesPoint,
   type StudentChild,
+  type UserMedia,
 } from "./dashboard-types";
 import { LANGS, type Lang, type T } from "./i18n";
-import { IconClose } from "./icons";
 
 const same: T = (s) => s;
 
@@ -289,16 +292,89 @@ export type ModalSubject =
   | { kind: "child"; child: Child; childType: Exclude<ChildType, "student"> }
   | { kind: "student"; student: StudentChild };
 
-const fmtWhen = (iso: string | null) => (iso ? new Date(iso).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }) : "—");
+// mvp2's `mvpWhen`: "At 7:29pm on Thursday this week …" (IST).
+export function whenParts(iso: string, now = Date.now()): { time: string; day: string; week: string } {
+  const dt = new Date(iso);
+  const time = dt.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" }).replace(" ", "").toLowerCase();
+  const day = dt.toLocaleDateString("en-IN", { weekday: "long", timeZone: "Asia/Kolkata" });
+  const days = Math.floor((now - dt.getTime()) / 86400000);
+  const week = days < 7 ? "this week" : days < 14 ? "last week" : `${Math.floor(days / 7)} weeks ago`;
+  return { time, day, week };
+}
 
-// Opens from any child row. Geo children: the official (name / role / avatar /
-// spotlight message) + that entity's own trend, fetched on demand. Students: the
-// row's fields only (there is no per-student series endpoint).
-export function MvpTeacherModal({ subject, metric, onClose }: { subject: ModalSubject; metric: Metric; onClose: () => void }) {
+const MAX_ANSWER_CHARS = 14;
+
+// "▶ audio" — plays the note through the proxy; one <audio> per button, created on first click.
+function AudioButton({ mediaId, t }: { mediaId: string; t: T }) {
+  const ref = useRef<HTMLAudioElement | null>(null);
+  const [playing, setPlaying] = useState(false);
+  useEffect(
+    () => () => {
+      ref.current?.pause();
+    },
+    [],
+  );
+  const toggle = () => {
+    if (!ref.current) {
+      const a = new Audio(audioUrl(mediaId));
+      a.onended = () => setPlaying(false);
+      a.onpause = () => setPlaying(false);
+      a.onplay = () => setPlaying(true);
+      ref.current = a;
+    }
+    if (ref.current.paused) ref.current.play().catch(() => setPlaying(false));
+    else ref.current.pause();
+  };
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      className="mx-0.5 inline-flex items-center rounded-md border border-zinc-200 px-2 py-0.5 align-middle text-xs text-zinc-600 hover:bg-zinc-50"
+      data-testid="audio-button"
+    >
+      {playing ? "❚❚" : "▶"} {t("audio")}
+    </button>
+  );
+}
+
+// Practice activity for the last 7 IST days from the voice notes: n = notes that day.
+export function activitySeries(media: MediaRow[], now = Date.now()): SeriesPoint[] {
+  const dayOf = (ms: number) => new Date(ms).toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+  const counts = new Map<string, number>();
+  for (const m of media) {
+    const d = dayOf(new Date(m.created_at).getTime());
+    counts.set(d, (counts.get(d) ?? 0) + 1);
+  }
+  const out: SeriesPoint[] = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = dayOf(now - i * 86400000);
+    out.push({ date: d, pass_rate: null, n: counts.get(d) ?? 0 });
+  }
+  return out;
+}
+
+// Per-test history → the trend line's series, within the range window (score 0-1 → %).
+export function historySeries(scores: LiteracyTestScores | null, metric: Metric, range: Range, now = Date.now()): SeriesPoint[] {
+  const test = scores ? scores[TEST_KEY_OF[metric]] : null;
+  const since = now - range * 86400000;
+  return (test?.history ?? [])
+    .filter((h) => new Date(h.at).getTime() >= since)
+    .map((h) => ({ date: h.at.slice(0, 10), pass_rate: Math.round(h.score * 1000) / 10, n: 1 }));
+}
+
+// Opens from the Detail card (geo child / teacher) or a student tile.
+// Geo children: the official (name / role / avatar / spotlight message) + that
+// entity's own trend, fetched on demand. Students (mvp2's student dashboard):
+// name · Student + 7-day activity, metric/range toggles over the student's
+// score history (GET users/:id/literacy-test-scores), then every recent voice
+// note as one sentence with a playable "▶ audio" (GET users/:id/media).
+export function MvpTeacherModal({ subject, metric, onClose, t = same }: { subject: ModalSubject; metric: Metric; onClose: () => void; t?: T }) {
   const [mMetric, setMMetric] = useState<Metric>(metric);
   const [mRange, setMRange] = useState<Range>(DEFAULT_RANGE);
   const [data, setData] = useState<{ key: string; scores: ScoresResponse | null; error: string | null } | null>(null);
+  const [student, setStudent] = useState<{ id: string; tests: LiteracyTestScores | null; media: MediaRow[] | null; error: string | null } | null>(null);
   const childId = subject.kind === "child" ? subject.child.id : null;
+  const studentId = subject.kind === "student" ? subject.student.student_id : null;
   const key = `${childId}|${mMetric}|${mRange}`;
 
   useEffect(() => {
@@ -321,6 +397,23 @@ export function MvpTeacherModal({ subject, metric, onClose }: { subject: ModalSu
   }, [childId, mMetric, mRange]);
 
   useEffect(() => {
+    if (!studentId) return;
+    let cancelled = false;
+    const getJson = async <J,>(url: string): Promise<J> => {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return (await res.json()) as J;
+    };
+    Promise.all([getJson<LiteracyTestScores>(testScoresUrl(studentId)).catch(() => null), getJson<UserMedia>(mediaUrl(studentId)).catch(() => null)]).then(([tests, media]) => {
+      if (cancelled) return;
+      setStudent({ id: studentId, tests, media: media ? media.media : null, error: !tests && !media ? "Could not load this student" : null });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [studentId]);
+
+  useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
@@ -330,88 +423,90 @@ export function MvpTeacherModal({ subject, metric, onClose }: { subject: ModalSu
 
   const scores = data && data.key === key ? data.scores : null;
   const error = data && data.key === key ? data.error : null;
+  const st = student && student.id === studentId ? student : null;
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-zinc-900/60 p-2 sm:p-4" onClick={onClose} role="dialog" aria-modal="true">
-      <div className="max-h-[92vh] w-full max-w-6xl overflow-y-auto rounded-2xl bg-zinc-50 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-start justify-between gap-3 border-b border-zinc-200 bg-white px-4 py-4 sm:px-6">
-          {subject.kind === "child" ? (
-            <div className="flex min-w-0 flex-wrap items-center gap-3">
-              {subject.child.official && <AvatarImg seed={subject.child.official.avatar_seed} size={56} ring={binColor(subject.child.bin)} />}
-              <div className="min-w-0">
-                <div className="text-xl font-bold leading-tight text-zinc-900 sm:text-2xl">{subject.child.name}</div>
-                <div className="text-sm text-zinc-500">
-                  {subject.child.official?.name ?? "No Lifteracy user yet"}
-                  {subject.child.official?.role_title ? ` · ${subject.child.official.role_title}` : ` · ${CHILD_OFFICER[subject.childType]}`}
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-zinc-900/60 p-4" onClick={onClose} role="dialog" aria-modal="true">
+      <div className="max-h-[90vh] w-full max-w-6xl overflow-y-auto rounded-2xl bg-zinc-50 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between border-b border-zinc-200 bg-white px-6 py-4">
+          <div className="flex flex-wrap items-center gap-4">
+            {subject.kind === "child" ? (
+              <>
+                {subject.child.official && <AvatarImg seed={subject.child.official.avatar_seed} size={56} className="h-14 w-14" ring={binColor(subject.child.bin)} />}
+                <div className="min-w-0">
+                  <div className="text-2xl font-bold text-zinc-900">
+                    {subject.child.name} <span className="font-normal text-zinc-400">· {subject.child.official?.role_title ?? t(CHILD_OFFICER[subject.childType])}</span>
+                  </div>
+                  {subject.child.official?.name && subject.child.type !== "teacher" && <div className="text-sm text-zinc-500">{subject.child.official.name}</div>}
                 </div>
-              </div>
-              {scores && <MvpStudentActivity series={scores.series} />}
-            </div>
-          ) : (
-            <div className="min-w-0">
-              <div className="text-xl font-bold leading-tight text-zinc-900 sm:text-2xl">
-                {subject.student.label} <span className="font-normal text-zinc-400">· Student</span>
-              </div>
-            </div>
-          )}
-          <button
-            type="button"
-            onClick={onClose}
-            className="inline-flex flex-shrink-0 items-center gap-1 rounded-md border border-zinc-300 px-3 py-1 text-sm font-semibold text-zinc-600 hover:bg-zinc-100"
-          >
-            <IconClose /> Close
+                {scores && <MvpStudentActivity series={scores.series} />}
+              </>
+            ) : (
+              <>
+                <div className="text-2xl font-bold text-zinc-900" data-testid="student-modal-title">
+                  {subject.student.label} <span className="font-normal text-zinc-400">· {t("Student")}</span>
+                </div>
+                {st?.media && <MvpStudentActivity series={activitySeries(st.media)} />}
+              </>
+            )}
+          </div>
+          <button type="button" onClick={onClose} className="rounded-md border border-zinc-300 px-3 py-1 text-sm font-semibold text-zinc-600 hover:bg-zinc-100">
+            ✕ {t("Close")}
           </button>
         </div>
 
-        {subject.kind === "child" ? (
-          <div className="bg-white">
-            <div className="grid grid-cols-2 gap-3 border-b border-zinc-100 px-4 py-4 text-center sm:grid-cols-4 sm:px-6">
-              <Stat big={fmtPct(subject.child.pass_rate)} label={`${METRIC_BY[metric].short} · n=${subject.child.n}`} color={binColor(subject.child.bin)} />
-              <Stat big={String(subject.child.students_active)} label="students active" />
-              <Stat big={<MvpTrend delta={subject.child.delta} />} label="change over range" />
-              <Stat big={subject.child.using_lifteracy ? "Yes" : "No"} label="using Lifteracy" color={subject.child.using_lifteracy ? "#16a34a" : UNCOVERED} />
-            </div>
-            <div className="border-b border-zinc-100 px-4 py-5 sm:px-6">
-              <div className="mb-3 flex flex-wrap items-center gap-2">
+        <div className="bg-white">
+          {/* score-over-time chart with its own metric + range toggles */}
+          <div className="border-b border-zinc-100 px-6 py-5">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <MvpMetricToggle metric={mMetric} setMetric={setMMetric} />
-                <MvpRangeBar range={mRange} setRange={setMRange} entityId={childId} metric={mMetric} />
+                <MvpRangeBar range={mRange} setRange={setMRange} entityId={childId} metric={mMetric} t={t} />
               </div>
-              {error && <p className="text-sm text-red-600">{error}</p>}
-              {!scores && !error && <p className="text-sm text-zinc-400">Loading…</p>}
-              {scores && <MvpStudentTrend series={scores.series} label={`${METRIC_BY[mMetric].label} pass rate`} />}
             </div>
-            {subject.child.official?.spotlight_message && (
-              <div className="px-4 py-4 sm:px-6">
-                <div className="rounded-lg border border-emerald-200 bg-emerald-100/80 px-4 py-3 text-sm italic text-zinc-700">“{subject.child.official.spotlight_message}”</div>
-              </div>
+            {subject.kind === "child" ? (
+              <>
+                {error && <p className="text-sm text-red-600">{error}</p>}
+                {!scores && !error && <p className="text-sm text-zinc-400">{t("Loading…")}</p>}
+                {scores && <MvpStudentTrend series={scores.series} label={`${METRIC_BY[mMetric].label}`} />}
+              </>
+            ) : (
+              <>
+                {st?.error && <p className="text-sm text-red-600">{st.error}</p>}
+                {!st && <p className="text-sm text-zinc-400">{t("Loading…")}</p>}
+                {st && <MvpStudentTrend series={historySeries(st.tests, mMetric, mRange)} label={METRIC_BY[mMetric].label} />}
+              </>
             )}
           </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3 bg-white px-4 py-4 text-center sm:grid-cols-3 sm:px-6">
-            <Stat
-              big={subject.student.score == null ? "—" : `${Math.round(subject.student.score * 100)}%`}
-              label={METRIC_BY[metric].short}
-              color={nipColor(subject.student.score == null ? null : subject.student.score * 100)}
-            />
-            <Stat big={subject.student.passed == null ? "—" : subject.student.passed ? "Passed" : "Not yet"} label="result" color={subject.student.passed ? "#16a34a" : "#dc2626"} />
-            <Stat big={String(subject.student.attempts)} label="attempts" />
-            <Stat big={subject.student.in_band ? "Yes" : "No"} label="in grade band" />
-            <Stat big={subject.student.active ? "Active" : "Inactive"} label="status" color={subject.student.active ? "#16a34a" : UNCOVERED} />
-            <Stat big={<span className="text-sm">{fmtWhen(subject.student.last_active_at)}</span>} label="last active (IST)" />
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
 
-function Stat({ big, label, color }: { big: React.ReactNode; label: string; color?: string }) {
-  return (
-    <div className="rounded-xl bg-zinc-50 px-2 py-3">
-      <div className="text-2xl font-extrabold tracking-tight" style={color ? { color } : undefined}>
-        {big}
+          {subject.kind === "child" ? (
+            subject.child.official?.spotlight_message && (
+              <div className="px-6 py-4">
+                <div className="rounded-lg border border-emerald-200 bg-emerald-100/80 px-4 py-3 text-sm italic text-zinc-700">“{subject.child.official.spotlight_message}”</div>
+              </div>
+            )
+          ) : (
+            /* every recent voice note as one friendly sentence — fixed-height scroll pane so the chart stays visible */
+            <div className="max-h-80 divide-y divide-zinc-100 overflow-y-auto px-6" data-testid="student-sentences">
+              {st?.media && st.media.length === 0 && <p className="py-3 text-sm text-zinc-400">{t("No voice notes yet.")}</p>}
+              {(st?.media ?? []).map((row) => {
+                const w = whenParts(row.created_at);
+                const ans = row.answer ? (row.answer.length > MAX_ANSWER_CHARS ? row.answer.slice(0, MAX_ANSWER_CHARS) + "…" : row.answer) : "—";
+                return (
+                  <div key={row.id} className="py-3 text-sm leading-relaxed text-zinc-700">
+                    {t("At")} <span className="font-semibold">{w.time}</span> {t("on")} <span className="font-semibold">{w.day}</span> {t(w.week)} {t("the student said")}{" "}
+                    {row.has_audio ? <AudioButton mediaId={row.id} t={t} /> : <span className="italic text-zinc-400">{t("nothing (no recording)")}</span>} {t("and the correct answer was")}{" "}
+                    <span className="font-semibold text-zinc-900">{ans}</span> {t("and so was marked as")}{" "}
+                    {row.answer_correct === true && <span className="font-semibold text-emerald-600">{t("correct")}</span>}
+                    {row.answer_correct === false && <span className="font-semibold text-red-500">{t("incorrect")}</span>}
+                    {row.answer_correct === null && <span className="italic text-zinc-400">{t("not assessed")}</span>}.
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </div>
-      <div className="mt-1 text-xs font-medium leading-tight text-zinc-500">{label}</div>
     </div>
   );
 }

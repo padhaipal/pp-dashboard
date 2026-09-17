@@ -3,11 +3,14 @@
 // Public teacher/official dashboard (/d/[user_id]) — the mvp2.html "report"
 // layout (sandbox-global-map/mvp2.html) ported to Next, section for section:
 // sticky header (logo · nav · EN/हिं · Generate report), location title, metric
-// toggle, headline KPI card(s), the 460 px map card (student cards at school
-// level) with the up-a-level button, "{Noun} Detail", "{Noun} Performance"
-// (trend + range bar + most improved), "{Officer} Spotlight", "Your Profile",
-// footer. All numbers come from pp-sketch via /api/proxy (public allowlist, no
-// session). The only deliberate departure from mvp2 is the plant avatar.
+// toggle, headline KPI card(s), the 460 px map card with the up-a-level button
+// — geo levels draw the map, a school lists its TEACHERS as row cards, a
+// teacher (the class view) shows STUDENT tiles —, "{Noun} Detail",
+// "{Noun} Performance" (trend + range bar + most improved), "{Officer}
+// Spotlight", "Your Profile", footer. In the class view Detail and Spotlight
+// are hidden (mvp2's `inClass`). All numbers come from pp-sketch via
+// /api/proxy (public allowlist, no session). The only deliberate departure
+// from mvp2 is the plant avatar.
 
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -30,6 +33,7 @@ import {
   scoresUrl,
   spotlightUrl,
   studentChildrenOf,
+  UNCOVERED,
   type Child,
   type ChildType,
   type GeoRef,
@@ -43,7 +47,7 @@ import {
 import { GeoMap } from "./geo-map";
 import { isLang, LANG_STORAGE_KEY, makeT, type Lang, type T } from "./i18n";
 import { AvatarImg, MvpLangToggle, MvpMetricToggle, MvpRangeBar, MvpTeacherModal, MvpTrend, type ModalSubject } from "./mvp-widgets";
-import { ReportCardModal, RepImproved, RepKpis, RepMeta, RepQuote, RepTrend, type ReportData } from "./report-card-modal";
+import { ReportCardModal, RepImproved, RepKpis, RepMeta, RepQuote, RepTrend, type ImprovedRow, type ReportData } from "./report-card-modal";
 
 export type TeacherDashboardProps = {
   profile: PublicProfile;
@@ -70,6 +74,10 @@ const toRef = (c: GeoRef): GeoRef => ({ id: c.id, type: c.type, code: c.code, na
 const H = "text-center text-3xl font-extrabold tracking-tight sm:text-4xl";
 const CARD = "rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm sm:p-8";
 const inputCls = "w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none";
+
+// The level below an entity before its scores arrive (mvp2's REP_NOUN keys).
+const nextChildType = (t: GeoRef["type"]): ChildType =>
+  t === "country" ? "state" : t === "state" ? "district" : t === "district" ? "block" : t === "block" ? "school" : t === "school" ? "teacher" : "student";
 
 export function TeacherDashboard({ profile: initialProfile, incompleteStates }: TeacherDashboardProps) {
   const [profile, setProfile] = useState<PublicProfile>(initialProfile);
@@ -138,24 +146,16 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
   const spotlight = loaded?.spotlight ?? null;
   const loading = !!entity && !loaded;
 
-  const childType: ChildType | null = scores ? scores.child_type : null;
+  const childType: ChildType | null = scores ? scores.child_type : entity ? nextChildType(entity.type) : null;
   const geoChildren: Child[] = useMemo(() => (scores ? geoChildrenOf(scores) : []), [scores]);
   const students: StudentChild[] = useMemo(() => (scores ? studentChildrenOf(scores) : []), [scores]);
   const emptyRoot = !!scores && scores.root.n == null;
   const usingN = geoChildren.filter((c) => c.using_lifteracy).length;
-  const atSchool = !!entity && entity.type === "school";
-  const [nounS, nounP] = childType ? CHILD_NOUN[childType] : atSchool ? CHILD_NOUN.student : ["Area", "areas"];
-  const officer = childType ? CHILD_OFFICER[childType] : atSchool ? CHILD_OFFICER.student : "Official";
+  // mvp2's `inClass`: a drilled class (the children are students) hides Detail + Spotlight.
+  const inClass = childType === "student";
+  const [nounS, nounP] = childType ? CHILD_NOUN[childType] : ["Area", "areas"];
+  const officer = childType ? CHILD_OFFICER[childType] : "Official";
   const metricLabel = METRIC_BY[metric].label;
-
-  // parent district for the block-level outline: previous stack entry, else the profile's ancestors
-  const parentDistrict = useMemo<GeoRef | null>(() => {
-    if (!entity || entity.type !== "block") return null;
-    const prev = stack.length >= 2 ? stack[stack.length - 2] : null;
-    if (prev && prev.type === "district") return prev;
-    const a = profile.ancestors.find((x) => x.type === "district");
-    return a ? { id: a.id, type: a.type, code: a.code, name: a.name, has_boundary: true, lat: null, lng: null } : null;
-  }, [entity, stack, profile.ancestors]);
 
   // ---- navigation ----
   const drill = useCallback((c: Child) => {
@@ -169,8 +169,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
     setSelId(null);
   }, []);
   const canUp = stack.length > 1;
-  const select = useCallback((c: Child) => setSelId((cur) => (cur === c.id ? null : c.id)), []);
-  const selectStudent = useCallback((s: StudentChild) => setSelId((cur) => (cur === s.student_id ? null : s.student_id)), []);
+  const select = useCallback((c: { id: string }) => setSelId((cur) => (cur === c.id ? null : c.id)), []);
   const openChild = useCallback(
     (c: Child) => {
       if (!childType || childType === "student") return;
@@ -185,10 +184,19 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
     const pick = (id: string | null) => (id ? geoChildren.find((c) => c.id === id) ?? null : null);
     return pick(hoverId) ?? pick(selId) ?? (spotlight?.top?.child ?? null) ?? geoChildren[0] ?? null;
   }, [hoverId, selId, geoChildren, spotlight]);
-  const detailStudent = useMemo(() => {
-    const pick = (id: string | null) => (id ? students.find((s) => s.student_id === id) ?? null : null);
-    return pick(hoverId) ?? pick(selId) ?? students[0] ?? null;
-  }, [hoverId, selId, students]);
+
+  // Class view: rank the students by delta ourselves (the API's most_improved is for ChildRows).
+  const improvedRows: ImprovedRow[] = useMemo(
+    () =>
+      inClass
+        ? students
+            .filter((s) => s.delta != null)
+            .sort((a, b) => (b.delta ?? 0) - (a.delta ?? 0))
+            .slice(0, 5)
+            .map((s) => ({ id: s.student_id, name: s.label, delta: s.delta }))
+        : (scores?.most_improved ?? []),
+    [inClass, students, scores],
+  );
 
   const reportData: ReportData | null =
     scores && childType && entity
@@ -224,9 +232,11 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
             <a href="#rep-perf" className="transition-colors hover:text-blue-600">
               {t(nounS)} {t("Performance")}
             </a>
-            <a href="#rep-spotlight" className="transition-colors hover:text-blue-600">
-              {t(officer)} {t("Spotlight")}
-            </a>
+            {!inClass && (
+              <a href="#rep-spotlight" className="transition-colors hover:text-blue-600">
+                {t(officer)} {t("Spotlight")}
+              </a>
+            )}
             <a href="#rep-profile" className="transition-colors hover:text-blue-600">
               {t("Your Profile")}
             </a>
@@ -271,21 +281,32 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
               </div>
             )}
             {scores && !emptyRoot && (
-              <RepKpis root={scores.root} metricLabel={metricLabel} nounP={nounP} usingN={usingN} totalN={geoChildren.length} showUsing={childType !== "student"} t={t} />
+              <RepKpis
+                root={scores.root}
+                metricLabel={metricLabel}
+                nounP={nounP}
+                usingN={usingN}
+                totalN={geoChildren.length}
+                showUsing={childType !== "teacher" && childType !== "student"}
+                t={t}
+              />
             )}
           </div>
 
-          {/* map card (every level except school) or the student cards, with the up-a-level button */}
+          {/* map card: the map (geo levels), teacher cards (school) or student tiles (class), + the up-a-level button */}
           <div
             className="relative mx-auto mt-6 h-[460px] shrink-0 overflow-hidden rounded-2xl border border-zinc-200 bg-[#eaf0f6] shadow-sm"
             style={{ width: "min(calc(100% - 3rem), 69rem)" }}
             data-testid="map-card"
           >
-            {entity.type !== "school" ? (
+            {entity.type === "school" ? (
+              scores && <TeacherCards teachers={geoChildren} metric={metric} range={range} selId={selId} onSelect={select} onDrill={drill} onClear={() => setSelId(null)} t={t} />
+            ) : entity.type === "teacher" ? (
+              scores && <StudentTiles students={students} metric={metric} onOpen={openStudent} t={t} />
+            ) : (
               <GeoMap
                 entity={entity}
-                parentDistrict={parentDistrict}
-                childType={(childType && childType !== "student" ? childType : nextChildType(entity.type)) as Exclude<ChildType, "student">}
+                childType={(childType && childType !== "student" && childType !== "teacher" ? childType : nextChildType(entity.type)) as Exclude<ChildType, "student" | "teacher">}
                 childrenRows={geoChildren}
                 incompleteStates={incomplete}
                 hoverId={hoverId}
@@ -296,8 +317,6 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                 metricLabel={metricLabel}
                 t={t}
               />
-            ) : (
-              scores && <StudentCards students={students} metric={metric} range={range} selId={selId} onSelect={selectStudent} onOpen={openStudent} onClear={() => setSelId(null)} t={t} />
             )}
             {/* bottom-right: up-a-level button */}
             <div className="pointer-events-none absolute bottom-4 right-4 z-30 flex items-end gap-2">
@@ -322,26 +341,24 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
 
           {scores && !emptyRoot && childType && (
             <>
-              {/* metadata card — between the map and the trend graph */}
-              <section className="py-10">
-                <div className="mx-auto max-w-6xl px-6">
-                  <div className={"mb-6 " + H} style={{ color: ACCENT }}>
-                    {t(nounS)} {t("Detail")}
-                  </div>
-                  <div
-                    className={CARD + " cursor-pointer"}
-                    title={childType === "student" ? `Click for this ${nounS.toLowerCase()}'s dashboard` : `Click for details · double-click to open this ${nounS.toLowerCase()}`}
-                    onDoubleClick={() => childType !== "student" && detailChild && drill(detailChild)}
-                    onClick={() => (childType === "student" ? detailStudent && openStudent(detailStudent) : detailChild && openChild(detailChild))}
-                  >
-                    {childType === "student" ? (
-                      <RepMeta student={detailStudent} metricLabel={metricLabel} officer={officer} range={range} t={t} />
-                    ) : (
+              {/* metadata card — between the map and the trend graph; hidden in the class view */}
+              {!inClass && (
+                <section className="py-10">
+                  <div className="mx-auto max-w-6xl px-6">
+                    <div className={"mb-6 " + H} style={{ color: ACCENT }}>
+                      {t(nounS)} {t("Detail")}
+                    </div>
+                    <div
+                      className={CARD + " cursor-pointer"}
+                      title={`Click for details · double-click to open this ${nounS.toLowerCase()}`}
+                      onDoubleClick={() => detailChild && drill(detailChild)}
+                      onClick={() => detailChild && openChild(detailChild)}
+                    >
                       <RepMeta child={detailChild} metricLabel={metricLabel} officer={officer} range={range} t={t} />
-                    )}
+                    </div>
                   </div>
-                </div>
-              </section>
+                </section>
+              )}
 
               {/* Performance — trend + most improved */}
               <section id="rep-perf" className="scroll-mt-16 bg-blue-50 py-10">
@@ -353,8 +370,8 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                     <MvpMetricToggle metric={metric} setMetric={setMetric} />
                   </div>
                   <div className={CARD + " space-y-6"}>
-                    {/* headline share of areas not on Lifteracy at all — hidden at school level */}
-                    {childType !== "student" && (
+                    {/* headline share of areas not on Lifteracy at all — hidden at school/class level */}
+                    {childType !== "teacher" && !inClass && (
                       <div className="text-center text-base font-medium text-zinc-700">
                         <span className="text-xl font-extrabold tabular-nums text-red-600">
                           {Math.round(((geoChildren.length - usingN) / Math.max(1, geoChildren.length)) * 100)}%
@@ -380,33 +397,50 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                         {t("Most improved")} · {t("last")} {range} {t("days")}
                         <HoverLabel child={hoverId ? geoChildren.find((c) => c.id === hoverId) ?? null : null} t={t} />
                       </div>
-                      <RepImproved mostImproved={scores.most_improved} hoverId={hoverId} setHoverId={setHoverId} selId={selId} onSelect={select} onPick={drill} />
+                      <RepImproved
+                        mostImproved={improvedRows}
+                        hoverId={hoverId}
+                        setHoverId={setHoverId}
+                        selId={selId}
+                        onSelect={select}
+                        onPick={(r) => {
+                          if (inClass) {
+                            const s = students.find((x) => x.student_id === r.id);
+                            if (s) openStudent(s);
+                          } else {
+                            const c = geoChildren.find((x) => x.id === r.id);
+                            if (c) drill(c);
+                          }
+                        }}
+                      />
                     </div>
                   </div>
                 </div>
               </section>
 
-              {/* Spotlight — two testimonials inside a card */}
-              <section id="rep-spotlight" className="scroll-mt-16 py-10">
-                <div className="mx-auto max-w-6xl px-6">
-                  <div className={"mb-6 " + H} style={{ color: ACCENT }}>
-                    {t(officer)} {t("Spotlight")}
-                  </div>
-                  <div className={CARD}>
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                      <RepQuote kind="top" entry={spotlight?.top ?? null} nounS={nounS} officer={officer} range={range} t={t} />
-                      <RepQuote kind="improved" entry={spotlight?.most_improved ?? null} nounS={nounS} officer={officer} range={range} t={t} />
+              {/* Spotlight — two testimonials inside a card; hidden in the class view */}
+              {!inClass && (
+                <section id="rep-spotlight" className="scroll-mt-16 py-10">
+                  <div className="mx-auto max-w-6xl px-6">
+                    <div className={"mb-6 " + H} style={{ color: ACCENT }}>
+                      {t(officer)} {t("Spotlight")}
+                    </div>
+                    <div className={CARD}>
+                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                        <RepQuote kind="top" entry={spotlight?.top ?? null} nounS={nounS} officer={officer} range={range} t={t} />
+                        <RepQuote kind="improved" entry={spotlight?.most_improved ?? null} nounS={nounS} officer={officer} range={range} t={t} />
+                      </div>
                     </div>
                   </div>
-                </div>
-              </section>
+                </section>
+              )}
             </>
           )}
         </>
       )}
 
       {/* Personal details / profile settings */}
-      <section id="rep-profile" className="scroll-mt-16 bg-blue-50 py-10">
+      <section id="rep-profile" className={"scroll-mt-16 py-10" + (inClass ? "" : " bg-blue-50")}>
         <div className="mx-auto max-w-6xl px-6">
           <div className={"mb-6 " + H} style={{ color: ACCENT }}>
             {t("Your Profile")}
@@ -424,14 +458,11 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
         </div>
       </section>
 
-      {modal && <MvpTeacherModal subject={modal} metric={metric} onClose={closeModal} />}
+      {modal && <MvpTeacherModal subject={modal} metric={metric} onClose={closeModal} t={t} />}
       {reportOpen && reportData && <ReportCardModal data={reportData} onClose={closeReport} />}
     </div>
   );
 }
-
-const nextChildType = (t: GeoRef["type"]): ChildType =>
-  t === "country" ? "state" : t === "state" ? "district" : t === "district" ? "block" : t === "block" ? "school" : "student";
 
 // ------------------------------------------------------------------ pieces
 
@@ -445,63 +476,62 @@ function HoverLabel({ child, t }: { child: Child | null; t: T }) {
   );
 }
 
-// School level: mvp2's card list inside the map card — one tinted row per
-// student (avatar ring, name, "Student · N attempts", score, trend). Single
-// click pins the row into the Detail card; double-click opens the student modal.
-function StudentCards({
-  students,
+// School level: mvp2's teacher row cards inside the map card — one tinted row
+// per teacher (avatar ring, name, "Teacher · N students", score, trend).
+// Single click pins the row into the Detail card; double-click opens the class.
+function TeacherCards({
+  teachers,
   metric,
   range,
   selId,
   onSelect,
-  onOpen,
+  onDrill,
   onClear,
   t,
 }: {
-  students: StudentChild[];
+  teachers: Child[];
   metric: Metric;
   range: Range;
   selId: string | null;
-  onSelect: (s: StudentChild) => void;
-  onOpen: (s: StudentChild) => void;
+  onSelect: (c: Child) => void;
+  onDrill: (c: Child) => void;
   onClear: () => void;
   t: T;
 }) {
   const short = METRIC_BY[metric].short;
   return (
-    <div className="absolute inset-0 z-10 overflow-y-auto bg-[#eaf0f6] p-3 sm:p-5" onClick={onClear} data-testid="student-cards">
+    <div className="absolute inset-0 z-10 overflow-y-auto bg-[#eaf0f6] p-3 sm:p-5" onClick={onClear} data-testid="teacher-cards">
       <div className="mx-auto flex max-w-3xl flex-col gap-3">
-        {!students.length && <p className="py-10 text-center text-sm text-zinc-400">{t("No students yet.")}</p>}
-        {students.map((s) => {
-          const pct = s.score == null ? null : s.score * 100;
-          const col = nipColor(pct);
-          const on = selId === s.student_id;
+        {!teachers.length && <p className="py-10 text-center text-sm text-zinc-400">{t("No teachers yet.")}</p>}
+        {teachers.map((c) => {
+          const col = nipColor(c.pass_rate);
+          const on = selId === c.id;
           return (
             <div
-              key={s.student_id}
+              key={c.id}
               className={"flex cursor-pointer items-center gap-3 rounded-xl px-3 py-3 shadow-sm transition hover:shadow-md sm:gap-4 sm:px-5 sm:py-4" + (on ? " ring-2 ring-blue-500" : "")}
               style={{ background: col + "1f", border: "1px solid " + col + "55" }}
-              title="Click for details · double-click for this student's dashboard"
+              title="Double-click for this teacher's class"
               onClick={(e) => {
                 e.stopPropagation();
-                onSelect(s);
+                onSelect(c);
               }}
               onDoubleClick={(e) => {
                 e.stopPropagation();
-                onOpen(s);
+                onDrill(c);
               }}
-              data-testid="student-card"
+              data-testid="teacher-card"
             >
-              <AvatarImg seed={s.student_id} size={64} className="h-12 w-12 sm:h-16 sm:w-16" ring={col} />
+              <AvatarImg seed={c.official?.avatar_seed ?? c.id} size={64} className="h-12 w-12 sm:h-16 sm:w-16" ring={col} />
               <div className="min-w-0 flex-1">
-                <div className="truncate text-[15px] font-bold leading-tight text-zinc-900 sm:text-lg">{s.label}</div>
+                <div className="truncate text-[15px] font-bold leading-tight text-zinc-900 sm:text-lg">{c.name}</div>
                 <div className="truncate text-[11px] text-zinc-500 sm:text-[12px]">
-                  {t("Student")} · {s.attempts} {t("attempts")}
+                  {t("Teacher")} · {c.students ?? c.n} {t("students")}
                 </div>
-                {/* phones: score + compact label under the name so nothing is squeezed out */}
+                {/* phones: score + compact trend under the name so nothing is squeezed out */}
                 <div className="mt-1 flex items-center gap-2 sm:hidden">
                   <span className="text-lg font-extrabold tabular-nums" style={{ color: col }}>
-                    {fmtPctInt(pct)}
+                    {fmtPctInt(c.pass_rate)}
                   </span>
                   <span className="text-[10px] leading-tight text-zinc-500">{short}</span>
                 </div>
@@ -510,12 +540,46 @@ function StudentCards({
               <div className="hidden flex-shrink-0 items-center gap-4 sm:flex">
                 <div className="text-right">
                   <div className="text-2xl font-extrabold tabular-nums" style={{ color: col }}>
-                    {fmtPctInt(pct)}
+                    {fmtPctInt(c.pass_rate)}
                   </div>
                   <div className="text-[10px] leading-tight text-zinc-500">{short}</div>
                 </div>
-                <MvpTrend delta={null} suffix={`${t("last")} ${range} ${t("days")}`} />
+                <MvpTrend delta={c.delta} suffix={`${t("last")} ${range} ${t("days")}`} />
               </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// Class view: mvp2's student tiles — solid score colour, name, score, metric,
+// ▲/▼ delta. Click opens the student's dashboard modal.
+function StudentTiles({ students, metric, onOpen, t }: { students: StudentChild[]; metric: Metric; onOpen: (s: StudentChild) => void; t: T }) {
+  const short = METRIC_BY[metric].short;
+  return (
+    <div className="absolute inset-0 z-10 overflow-y-auto bg-[#eaf0f6] p-3 sm:p-5" data-testid="student-tiles">
+      {!students.length && <p className="py-10 text-center text-sm text-zinc-400">{t("No students yet.")}</p>}
+      <div className="mx-auto grid max-w-5xl gap-2.5 sm:gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))" }}>
+        {students.map((s) => {
+          const pct = s.score == null ? null : s.score * 100;
+          const col = pct == null ? UNCOVERED : nipColor(pct);
+          const fg = pct != null && pct >= 50 && pct < 80 ? "#1c1917" : "#ffffff";
+          const d = s.delta;
+          return (
+            <div
+              key={s.student_id}
+              className="flex cursor-pointer flex-col items-center justify-center gap-0.5 rounded-xl px-2 py-3 text-center shadow-sm transition hover:shadow-md"
+              style={{ background: col, color: fg }}
+              title="Click for this student's dashboard"
+              onClick={() => onOpen(s)}
+              data-testid="student-tile"
+            >
+              <div className="w-full truncate text-[13px] font-bold sm:text-sm">{s.label}</div>
+              <div className="text-xl font-extrabold tabular-nums sm:text-2xl">{fmtPctInt(pct)}</div>
+              <div className="text-[9px] font-semibold opacity-90">{short}</div>
+              <div className="text-[11px] font-bold tabular-nums">{d == null ? "—" : `${Math.abs(d) < 0.5 ? "→" : d > 0 ? "▲" : "▼"} ${(d >= 0 ? "+" : "") + d.toFixed(1)}%`}</div>
             </div>
           );
         })}

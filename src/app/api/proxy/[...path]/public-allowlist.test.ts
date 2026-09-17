@@ -10,6 +10,16 @@ describe("proxy public allowlist", () => {
     expect(isPublicAllowed("geo-entities/g1/spotlight", "GET")).toBe(true);
   });
 
+  it("accepts the student-modal reads (history, media, audio) — GET only", () => {
+    expect(isPublicAllowed("users/abc/literacy-test-scores", "GET")).toBe(true);
+    expect(isPublicAllowed("users/abc/media", "GET")).toBe(true);
+    expect(isPublicAllowed("media-meta-data/m1/audio", "GET")).toBe(true);
+    expect(isPublicAllowed("users/abc/media", "POST")).toBe(false);
+    expect(isPublicAllowed("media-meta-data/m1", "GET")).toBe(false);
+    expect(isPublicAllowed("media-meta-data/m1/dashboard-transcript", "POST")).toBe(false);
+    expect(isPublicAllowed("users/abc/metrics", "GET")).toBe(false);
+  });
+
   it("rejects staff detail and wrong methods", () => {
     expect(isPublicAllowed("users/abc", "GET")).toBe(false);
     expect(isPublicAllowed("users/abc", "PATCH")).toBe(false);

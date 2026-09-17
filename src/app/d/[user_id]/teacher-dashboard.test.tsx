@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { TeacherDashboard } from "./teacher-dashboard";
 import { EMPTY_ROOT_TEXT, INCOMPLETE_TOOLTIP } from "./dashboard-types";
-import { EMPTY_SCORES, PROFILE, PROFILE_SCHOOL, SCORES_SCHOOL, makeFetch } from "./test-fixtures";
+import { EMPTY_SCORES, PROFILE, PROFILE_SCHOOL, SCORES_CLASS, SCORES_SCHOOL, makeFetch } from "./test-fixtures";
 
 describe("TeacherDashboard", () => {
   afterEach(() => {
@@ -33,7 +33,7 @@ describe("TeacherDashboard", () => {
     expect((screen.getByRole("button", { name: "Up a level" }) as HTMLButtonElement).disabled).toBe(true);
   });
 
-  it("renders mvp2's headline cards (average metric + using count) and the report sections", async () => {
+  it("renders mvp2's headline cards (average metric + using count, both on the red/amber/green scale) and the report sections", async () => {
     const { fn } = makeFetch();
     vi.stubGlobal("fetch", vi.fn(fn));
     render(<TeacherDashboard profile={PROFILE} incompleteStates={[]} />);
@@ -43,6 +43,9 @@ describe("TeacherDashboard", () => {
     expect(kpis.textContent).toContain("average NIPUN grade 3 proxy");
     expect(kpis.textContent).toContain("2 of 2");
     expect(kpis.textContent).toContain("states using Lifteracy");
+    // 2 of 2 = 100 % → green; the figure carries the colour inline (0 of N would be red)
+    const usingBig = screen.getByText("states using Lifteracy").previousElementSibling as HTMLElement;
+    expect(usingBig.style.color).toBe("rgb(22, 163, 74)");
     // no students-active / change / as-of tiles
     expect(kpis.textContent).not.toContain("students active");
     expect(kpis.textContent).not.toContain("as of");
@@ -80,6 +83,8 @@ describe("TeacherDashboard", () => {
     expect(screen.getByTestId("geo-map").getAttribute("data-level")).toBe("country");
     expect(screen.getByTestId("location-title").textContent).toBe("India");
     expect(calls.some((u) => u.includes("/geo-entities/g-28/"))).toBe(false);
+    // no street underlay at country level
+    expect(screen.queryByTestId("tile-underlay")).toBeNull();
 
     fireEvent.mouseEnter(ap);
     expect(screen.getByText(INCOMPLETE_TOOLTIP)).toBeDefined();
@@ -114,37 +119,72 @@ describe("TeacherDashboard", () => {
     expect(screen.getAllByRole("button", { name: "MPL-B proxy" })[0].getAttribute("aria-pressed")).toBe("true");
   });
 
-  it("school level: student cards fill the map card, Detail shows the pinned student, double-click opens the modal", async () => {
-    const { fn } = makeFetch({ scoresById: { "g-sch": SCORES_SCHOOL } });
+  it("school → teacher cards; double-click → the class (student tiles, 'Student Performance' only); tile → the student modal", async () => {
+    const { fn, calls } = makeFetch({ scoresById: { "g-sch": SCORES_SCHOOL, "t-1": SCORES_CLASS } });
     vi.stubGlobal("fetch", vi.fn(fn));
     render(<TeacherDashboard profile={PROFILE_SCHOOL} incompleteStates={[]} />);
 
-    const cards = await screen.findAllByTestId("student-card");
-    expect(cards.length).toBe(2);
+    // school level: one card per teacher, mvp2 nouns
+    const cards = await screen.findAllByTestId("teacher-card");
+    expect(cards.length).toBe(1);
     expect(screen.queryByTestId("geo-map")).toBeNull();
     expect(screen.queryByTestId("student-table")).toBeNull();
+    expect(cards[0].textContent).toContain("Asha");
+    expect(cards[0].textContent).toContain("Teacher · 4 students");
+    expect(cards[0].textContent).toContain("75%");
+    expect(cards[0].textContent).toContain("+2.0% last 30 days");
     // ancestors are title-cased, the school name is left as-is
     expect(screen.getByTestId("location-title").textContent).toBe("India  -  Uttar Pradesh  -  JHS CHINHAT");
     // one headline card only at school level
     const kpis = screen.getByTestId("root-kpis");
-    expect(kpis.textContent).toContain("50%");
+    expect(kpis.textContent).toContain("75%");
     expect(kpis.textContent).not.toContain("using Lifteracy");
-    expect(screen.getByText("Student Detail", { selector: "div" })).toBeDefined();
-    expect(screen.getByText("Student Performance", { selector: "div" })).toBeDefined();
+    expect(screen.getByText("Teacher Detail", { selector: "div" })).toBeDefined();
+    expect(screen.getByText("Teacher Performance", { selector: "div" })).toBeDefined();
     expect(screen.getByText("Teacher Spotlight", { selector: "div" })).toBeDefined();
-    expect(cards[0].textContent).toContain("Student 1");
-    expect(cards[0].textContent).toContain("22 attempts");
-    expect(cards[0].textContent).toContain("90%");
-    expect(cards[1].textContent).toContain("—");
-    // detail defaults to the first student; clicking the second pins it
-    expect(screen.getByTestId("rep-meta").textContent).toContain("Student 1");
-    fireEvent.click(cards[1]);
-    expect(screen.getByTestId("rep-meta").textContent).toContain("Student 2");
-    // double-click opens the student modal
+    expect(screen.getByTestId("rep-meta").textContent).toContain("Asha");
+    expect(screen.getByTestId("rep-meta").textContent).toContain("Latest NIPUN grade 3 proxy");
+
+    // double-click the teacher → the class view
     fireEvent.dblClick(cards[0]);
-    expect(screen.getByRole("dialog").textContent).toContain("Student 1");
-    // Generate report is enabled at school level
+    const tiles = await screen.findAllByTestId("student-tile");
+    expect(calls.some((u) => u.includes("/geo-entities/t-1/scores"))).toBe(true);
+    expect(tiles.length).toBe(2);
+    expect(screen.getByTestId("location-title").textContent).toBe("India  -  Uttar Pradesh  -  JHS CHINHAT  -  Asha");
+    expect(tiles[0].textContent).toContain("Student 1");
+    expect(tiles[0].textContent).toContain("90%");
+    expect(tiles[0].textContent).toContain("▲ +5.0%");
+    expect(tiles[1].textContent).toContain("—");
+    // class view: Performance only — no Detail, no Spotlight (section or nav link)
+    expect(screen.getByText("Student Performance", { selector: "div" })).toBeDefined();
+    expect(screen.queryByText("Student Detail", { selector: "div" })).toBeNull();
+    expect(screen.queryByText(/Spotlight/, { selector: "div" })).toBeNull();
+    expect(screen.queryByRole("link", { name: /Spotlight/ })).toBeNull();
+    expect((screen.getByRole("button", { name: "Up a level" }) as HTMLButtonElement).disabled).toBe(false);
     expect((screen.getByRole("button", { name: /Generate report/ }) as HTMLButtonElement).disabled).toBe(false);
+
+    // click a tile → the student's dashboard modal: title, chart toggles, one sentence per voice note with audio
+    fireEvent.click(tiles[0]);
+    const dialog = await screen.findByRole("dialog");
+    expect(screen.getByTestId("student-modal-title").textContent).toBe("Student 1 · Student");
+    await waitFor(() => expect(screen.getAllByTestId("audio-button").length).toBe(1));
+    expect(calls.some((u) => u.includes("/users/s-1/literacy-test-scores"))).toBe(true);
+    expect(calls.some((u) => u.includes("/users/s-1/media"))).toBe(true);
+    const sentences = screen.getByTestId("student-sentences").textContent ?? "";
+    expect(sentences).toContain("the student said");
+    expect(sentences).toContain("घर");
+    expect(sentences).toContain("correct");
+    expect(sentences).toContain("nothing (no recording)");
+    expect(sentences).toContain("incorrect");
+    // the modal has its own metric + range toggles
+    expect(dialog.querySelectorAll('[aria-label="Metric"]').length).toBe(1);
+    expect(dialog.querySelectorAll('[aria-label="Range"]').length).toBe(1);
+    fireEvent.click(screen.getByRole("button", { name: /Close/ }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+
+    // up → back to the teacher cards
+    fireEvent.click(screen.getByRole("button", { name: "Up a level" }));
+    expect((await screen.findAllByTestId("teacher-card")).length).toBe(1);
   });
 
   it("switches the UI to Hindi and remembers the choice", async () => {

@@ -93,21 +93,76 @@ export const PROFILE_SCHOOL: PublicProfile = {
   ],
 };
 
-export const STUDENTS: StudentChild[] = [
-  { student_id: "s-1", label: "Student 1", score: 0.9, passed: true, attempts: 22, in_band: true, active: true, last_active_at: "2026-09-17T10:00:00Z" },
-  { student_id: "s-2", label: "Student 2", score: null, passed: null, attempts: 3, in_band: false, active: false, last_active_at: null },
-];
+// The school's children are its teachers (the referrers of its students)…
+export const TEACHER: Child = {
+  id: "t-1",
+  type: "teacher",
+  code: "",
+  name: "Asha",
+  has_boundary: false,
+  lat: null,
+  lng: null,
+  pass_rate: 75.0,
+  n: 4,
+  students: 4,
+  students_active: 3,
+  using_lifteracy: true,
+  delta: 2.0,
+  bin: "mid",
+  official: { name: "Asha", role_title: "Teacher", avatar_seed: "asha", spotlight_message: null },
+};
 
 export const SCORES_SCHOOL: ScoresResponse = {
   as_of: "2026-09-18",
   metric: "nipun_g3",
   range: 30,
   entity: PROFILE_SCHOOL.geo_entity!,
-  root: { pass_rate: 50.0, mean: 0.5, sd: 0.1, n: 2, students_active: 1, students_unbanded: 0, delta: null },
-  series: [{ date: "2026-09-18", pass_rate: 50.0, n: 2 }],
+  root: { pass_rate: 75.0, mean: 0.7, sd: 0.1, n: 4, students_active: 3, students_unbanded: 0, delta: 2.0 },
+  series: [{ date: "2026-09-18", pass_rate: 75.0, n: 4 }],
+  child_type: "teacher",
+  children: [TEACHER],
+  most_improved: [],
+};
+
+// …and a teacher's children (scores?id=<teacher user id>) are their students.
+export const STUDENTS: StudentChild[] = [
+  { student_id: "s-1", label: "Student 1", score: 0.9, passed: true, attempts: 22, in_band: true, active: true, last_active_at: "2026-09-17T10:00:00Z", delta: 5.0 },
+  { student_id: "s-2", label: "Student 2", score: null, passed: null, attempts: 3, in_band: false, active: false, last_active_at: null, delta: null },
+];
+
+export const SCORES_CLASS: ScoresResponse = {
+  as_of: "2026-09-18",
+  metric: "nipun_g3",
+  range: 30,
+  entity: { id: "t-1", type: "teacher", code: "", name: "Asha", has_boundary: false, lat: null, lng: null },
+  root: { pass_rate: 100.0, mean: 0.9, sd: 0, n: 1, students_active: 1, students_unbanded: 0, delta: null },
+  series: [{ date: "2026-09-18", pass_rate: 100.0, n: 1 }],
   child_type: "student",
   children: STUDENTS,
   most_improved: [],
+};
+
+// Student modal payloads (GET users/:id/literacy-test-scores, GET users/:id/media).
+export const TEST_SCORES = {
+  nipun_grade_2: { status: "insufficient_data", attempts_available: 0 },
+  nipun_grade_3: {
+    status: "ok",
+    attempts_available: 22,
+    latest: { at: "2026-09-17T10:00:00Z", score: 0.9, passed: true },
+    history: [
+      { at: "2026-09-10T10:00:00Z", score: 0.5, passed: false },
+      { at: "2026-09-17T10:00:00Z", score: 0.9, passed: true },
+    ],
+  },
+  mpl_b: { status: "insufficient_data", attempts_available: 20 },
+};
+
+export const MEDIA = {
+  user: { name: "Student 1" },
+  media: [
+    { id: "m-1", created_at: new Date(Date.now() - 2 * 3600_000).toISOString(), has_audio: true, answer: "घर", answer_correct: true },
+    { id: "m-2", created_at: new Date(Date.now() - 26 * 3600_000).toISOString(), has_audio: false, answer: "मछली", answer_correct: false },
+  ],
 };
 
 const square = (code: string, name: string, type: string, x: number, y: number) => ({
@@ -156,6 +211,9 @@ export function makeFetch(opts: { scores?: ScoresResponse; scoresById?: Record<s
     const m = path.match(/^\/api\/proxy\/geo-entities\/([^/]+)\/scores$/);
     if (m && opts.scoresById && m[1] in opts.scoresById) return jsonResponse(200, opts.scoresById[m[1]]);
     if (/^\/api\/proxy\/geo-entities\/[^/]+\/spotlight$/.test(path)) return jsonResponse(200, { top: null, most_improved: null });
+    // student modal
+    if (/^\/api\/proxy\/users\/[^/]+\/literacy-test-scores$/.test(path)) return jsonResponse(200, TEST_SCORES);
+    if (/^\/api\/proxy\/users\/[^/]+\/media$/.test(path)) return jsonResponse(200, MEDIA);
     return jsonResponse(404, { message: `unmocked ${url}` });
   };
   return { fn, calls };
