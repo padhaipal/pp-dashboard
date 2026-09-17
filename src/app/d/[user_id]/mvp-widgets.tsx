@@ -17,6 +17,7 @@ import {
   mediaUrl,
   METRIC_BY,
   METRICS,
+  profileUrl,
   RANGES,
   scoresUrl,
   TEST_KEY_OF,
@@ -286,6 +287,96 @@ export function MvpStudentActivity({ series }: { series: SeriesPoint[] }) {
   );
 }
 
+// ------------------------------------------------------------------ student name
+
+// Wherever a student's name appears the teacher can edit it: click the name
+// (or "+ add name" when there is none) → input; Enter / blur saves through
+// PATCH users/:id/profile { name } (pp-sketch accepts name-only for a student);
+// Esc cancels. `onSaved` lets the page update every other copy of the name.
+export function EditableStudentName({
+  studentId,
+  name,
+  fallback,
+  onSaved,
+  className,
+  t = same,
+}: {
+  studentId: string;
+  name: string | null;
+  fallback: string; // shown (muted) while there is no name, e.g. "Student 3"
+  onSaved: (name: string) => void;
+  className?: string;
+  t?: T;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const start = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setDraft(name ?? "");
+    setError(null);
+    setEditing(true);
+  };
+  const save = async () => {
+    const value = draft.trim();
+    if (!value || value === name) {
+      setEditing(false);
+      return;
+    }
+    setBusy(true);
+    try {
+      const res = await fetch(profileUrl(studentId), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: value }) });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const body = (await res.json()) as { name?: string };
+      onSaved(body.name ?? value);
+      setEditing(false);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  if (editing) {
+    return (
+      <span className="inline-flex items-center gap-1" onClick={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
+        <input
+          autoFocus
+          value={draft}
+          maxLength={80}
+          disabled={busy}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={save}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") save();
+            if (e.key === "Escape") setEditing(false);
+          }}
+          placeholder={t("Student's name")}
+          aria-label={t("Student's name")}
+          className="w-36 rounded-md border border-zinc-300 bg-white px-2 py-0.5 text-sm font-semibold text-zinc-900 focus:border-blue-500 focus:outline-none"
+          data-testid="student-name-input"
+        />
+        {error && <span className="text-[10px] text-red-600">{error}</span>}
+      </span>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={start}
+      onDoubleClick={(e) => e.stopPropagation()}
+      title={t("Rename")}
+      className={"group inline-flex max-w-full items-center gap-1 text-left " + (className ?? "")}
+      data-testid="student-name"
+    >
+      <span className={"truncate " + (name ? "" : "italic opacity-70")}>{name ?? fallback}</span>
+      <span aria-hidden className="text-[0.7em] opacity-40 group-hover:opacity-90">
+        ✎
+      </span>
+    </button>
+  );
+}
+
 // ------------------------------------------------------------------ modal
 
 export type ModalSubject =
@@ -368,7 +459,20 @@ export function historySeries(scores: LiteracyTestScores | null, metric: Metric,
 // name · Student + 7-day activity, metric/range toggles over the student's
 // score history (GET users/:id/literacy-test-scores), then every recent voice
 // note as one sentence with a playable "▶ audio" (GET users/:id/media).
-export function MvpTeacherModal({ subject, metric, onClose, t = same }: { subject: ModalSubject; metric: Metric; onClose: () => void; t?: T }) {
+export function MvpTeacherModal({
+  subject,
+  metric,
+  onClose,
+  onRename,
+  t = same,
+}: {
+  subject: ModalSubject;
+  metric: Metric;
+  onClose: () => void;
+  // student mode: the name was edited in the header → update the page's copy
+  onRename?: (studentId: string, name: string) => void;
+  t?: T;
+}) {
   const [mMetric, setMMetric] = useState<Metric>(metric);
   const [mRange, setMRange] = useState<Range>(DEFAULT_RANGE);
   const [data, setData] = useState<{ key: string; scores: ScoresResponse | null; error: string | null } | null>(null);
@@ -444,7 +548,14 @@ export function MvpTeacherModal({ subject, metric, onClose, t = same }: { subjec
             ) : (
               <>
                 <div className="text-2xl font-bold text-zinc-900" data-testid="student-modal-title">
-                  {subject.student.label} <span className="font-normal text-zinc-400">· {t("Student")}</span>
+                  <EditableStudentName
+                    studentId={subject.student.student_id}
+                    name={subject.student.name}
+                    fallback={subject.student.label}
+                    onSaved={(name) => onRename?.(subject.student.student_id, name)}
+                    t={t}
+                  />{" "}
+                  <span className="font-normal text-zinc-400">· {t("Student")}</span>
                 </div>
                 {st?.media && <MvpStudentActivity series={activitySeries(st.media)} />}
               </>

@@ -113,6 +113,8 @@ const HI: Record<string, string> = {
   incorrect: "गलत",
   "not assessed": "मूल्यांकन नहीं",
   "No voice notes yet.": "अभी कोई वॉइस नोट नहीं।",
+  "Student's name": "छात्र का नाम",
+  Rename: "नाम बदलें",
   "Loading…": "लोड हो रहा है…",
   // misc
   Yes: "हाँ",
