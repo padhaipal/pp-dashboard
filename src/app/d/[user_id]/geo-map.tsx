@@ -59,7 +59,12 @@ export type GeoMapProps = {
 const same: T = (s) => s;
 
 // mvp2's underlay provider: CARTO Positron without labels (swap freely).
-const tileUrl = (z: number, x: number, y: number) => `https://${"abc"[(x + y) % 3]}.basemaps.cartocdn.com/light_nolabels/${z}/${x}/${y}.png`;
+// Since Aug 2026 CARTO watermarks keyless raster tiles "API KEY REQUIRED";
+// NEXT_PUBLIC_CARTO_KEY (free key from carto.com/basemaps/apikey, inlined at
+// build time) removes it. Attribution stays on the map — that is the deal.
+const CARTO_KEY = process.env.NEXT_PUBLIC_CARTO_KEY ?? "";
+const tileUrl = (z: number, x: number, y: number) =>
+  `https://${"abc"[(x + y) % 3]}.basemaps.cartocdn.com/light_nolabels/${z}/${x}/${y}.png` + (CARTO_KEY ? `?key=${encodeURIComponent(CARTO_KEY)}` : "");
 
 type BoundaryCache = Map<string, Feature | null>;
 const cache: BoundaryCache = new Map();
