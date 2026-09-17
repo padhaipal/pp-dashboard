@@ -1,24 +1,25 @@
 "use client";
 
-// Small widgets ported from mvp2.html's /mvp dashboard: share bar, metric and
-// range toggles, trend arrow, per-entity trend/activity charts and the modal
-// that opens from a child row. Every number comes from the pp-sketch API.
+// Small widgets ported from mvp2.html's /mvp dashboard: metric / range / language
+// toggles, trend arrow, per-entity trend/activity charts and the modal that
+// opens from a child row. Every number comes from the pp-sketch API.
 
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { avatarUrl, seedFor } from "./avatar";
 import {
+  ACCENT,
   CHILD_OFFICER,
   csvUrl,
   DEFAULT_RANGE,
   fmtPct,
   METRIC_BY,
   METRICS,
+  nipColor,
   RANGES,
   scoresUrl,
   UNCOVERED,
   binColor,
-  binOf,
   type Child,
   type ChildType,
   type Metric,
@@ -27,7 +28,10 @@ import {
   type SeriesPoint,
   type StudentChild,
 } from "./dashboard-types";
-import { IconClose, IconCopy, IconDownload, IconQuestion } from "./icons";
+import { LANGS, type Lang, type T } from "./i18n";
+import { IconClose } from "./icons";
+
+const same: T = (s) => s;
 
 // ------------------------------------------------------------------ avatar
 
@@ -36,11 +40,16 @@ export function AvatarImg({
   size,
   className,
   ring,
+  ringWidth = 3,
+  shadow,
 }: {
   seed: string | null | undefined;
   size: number;
   className?: string;
   ring?: string;
+  ringWidth?: number;
+  // extra box-shadow appended after the ring (mvp2's profile photo drop shadow)
+  shadow?: string;
 }) {
   const s = seedFor(seed, "lifteracy");
   return (
@@ -51,7 +60,7 @@ export function AvatarImg({
       height={size}
       unoptimized
       className={"flex-shrink-0 rounded-full bg-white object-cover " + (className ?? "")}
-      style={ring ? { boxShadow: `0 0 0 3px ${ring}` } : undefined}
+      style={ring ? { boxShadow: `0 0 0 ${ringWidth}px ${ring}` + (shadow ? `, ${shadow}` : "") } : undefined}
     />
   );
 }
@@ -59,7 +68,8 @@ export function AvatarImg({
 // ------------------------------------------------------------------ trend arrow
 
 // stock-style zig-zag trend arrow — up (green) / down (red) / flat (grey) when
-// |Δ| < 0.5; null → "no change data".
+// |Δ| < 0.5; null → "—". Text is mvp2's "+1.8% last week" shape with the real
+// window as the suffix ("+1.8% last 30 days").
 export function MvpTrend({ delta, suffix = "" }: { delta: number | null; suffix?: string }) {
   const flat = delta == null || Math.abs(delta) < 0.5;
   const up = (delta ?? 0) > 0;
@@ -81,8 +91,8 @@ export function MvpTrend({ delta, suffix = "" }: { delta: number | null; suffix?
         )}
       </svg>
       <span className="text-lg font-bold tabular-nums" style={{ color }}>
-        {delta == null ? "—" : (delta >= 0 ? "+" : "") + delta.toFixed(1) + " pts"}
-        {suffix ? <span className="ml-1 text-xs font-medium text-zinc-500">{suffix}</span> : null}
+        {delta == null ? "—" : (delta >= 0 ? "+" : "") + delta.toFixed(1) + "%"}
+        {suffix ? " " + suffix : ""}
       </span>
     </span>
   );
@@ -92,7 +102,7 @@ export function MvpTrend({ delta, suffix = "" }: { delta: number | null; suffix?
 
 export function MvpMetricToggle({ metric, setMetric }: { metric: Metric; setMetric: (m: Metric) => void }) {
   return (
-    <div className="inline-flex max-w-full flex-wrap overflow-hidden rounded-lg border border-zinc-300 bg-white text-xs font-semibold shadow-sm" role="group" aria-label="Metric">
+    <div className="inline-flex overflow-hidden rounded-lg border border-zinc-300 bg-white text-xs font-semibold shadow-sm" role="group" aria-label="Metric">
       {METRICS.map((m) => (
         <button
           key={m.key}
@@ -108,17 +118,20 @@ export function MvpMetricToggle({ metric, setMetric }: { metric: Metric; setMetr
   );
 }
 
-// 30 / 90 day window + "Download CSV" (link built from the CURRENT metric + range).
+// 30 / 90 day window + "Download CSV" (link built from the CURRENT metric +
+// range; desktop-only like mvp2 — hidden below the sm breakpoint).
 export function MvpRangeBar({
   range,
   setRange,
   entityId,
   metric,
+  t = same,
 }: {
   range: Range;
   setRange: (r: Range) => void;
   entityId: string | null;
   metric: Metric;
+  t?: T;
 }) {
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -131,7 +144,7 @@ export function MvpRangeBar({
             aria-pressed={range === r}
             className={"px-3 py-1.5 transition " + (range === r ? "bg-zinc-900 text-white" : "text-zinc-600 hover:bg-zinc-50")}
           >
-            {r} days
+            {r} {t("days")}
           </button>
         ))}
       </div>
@@ -141,63 +154,31 @@ export function MvpRangeBar({
           target="_blank"
           rel="noreferrer"
           data-testid="csv-link"
-          className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-600 shadow-sm hover:bg-zinc-50"
+          className="hidden rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-600 shadow-sm hover:bg-zinc-50 sm:block"
         >
-          <IconDownload /> Download CSV
+          {t("Download CSV")}
         </a>
       )}
     </div>
   );
 }
 
-// ------------------------------------------------------------------ share bar
-
-// Unmissable share link: rendered UNDER the header, black URL, wraps on mobile.
-export function MvpShareBar({ shareLink, explainerUrl }: { shareLink: string; explainerUrl: string | null }) {
-  const [copied, setCopied] = useState(false);
-  useEffect(() => {
-    if (!copied) return;
-    const t = setTimeout(() => setCopied(false), 1600);
-    return () => clearTimeout(t);
-  }, [copied]);
-  const copyLink = () => {
-    const done = () => setCopied(true);
-    if (typeof navigator !== "undefined" && navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(shareLink).then(done, done);
-    } else done();
-  };
-  const display = shareLink.replace(/^https?:\/\//, "");
+// EN / हिं switch in the header (mvp2's language toggle).
+export function MvpLangToggle({ lang, setLang }: { lang: Lang; setLang: (l: Lang) => void }) {
   return (
-    <div className="border-b border-zinc-200 bg-white px-4 py-4">
-      <div className="mx-auto flex max-w-6xl flex-col items-center gap-3">
-        <div className="text-center text-xs font-semibold uppercase tracking-wide text-zinc-500">Share your dashboard link</div>
-        <div className="flex w-full flex-wrap items-center justify-center gap-x-4 gap-y-2">
-          <a
-            href={shareLink}
-            className="min-w-0 select-all break-all text-center font-mono text-2xl font-extrabold tracking-tight text-zinc-900 sm:text-4xl"
-            data-testid="share-link"
-          >
-            {display}
-          </a>
-          <button
-            type="button"
-            onClick={copyLink}
-            className="inline-flex items-center gap-1.5 rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-semibold text-zinc-600 hover:bg-zinc-50"
-          >
-            <IconCopy /> {copied ? "Copied!" : "Copy"}
-          </button>
-        </div>
-        {explainerUrl && (
-          <a
-            href={explainerUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1.5 text-sm font-semibold text-blue-600 hover:underline"
-          >
-            <IconQuestion /> What is Lifteracy?
-          </a>
-        )}
-      </div>
+    <div className="flex overflow-hidden rounded-lg border border-zinc-300 text-xs font-semibold" role="group" aria-label="Language">
+      {LANGS.map(([code, label]) => (
+        <button
+          key={code}
+          type="button"
+          onClick={() => setLang(code)}
+          aria-pressed={lang === code}
+          className={"px-2.5 py-1.5 transition " + (lang === code ? "text-white" : "bg-white text-zinc-600 hover:bg-zinc-50")}
+          style={lang === code ? { background: ACCENT } : undefined}
+        >
+          {label}
+        </button>
+      ))}
     </div>
   );
 }
@@ -410,7 +391,7 @@ export function MvpTeacherModal({ subject, metric, onClose }: { subject: ModalSu
             <Stat
               big={subject.student.score == null ? "—" : `${Math.round(subject.student.score * 100)}%`}
               label={METRIC_BY[metric].short}
-              color={binColor(binOf(subject.student.score == null ? null : subject.student.score * 100))}
+              color={nipColor(subject.student.score == null ? null : subject.student.score * 100)}
             />
             <Stat big={subject.student.passed == null ? "—" : subject.student.passed ? "Passed" : "Not yet"} label="result" color={subject.student.passed ? "#16a34a" : "#dc2626"} />
             <Stat big={String(subject.student.attempts)} label="attempts" />

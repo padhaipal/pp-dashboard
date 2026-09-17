@@ -2,7 +2,7 @@
 // payload with two child states (09 complete, 28 incomplete) and tiny GeoJSON
 // squares standing in for the real boundary files.
 
-import type { Child, PublicProfile, ScoresResponse, SpotlightResponse } from "./dashboard-types";
+import type { Child, PublicProfile, ScoresResponse, SpotlightResponse, StudentChild } from "./dashboard-types";
 
 export const PROFILE: PublicProfile = {
   id: "u1",
@@ -80,6 +80,36 @@ export const EMPTY_SCORES: ScoresResponse = {
 
 export const SPOTLIGHT: SpotlightResponse = { top: { child: CHILD_UP, official: CHILD_UP.official }, most_improved: null };
 
+// School level: a teacher whose entity is a school; children are students.
+export const PROFILE_SCHOOL: PublicProfile = {
+  ...PROFILE,
+  id: "u-sch",
+  name: "Tom",
+  role_title: "Teacher",
+  geo_entity: { id: "g-sch", type: "school", code: "09010100101", name: "JHS CHINHAT", has_boundary: false, lat: 26.9, lng: 81.0 },
+  ancestors: [
+    { id: "g-in", type: "country", code: "IN", name: "India" },
+    { id: "g-09", type: "state", code: "09", name: "UTTAR PRADESH" },
+  ],
+};
+
+export const STUDENTS: StudentChild[] = [
+  { student_id: "s-1", label: "Student 1", score: 0.9, passed: true, attempts: 22, in_band: true, active: true, last_active_at: "2026-09-17T10:00:00Z" },
+  { student_id: "s-2", label: "Student 2", score: null, passed: null, attempts: 3, in_band: false, active: false, last_active_at: null },
+];
+
+export const SCORES_SCHOOL: ScoresResponse = {
+  as_of: "2026-09-18",
+  metric: "nipun_g3",
+  range: 30,
+  entity: PROFILE_SCHOOL.geo_entity!,
+  root: { pass_rate: 50.0, mean: 0.5, sd: 0.1, n: 2, students_active: 1, students_unbanded: 0, delta: null },
+  series: [{ date: "2026-09-18", pass_rate: 50.0, n: 2 }],
+  child_type: "student",
+  children: STUDENTS,
+  most_improved: [],
+};
+
 const square = (code: string, name: string, type: string, x: number, y: number) => ({
   type: "FeatureCollection",
   features: [
@@ -112,8 +142,9 @@ export function jsonResponse(status: number, body: unknown): Response {
   return { ok: status >= 200 && status < 300, status, json: async () => body, text: async () => JSON.stringify(body) } as unknown as Response;
 }
 
-// Routes proxy + boundary URLs to fixtures; records every URL hit.
-export function makeFetch(opts: { scores?: ScoresResponse } = {}) {
+// Routes proxy + boundary URLs to fixtures; records every URL hit. `scores`
+// answers the country root (g-in); `scoresById` answers any other entity.
+export function makeFetch(opts: { scores?: ScoresResponse; scoresById?: Record<string, ScoresResponse> } = {}) {
   const calls: string[] = [];
   const fn = async (input: RequestInfo | URL) => {
     const url = typeof input === "string" ? input : input.toString();
@@ -122,6 +153,9 @@ export function makeFetch(opts: { scores?: ScoresResponse } = {}) {
     if (path in GEO) return jsonResponse(200, GEO[path]);
     if (/^\/api\/proxy\/geo-entities\/g-in\/scores$/.test(path)) return jsonResponse(200, opts.scores ?? SCORES);
     if (/^\/api\/proxy\/geo-entities\/g-in\/spotlight$/.test(path)) return jsonResponse(200, SPOTLIGHT);
+    const m = path.match(/^\/api\/proxy\/geo-entities\/([^/]+)\/scores$/);
+    if (m && opts.scoresById && m[1] in opts.scoresById) return jsonResponse(200, opts.scoresById[m[1]]);
+    if (/^\/api\/proxy\/geo-entities\/[^/]+\/spotlight$/.test(path)) return jsonResponse(200, { top: null, most_improved: null });
     return jsonResponse(404, { message: `unmocked ${url}` });
   };
   return { fn, calls };
