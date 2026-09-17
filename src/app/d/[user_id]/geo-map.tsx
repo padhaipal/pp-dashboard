@@ -158,7 +158,11 @@ export function GeoMap(props: GeoMapProps) {
     const kids: { code: string; url: string }[] = [];
     if (childType === "state" || childType === "district") {
       for (const c of childrenRows) {
-        if (!c.has_boundary) continue;
+        // Try the polygon file for EVERY child, not only `has_boundary` ones:
+        // that flag is stamped at seed time from the boundaries manifest and
+        // goes stale (a district seeded before its file shipped stays false,
+        // and hierarchy rows carry no lat/lng to fall back on → the whole
+        // state drilled into looked empty). A missing file is a cached null.
         if (childType === "state" && incompleteStates.has(c.code)) {
           kids.push({ code: c.code, url: boundaryUrl("state", c.code) });
           continue;

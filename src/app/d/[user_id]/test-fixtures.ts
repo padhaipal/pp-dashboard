@@ -191,6 +191,18 @@ export const GEO: Record<string, unknown> = {
   "/boundaries/country/IN.geojson": square("IN", "India", "country", 76, 14),
   "/boundaries/state/09.geojson": square("09", "Uttar Pradesh", "state", 80, 26),
   "/boundaries/state/28.geojson": square("28", "Andhra Pradesh", "state", 78, 15),
+  "/boundaries/district/0901.geojson": square("0901", "LUCKNOW", "district", 80.5, 26.5),
+};
+
+// State level (UP): one district whose seed-time `has_boundary` is stale
+// (false) although its polygon file exists, and no lat/lng (hierarchy rows
+// never carry one) — it must still draw.
+export const SCORES_UP: ScoresResponse = {
+  ...SCORES,
+  entity: CHILD_UP,
+  child_type: "district",
+  children: [{ ...CHILD_UP, id: "g-0901", type: "district", code: "0901", name: "LUCKNOW", has_boundary: false, lat: null, lng: null }],
+  most_improved: [],
 };
 
 export function jsonResponse(status: number, body: unknown): Response {

@@ -46,7 +46,7 @@ import {
 } from "./dashboard-types";
 import { GeoMap } from "./geo-map";
 import { isLang, LANG_STORAGE_KEY, makeT, type Lang, type T } from "./i18n";
-import { AvatarImg, EditableStudentName, MvpLangToggle, MvpMetricToggle, MvpRangeBar, MvpTeacherModal, MvpTrend, type ModalSubject } from "./mvp-widgets";
+import { AvatarImg, EditableStudentName, MvpLangToggle, MvpMetricToggle, MvpRangeBar, MvpShareBar, MvpTeacherModal, MvpTrend, type ModalSubject } from "./mvp-widgets";
 import { ReportCardModal, RepImproved, RepKpis, RepMeta, RepQuote, RepTrend, type ImprovedRow, type ReportData } from "./report-card-modal";
 
 export type TeacherDashboardProps = {
@@ -347,6 +347,9 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
               </div>
             </div>
           </div>
+
+          {/* teachers only: the referral link parents use to enrol under this teacher, right below the map card */}
+          {profile.geo_entity?.type === "school" && <MvpShareBar shareLink={profile.share_link} explainerUrl={profile.explainer_url} t={t} />}
 
           {scores && !emptyRoot && childType && (
             <>

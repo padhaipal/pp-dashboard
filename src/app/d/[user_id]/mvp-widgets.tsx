@@ -34,6 +34,7 @@ import {
   type UserMedia,
 } from "./dashboard-types";
 import { LANGS, type Lang, type T } from "./i18n";
+import { IconCopy, IconQuestion } from "./icons";
 
 const same: T = (s) => s;
 
@@ -183,6 +184,47 @@ export function MvpLangToggle({ lang, setLang }: { lang: Lang; setLang: (l: Lang
           {label}
         </button>
       ))}
+    </div>
+  );
+}
+
+// ------------------------------------------------------------------ share bar
+
+// Teachers only, rendered just below the map card: the /r/<phone> referral
+// link parents message to enrol under this teacher, in large mono text with
+// a Copy button and the "What is Lifteracy?" explainer (when seeded).
+export function MvpShareBar({ shareLink, explainerUrl, t = same }: { shareLink: string; explainerUrl: string | null; t?: T }) {
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    if (!copied) return;
+    const id = setTimeout(() => setCopied(false), 1600);
+    return () => clearTimeout(id);
+  }, [copied]);
+  const copyLink = () => {
+    const done = () => setCopied(true);
+    if (typeof navigator !== "undefined" && navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(shareLink).then(done, done);
+    } else done();
+  };
+  const display = shareLink.replace(/^https?:\/\//, "");
+  return (
+    <div className="mx-auto mt-6 max-w-6xl px-6" data-testid="share-bar">
+      <div className="flex flex-col items-center gap-3 rounded-2xl border border-zinc-200 bg-white px-4 py-4 shadow-sm">
+        <div className="text-center text-xs font-semibold uppercase tracking-wide text-zinc-500">{t("Share your dashboard link")}</div>
+        <div className="flex w-full flex-wrap items-center justify-center gap-x-4 gap-y-2">
+          <a href={shareLink} className="min-w-0 select-all break-all text-center font-mono text-2xl font-extrabold tracking-tight text-zinc-900 sm:text-4xl" data-testid="share-link">
+            {display}
+          </a>
+          <button type="button" onClick={copyLink} className="inline-flex items-center gap-1.5 rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-semibold text-zinc-600 hover:bg-zinc-50">
+            <IconCopy /> {copied ? t("Copied!") : t("Copy")}
+          </button>
+        </div>
+        {explainerUrl && (
+          <a href={explainerUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-sm font-semibold text-blue-600 hover:underline">
+            <IconQuestion /> {t("What is Lifteracy?")}
+          </a>
+        )}
+      </div>
     </div>
   );
 }
