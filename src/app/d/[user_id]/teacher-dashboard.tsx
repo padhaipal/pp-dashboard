@@ -46,7 +46,7 @@ import {
 } from "./dashboard-types";
 import { GeoMap } from "./geo-map";
 import { isLang, LANG_STORAGE_KEY, makeT, type Lang, type T } from "./i18n";
-import { AvatarImg, MvpLangToggle, MvpMetricToggle, MvpRangeBar, MvpTeacherModal, MvpTrend, type ModalSubject } from "./mvp-widgets";
+import { AvatarImg, EditableStudentName, MvpLangToggle, MvpMetricToggle, MvpRangeBar, MvpTeacherModal, MvpTrend, type ModalSubject } from "./mvp-widgets";
 import { ReportCardModal, RepImproved, RepKpis, RepMeta, RepQuote, RepTrend, type ImprovedRow, type ReportData } from "./report-card-modal";
 
 export type TeacherDashboardProps = {
@@ -178,6 +178,15 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
     [childType],
   );
   const openStudent = useCallback((s: StudentChild) => setModal({ kind: "student", student: s }), []);
+  // A student renamed anywhere (tile, modal header) → every copy on the page follows.
+  const renameStudent = useCallback((studentId: string, name: string) => {
+    setData((d) => {
+      if (!d || !d.scores || d.scores.child_type !== "student") return d;
+      const children = (d.scores.children as StudentChild[]).map((s) => (s.student_id === studentId ? { ...s, name } : s));
+      return { ...d, scores: { ...d.scores, children } };
+    });
+    setModal((m) => (m && m.kind === "student" && m.student.student_id === studentId ? { ...m, student: { ...m.student, name } } : m));
+  }, []);
 
   const locationTitle = [...profile.ancestors, ...stack].map((a) => t(displayName(a.name, a.type))).join("  -  ");
   const detailChild = useMemo(() => {
@@ -193,7 +202,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
             .filter((s) => s.delta != null)
             .sort((a, b) => (b.delta ?? 0) - (a.delta ?? 0))
             .slice(0, 5)
-            .map((s) => ({ id: s.student_id, name: s.label, delta: s.delta }))
+            .map((s) => ({ id: s.student_id, name: s.name ?? s.label, delta: s.delta }))
         : (scores?.most_improved ?? []),
     [inClass, students, scores],
   );
@@ -302,7 +311,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
             {entity.type === "school" ? (
               scores && <TeacherCards teachers={geoChildren} metric={metric} range={range} selId={selId} onSelect={select} onDrill={drill} onClear={() => setSelId(null)} t={t} />
             ) : entity.type === "teacher" ? (
-              scores && <StudentTiles students={students} metric={metric} onOpen={openStudent} t={t} />
+              scores && <StudentTiles students={students} metric={metric} onOpen={openStudent} onRename={renameStudent} t={t} />
             ) : (
               <GeoMap
                 entity={entity}
@@ -458,7 +467,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
         </div>
       </section>
 
-      {modal && <MvpTeacherModal subject={modal} metric={metric} onClose={closeModal} t={t} />}
+      {modal && <MvpTeacherModal subject={modal} metric={metric} onClose={closeModal} onRename={renameStudent} t={t} />}
       {reportOpen && reportData && <ReportCardModal data={reportData} onClose={closeReport} />}
     </div>
   );
@@ -554,9 +563,21 @@ function TeacherCards({
   );
 }
 
-// Class view: mvp2's student tiles — solid score colour, name, score, metric,
-// ▲/▼ delta. Click opens the student's dashboard modal.
-function StudentTiles({ students, metric, onOpen, t }: { students: StudentChild[]; metric: Metric; onOpen: (s: StudentChild) => void; t: T }) {
+// Class view: mvp2's student tiles — solid score colour, name (editable in
+// place), score, metric, ▲/▼ delta. Click opens the student's dashboard modal.
+function StudentTiles({
+  students,
+  metric,
+  onOpen,
+  onRename,
+  t,
+}: {
+  students: StudentChild[];
+  metric: Metric;
+  onOpen: (s: StudentChild) => void;
+  onRename: (studentId: string, name: string) => void;
+  t: T;
+}) {
   const short = METRIC_BY[metric].short;
   return (
     <div className="absolute inset-0 z-10 overflow-y-auto bg-[#eaf0f6] p-3 sm:p-5" data-testid="student-tiles">
@@ -576,7 +597,9 @@ function StudentTiles({ students, metric, onOpen, t }: { students: StudentChild[
               onClick={() => onOpen(s)}
               data-testid="student-tile"
             >
-              <div className="w-full truncate text-[13px] font-bold sm:text-sm">{s.label}</div>
+              <div className="flex w-full justify-center text-[13px] font-bold sm:text-sm">
+                <EditableStudentName studentId={s.student_id} name={s.name} fallback={s.label} onSaved={(name) => onRename(s.student_id, name)} t={t} />
+              </div>
               <div className="text-xl font-extrabold tabular-nums sm:text-2xl">{fmtPctInt(pct)}</div>
               <div className="text-[9px] font-semibold opacity-90">{short}</div>
               <div className="text-[11px] font-bold tabular-nums">{d == null ? "—" : `${Math.abs(d) < 0.5 ? "→" : d > 0 ? "▲" : "▼"} ${(d >= 0 ? "+" : "") + d.toFixed(1)}%`}</div>

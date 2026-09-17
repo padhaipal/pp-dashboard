@@ -126,8 +126,8 @@ export const SCORES_SCHOOL: ScoresResponse = {
 
 // …and a teacher's children (scores?id=<teacher user id>) are their students.
 export const STUDENTS: StudentChild[] = [
-  { student_id: "s-1", label: "Student 1", score: 0.9, passed: true, attempts: 22, in_band: true, active: true, last_active_at: "2026-09-17T10:00:00Z", delta: 5.0 },
-  { student_id: "s-2", label: "Student 2", score: null, passed: null, attempts: 3, in_band: false, active: false, last_active_at: null, delta: null },
+  { student_id: "s-1", label: "Rani", name: "Rani Devi", score: 0.9, passed: true, attempts: 22, in_band: true, active: true, last_active_at: "2026-09-17T10:00:00Z", delta: 5.0 },
+  { student_id: "s-2", label: "Student 2", name: null, score: null, passed: null, attempts: 3, in_band: false, active: false, last_active_at: null, delta: null },
 ];
 
 export const SCORES_CLASS: ScoresResponse = {
@@ -158,7 +158,7 @@ export const TEST_SCORES = {
 };
 
 export const MEDIA = {
-  user: { name: "Student 1" },
+  user: { name: "Rani Devi" },
   media: [
     { id: "m-1", created_at: new Date(Date.now() - 2 * 3600_000).toISOString(), has_audio: true, answer: "घर", answer_correct: true },
     { id: "m-2", created_at: new Date(Date.now() - 26 * 3600_000).toISOString(), has_audio: false, answer: "मछली", answer_correct: false },
@@ -201,9 +201,9 @@ export function jsonResponse(status: number, body: unknown): Response {
 // answers the country root (g-in); `scoresById` answers any other entity.
 export function makeFetch(opts: { scores?: ScoresResponse; scoresById?: Record<string, ScoresResponse> } = {}) {
   const calls: string[] = [];
-  const fn = async (input: RequestInfo | URL) => {
+  const fn = async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = typeof input === "string" ? input : input.toString();
-    calls.push(url);
+    calls.push((init?.method ? init.method + " " : "") + url);
     const path = url.split("?")[0];
     if (path in GEO) return jsonResponse(200, GEO[path]);
     if (/^\/api\/proxy\/geo-entities\/g-in\/scores$/.test(path)) return jsonResponse(200, opts.scores ?? SCORES);
@@ -214,6 +214,12 @@ export function makeFetch(opts: { scores?: ScoresResponse; scoresById?: Record<s
     // student modal
     if (/^\/api\/proxy\/users\/[^/]+\/literacy-test-scores$/.test(path)) return jsonResponse(200, TEST_SCORES);
     if (/^\/api\/proxy\/users\/[^/]+\/media$/.test(path)) return jsonResponse(200, MEDIA);
+    // student rename (PATCH users/:id/profile { name }) → { id, name }
+    const p = path.match(/^\/api\/proxy\/users\/([^/]+)\/profile$/);
+    if (p && init?.method === "PATCH") {
+      const body = JSON.parse(String(init.body ?? "{}")) as { name?: string };
+      return jsonResponse(200, { id: p[1], name: body.name });
+    }
     return jsonResponse(404, { message: `unmocked ${url}` });
   };
   return { fn, calls };
