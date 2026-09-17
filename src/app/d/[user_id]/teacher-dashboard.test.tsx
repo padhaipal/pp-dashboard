@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { TeacherDashboard } from "./teacher-dashboard";
 import { EMPTY_ROOT_TEXT, INCOMPLETE_TOOLTIP } from "./dashboard-types";
-import { CHILD_UP, EMPTY_SCORES, PROFILE, PROFILE_SCHOOL, SCORES, SCORES_CLASS, SCORES_SCHOOL, makeFetch } from "./test-fixtures";
+import { CHILD_UP, EMPTY_SCORES, PROFILE, PROFILE_SCHOOL, SCORES, SCORES_CLASS, SCORES_SCHOOL, SCORES_UP, makeFetch } from "./test-fixtures";
 
 describe("TeacherDashboard", () => {
   afterEach(() => {
@@ -133,6 +133,11 @@ describe("TeacherDashboard", () => {
     expect(cards[0].textContent).toContain("Teacher · 4 students");
     expect(cards[0].textContent).toContain("75%");
     expect(cards[0].textContent).toContain("+2.0% last 30 days");
+    // teachers get their referral link right under the map card (officials never do — see the country test)
+    const shareBar = screen.getByTestId("share-bar");
+    expect(shareBar.previousElementSibling?.getAttribute("data-testid")).toBe("map-card");
+    expect(screen.getByTestId("share-link").textContent).toBe("lifteracy.ai/d/u1");
+    expect(screen.getByRole("link", { name: /What is Lifteracy\?/ }).getAttribute("href")).toBe("https://example.com/explainer");
     // ancestors are title-cased, the school name is left as-is
     expect(screen.getByTestId("location-title").textContent).toBe("India  -  Uttar Pradesh  -  JHS CHINHAT");
     // one headline card only at school level
@@ -256,5 +261,39 @@ describe("TeacherDashboard", () => {
     expect(screen.getByRole("tooltip").textContent).toContain("private school");
     // no border at block level, tiles underneath
     expect(screen.getByTestId("tile-underlay")).toBeDefined();
+  });
+
+  it("state level: a district whose seed-time has_boundary is stale (false, no lat/lng) still draws from its polygon file", async () => {
+    const { fn } = makeFetch({ scoresById: { "g-09": SCORES_UP } });
+    vi.stubGlobal("fetch", vi.fn(fn));
+    const { container } = render(<TeacherDashboard profile={PROFILE} incompleteStates={[]} />);
+    const up = await waitFor(() => {
+      const p = container.querySelector('path[data-code="09"]');
+      if (!p) throw new Error("not drawn yet");
+      return p;
+    });
+    fireEvent.dblClick(up);
+    await waitFor(() => {
+      if (!container.querySelector('path[data-code="0901"]')) throw new Error("district not drawn");
+    });
+    expect(screen.getByTestId("geo-map").getAttribute("data-level")).toBe("state");
+    // no share bar for an official
+    expect(screen.queryByTestId("share-bar")).toBeNull();
+  });
+
+  it("zoom in / out buttons scale the map around its centre (every map level)", async () => {
+    const { fn } = makeFetch();
+    vi.stubGlobal("fetch", vi.fn(fn));
+    const { container } = render(<TeacherDashboard profile={PROFILE} incompleteStates={[]} />);
+    await waitFor(() => {
+      if (!container.querySelector('path[data-code="09"]')) throw new Error("not drawn yet");
+    });
+    const scaleOf = () => Number(/scale\(([\d.]+)\)/.exec(container.querySelector('[data-testid="geo-map"] svg > g')!.getAttribute("transform")!)![1]);
+    expect(scaleOf()).toBe(1);
+    fireEvent.click(screen.getByRole("button", { name: "Zoom in" }));
+    expect(scaleOf()).toBeCloseTo(1.4, 5);
+    fireEvent.click(screen.getByRole("button", { name: "Zoom out" }));
+    fireEvent.click(screen.getByRole("button", { name: "Zoom out" }));
+    expect(scaleOf()).toBeCloseTo(1 / 1.4, 5);
   });
 });

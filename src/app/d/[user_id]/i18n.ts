@@ -119,6 +119,11 @@ const HI: Record<string, string> = {
   "Student's name": "छात्र का नाम",
   Rename: "नाम बदलें",
   "Loading…": "लोड हो रहा है…",
+  // share bar (teachers)
+  "Share your dashboard link": "अपना डैशबोर्ड लिंक साझा करें",
+  Copy: "कॉपी करें",
+  "Copied!": "कॉपी हो गया!",
+  "What is Lifteracy?": "लिफ्टरेसी क्या है?",
   // misc
   Yes: "हाँ",
   No: "नहीं",

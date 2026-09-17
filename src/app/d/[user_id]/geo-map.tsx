@@ -158,7 +158,11 @@ export function GeoMap(props: GeoMapProps) {
     const kids: { code: string; url: string }[] = [];
     if (childType === "state" || childType === "district") {
       for (const c of childrenRows) {
-        if (!c.has_boundary) continue;
+        // Try the polygon file for EVERY child, not only `has_boundary` ones:
+        // that flag is stamped at seed time from the boundaries manifest and
+        // goes stale (a district seeded before its file shipped stays false,
+        // and hierarchy rows carry no lat/lng to fall back on → the whole
+        // state drilled into looked empty). A missing file is a cached null.
         if (childType === "state" && incompleteStates.has(c.code)) {
           kids.push({ code: c.code, url: boundaryUrl("state", c.code) });
           continue;
@@ -340,6 +344,15 @@ export function GeoMap(props: GeoMapProps) {
     drag.current = null;
     setDragging(false);
   };
+  // +/− zoom around the viewport centre (every map level); a drill resets it.
+  const zoomBy = (factor: number) =>
+    setTf((t) => {
+      const k = Math.min(40, Math.max(0.5, t.k * factor));
+      const s = k / t.k;
+      const cx = size.w / 2,
+        cy = size.h / 2;
+      return { k, x: cx - (cx - t.x) * s, y: cy - (cy - t.y) * s };
+    });
   const k = tf.k;
   const noun = { state: "state", district: "district", block: "block", school: "school" }[childType];
 
@@ -513,6 +526,16 @@ export function GeoMap(props: GeoMapProps) {
           {tip.sub && <div>{tip.sub}</div>}
         </div>
       )}
+
+      {/* zoom — top-right, clear of the legend (bottom-left) and the up button (bottom-right) */}
+      <div className="absolute right-2 top-2 z-20 flex flex-col overflow-hidden rounded-lg border border-zinc-300 bg-white shadow-md" data-testid="map-zoom">
+        <button type="button" onClick={() => zoomBy(1.4)} className="h-8 w-8 text-base font-bold text-zinc-700 hover:bg-zinc-100" aria-label="Zoom in">
+          +
+        </button>
+        <button type="button" onClick={() => zoomBy(1 / 1.4)} className="h-8 w-8 border-t border-zinc-200 text-base font-bold text-zinc-700 hover:bg-zinc-100" aria-label="Zoom out">
+          −
+        </button>
+      </div>
 
       {tiles && (
         <div className="pointer-events-none absolute bottom-1 right-14 z-20 rounded bg-white/80 px-1.5 py-0.5 text-[9px] text-zinc-500">© OpenStreetMap contributors © CARTO</div>
