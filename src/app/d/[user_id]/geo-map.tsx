@@ -92,23 +92,6 @@ async function loadBoundary(url: string): Promise<Feature | null> {
   return q;
 }
 
-// "+" marker at an area's centroid (kept from mvp2): the area has no Lifteracy
-// user yet. Greyscale, constant screen size, no border; the <title> is the hint.
-export function PlusButton({ c, k, geo }: { c: [number, number] | null; k: number; geo: string }) {
-  if (!c || isNaN(c[0])) return null;
-  const r = 8.8 / k,
-    sw = 1.8 / k,
-    len = 4.4 / k;
-  return (
-    <g transform={`translate(${c[0]},${c[1]})`} pointerEvents="none" data-testid="plus-button">
-      <title>This {geo} has no Lifteracy user yet</title>
-      <circle r={r} fill="#71717a" />
-      <line x1={-len} y1={0} x2={len} y2={0} stroke="#fff" strokeWidth={sw} strokeLinecap="round" />
-      <line x1={0} y1={-len} x2={0} y2={len} stroke="#fff" strokeWidth={sw} strokeLinecap="round" />
-    </g>
-  );
-}
-
 // Solid area fill: grey when the area has no Lifteracy user, otherwise the
 // score colour. Interactions live on the outline path drawn on top.
 export function areaFill(d: string, child: Child, incomplete: boolean) {
@@ -359,7 +342,6 @@ export function GeoMap(props: GeoMapProps) {
       return { k, x: cx - (cx - t.x) * s, y: cy - (cy - t.y) * s };
     });
   const k = tf.k;
-  const noun = { state: "state", district: "district", block: "block", school: "school" }[childType];
 
   return (
     <div ref={wrapRef} className="relative h-full w-full overflow-hidden bg-[#eaf0f6]" data-testid="geo-map" data-level={entity.type}>
@@ -422,7 +404,6 @@ export function GeoMap(props: GeoMapProps) {
                     onDrill(a.child);
                   }}
                 />
-                {!a.incomplete && !a.child.using_lifteracy && <PlusButton c={a.c} k={k} geo={noun} />}
               </g>
             );
           })}
