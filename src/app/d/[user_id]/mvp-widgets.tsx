@@ -505,7 +505,8 @@ export function activitySeries(media: MediaRow[], now = Date.now()): SeriesPoint
 
 // Per-test history → the trend line's series, within the range window (score 0-1 → %).
 export function historySeries(scores: LiteracyTestScores | null, metric: Metric, range: Range, now = Date.now()): SeriesPoint[] {
-  const test = scores ? scores[TEST_KEY_OF[metric]] : null;
+  const key = TEST_KEY_OF[metric];
+  const test = scores && key ? scores[key] : null;
   const since = now - range * 86400000;
   return (test?.history ?? [])
     .filter((h) => new Date(h.at).getTime() >= since)

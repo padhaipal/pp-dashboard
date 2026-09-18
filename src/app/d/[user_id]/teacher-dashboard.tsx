@@ -24,10 +24,12 @@ import {
   displayName,
   EMPTY_ROOT_TEXT,
   fmtDelta,
+  fmtMinutes,
   fmtPct,
   fmtPctInt,
   geoChildrenOf,
   METRIC_BY,
+  usageColor,
   nipColor,
   profileUrl,
   scoresUrl,
@@ -582,14 +584,15 @@ function StudentTiles({
   t: T;
 }) {
   const short = METRIC_BY[metric].short;
+  const isUsage = metric === "usage"; // score = minutes, delta in minutes
   return (
     <div className="absolute inset-0 z-10 overflow-y-auto bg-[#eaf0f6] p-3 sm:p-5" data-testid="student-tiles">
       {!students.length && <p className="py-10 text-center text-sm text-zinc-400">{t("No students yet.")}</p>}
       <div className="mx-auto grid max-w-5xl gap-2.5 sm:gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))" }}>
         {students.map((s) => {
           const pct = s.score == null ? null : s.score * 100;
-          const col = pct == null ? UNCOVERED : nipColor(pct);
-          const fg = pct != null && pct >= 50 && pct < 80 ? "#1c1917" : "#ffffff";
+          const col = isUsage ? usageColor(s.score) : pct == null ? UNCOVERED : nipColor(pct);
+          const fg = col === "#f59e0b" ? "#1c1917" : "#ffffff";
           const d = s.delta;
           return (
             <div
@@ -603,9 +606,9 @@ function StudentTiles({
               <div className="flex w-full justify-center text-[13px] font-bold sm:text-sm">
                 <EditableStudentName studentId={s.student_id} name={s.name} fallback={s.label} onSaved={(name) => onRename(s.student_id, name)} t={t} />
               </div>
-              <div className="text-xl font-extrabold tabular-nums sm:text-2xl">{fmtPctInt(pct)}</div>
+              <div className="text-xl font-extrabold tabular-nums sm:text-2xl">{isUsage ? fmtMinutes(s.score) : fmtPctInt(pct)}</div>
               <div className="text-[9px] font-semibold opacity-90">{short}</div>
-              <div className="text-[11px] font-bold tabular-nums">{d == null ? "—" : `${Math.abs(d) < 0.5 ? "→" : d > 0 ? "▲" : "▼"} ${(d >= 0 ? "+" : "") + d.toFixed(1)}%`}</div>
+              <div className="text-[11px] font-bold tabular-nums">{d == null ? "—" : `${Math.abs(d) < 0.5 ? "→" : d > 0 ? "▲" : "▼"} ${(d >= 0 ? "+" : "") + d.toFixed(1)}${isUsage ? " min" : "%"}`}</div>
             </div>
           );
         })}
