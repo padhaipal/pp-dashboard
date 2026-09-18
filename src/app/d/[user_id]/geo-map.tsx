@@ -451,9 +451,12 @@ export function GeoMap(props: GeoMapProps) {
               );
             })}
 
-          {/* schools as dots */}
+          {/* schools as dots — SVG paints in order, so grey (no Lifteracy
+              user / no score) dots go first and coloured ones sit on top */}
           {childType === "school" &&
-            projected.map((p) => {
+            [...projected]
+              .sort((a, b) => Number(childFill(a.child) !== UNCOVERED) - Number(childFill(b.child) !== UNCOVERED))
+              .map((p) => {
               const on = hoverId === p.child.id || selectedId === p.child.id;
               const [t1, t2] = tipFor(p.child, false);
               const r = (on ? 9 : 6) / k;
