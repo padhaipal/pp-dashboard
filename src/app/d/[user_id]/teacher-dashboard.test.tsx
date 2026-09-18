@@ -137,7 +137,11 @@ describe("TeacherDashboard", () => {
     const shareBar = screen.getByTestId("share-bar");
     expect(shareBar.previousElementSibling?.getAttribute("data-testid")).toBe("map-card");
     expect(screen.getByTestId("share-link").textContent).toBe("lifteracy.ai/d/u1");
-    expect(screen.getByRole("link", { name: /What is Lifteracy\?/ }).getAttribute("href")).toBe("https://example.com/explainer");
+    // the website's "See Lifteracy in Action" clip is embedded, with a quiet share row for it
+    expect(screen.queryByRole("link", { name: /What is Lifteracy\?/ })).toBeNull();
+    expect(screen.getByTestId("explainer-video").getAttribute("src")).toBe("https://framerusercontent.com/assets/UzlwOpPmZp3DVtJKOUr7hrlM8.mp4");
+    expect(screen.getByTestId("video-share-link").getAttribute("href")).toBe("https://www.lifteracy.ai/#video");
+    expect(screen.getByRole("button", { name: "Copy link" })).toBeDefined();
     // ancestors are title-cased, the school name is left as-is
     expect(screen.getByTestId("location-title").textContent).toBe("India  -  Uttar Pradesh  -  JHS CHINHAT");
     // one headline card only at school level

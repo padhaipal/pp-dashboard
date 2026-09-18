@@ -124,6 +124,8 @@ const HI: Record<string, string> = {
   Copy: "कॉपी करें",
   "Copied!": "कॉपी हो गया!",
   "What is Lifteracy?": "लिफ्टरेसी क्या है?",
+  "Share this video": "यह वीडियो साझा करें",
+  "Copy link": "लिंक कॉपी करें",
   // misc
   Yes: "हाँ",
   No: "नहीं",

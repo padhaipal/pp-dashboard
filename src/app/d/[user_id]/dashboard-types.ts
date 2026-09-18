@@ -162,6 +162,12 @@ export const INCOMPLETE_FILL = "#000000";
 export const INCOMPLETE_TOOLTIP = "District boundaries not yet available for this state";
 export const ACCENT = "#1d9edf";
 
+// "See Lifteracy in Action" — the clip embedded on www.lifteracy.ai/#video
+// (Framer-hosted mp4, CORS *, immutable). Shown in the teacher's share bar;
+// the share link points parents at the website section, not the raw file.
+export const EXPLAINER_VIDEO_URL = "https://framerusercontent.com/assets/UzlwOpPmZp3DVtJKOUr7hrlM8.mp4";
+export const EXPLAINER_SHARE_URL = "https://www.lifteracy.ai/#video";
+
 const lerp = (a: number[], b: number[], t: number) => a.map((v, i) => v + (b[i] - v) * t);
 export function scoreRGB(p: number): number[] {
   const red = [239, 68, 68],

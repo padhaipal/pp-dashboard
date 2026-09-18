@@ -14,6 +14,8 @@ import {
   CHILD_OFFICER,
   csvUrl,
   DEFAULT_RANGE,
+  EXPLAINER_SHARE_URL,
+  EXPLAINER_VIDEO_URL,
   mediaUrl,
   METRIC_BY,
   METRICS,
@@ -34,7 +36,7 @@ import {
   type UserMedia,
 } from "./dashboard-types";
 import { LANGS, type Lang, type T } from "./i18n";
-import { IconCopy, IconQuestion } from "./icons";
+import { IconCopy } from "./icons";
 
 const same: T = (s) => s;
 
@@ -190,22 +192,32 @@ export function MvpLangToggle({ lang, setLang }: { lang: Lang; setLang: (l: Lang
 
 // ------------------------------------------------------------------ share bar
 
-// Teachers only, rendered just below the map card: the /r/<phone> referral
-// link parents message to enrol under this teacher, in large mono text with
-// a Copy button and the "What is Lifteracy?" explainer (when seeded).
-export function MvpShareBar({ shareLink, explainerUrl, t = same }: { shareLink: string; explainerUrl: string | null; t?: T }) {
+// Copies `text` to the clipboard; "Copied!" for 1.6 s. Shared by the two
+// share controls below.
+function useCopy(text: string): { copied: boolean; copy: () => void } {
   const [copied, setCopied] = useState(false);
   useEffect(() => {
     if (!copied) return;
     const id = setTimeout(() => setCopied(false), 1600);
     return () => clearTimeout(id);
   }, [copied]);
-  const copyLink = () => {
+  const copy = () => {
     const done = () => setCopied(true);
     if (typeof navigator !== "undefined" && navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(shareLink).then(done, done);
+      navigator.clipboard.writeText(text).then(done, done);
     } else done();
   };
+  return { copied, copy };
+}
+
+// Teachers only, rendered just below the map card: the /r/<phone> referral
+// link parents message to enrol under this teacher, in large mono text with
+// a Copy button; then the "See Lifteracy in Action" clip from
+// www.lifteracy.ai (inline <video>) with a deliberately quiet
+// "Share this video · Copy link" row under it.
+export function MvpShareBar({ shareLink, t = same }: { shareLink: string; t?: T }) {
+  const link = useCopy(shareLink);
+  const video = useCopy(EXPLAINER_SHARE_URL);
   const display = shareLink.replace(/^https?:\/\//, "");
   return (
     <div className="mx-auto mt-6 max-w-6xl px-6" data-testid="share-bar">
@@ -215,15 +227,20 @@ export function MvpShareBar({ shareLink, explainerUrl, t = same }: { shareLink: 
           <a href={shareLink} className="min-w-0 select-all break-all text-center font-mono text-2xl font-extrabold tracking-tight text-zinc-900 sm:text-4xl" data-testid="share-link">
             {display}
           </a>
-          <button type="button" onClick={copyLink} className="inline-flex items-center gap-1.5 rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-semibold text-zinc-600 hover:bg-zinc-50">
-            <IconCopy /> {copied ? t("Copied!") : t("Copy")}
+          <button type="button" onClick={link.copy} className="inline-flex items-center gap-1.5 rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-semibold text-zinc-600 hover:bg-zinc-50">
+            <IconCopy /> {link.copied ? t("Copied!") : t("Copy")}
           </button>
         </div>
-        {explainerUrl && (
-          <a href={explainerUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-sm font-semibold text-blue-600 hover:underline">
-            <IconQuestion /> {t("What is Lifteracy?")}
+        <video src={EXPLAINER_VIDEO_URL} controls preload="metadata" playsInline className="mt-1 w-full max-w-2xl rounded-xl bg-black" data-testid="explainer-video" />
+        <div className="flex items-center gap-2 text-[11px] text-zinc-400">
+          <span>{t("Share this video")}</span>
+          <a href={EXPLAINER_SHARE_URL} target="_blank" rel="noreferrer" className="select-all font-mono text-zinc-500 hover:text-zinc-700" data-testid="video-share-link">
+            {EXPLAINER_SHARE_URL.replace(/^https?:\/\//, "")}
           </a>
-        )}
+          <button type="button" onClick={video.copy} className="rounded border border-zinc-200 px-1.5 py-0.5 text-[10px] font-semibold text-zinc-500 hover:bg-zinc-50">
+            {video.copied ? t("Copied!") : t("Copy link")}
+          </button>
+        </div>
       </div>
     </div>
   );
