@@ -101,6 +101,17 @@ describe("TeacherDashboard", () => {
     expect(screen.getByTestId("location-title").textContent).toBe("India");
   });
 
+  it("survives a pan whose release lands before the queued move (no error box)", async () => {
+    render(<TeacherDashboard profile={PROFILE} incompleteStates={[]} />);
+    const svg = (await screen.findByTestId("geo-map")).querySelector("svg")!;
+    fireEvent.pointerDown(svg, { pointerType: "mouse", clientX: 10, clientY: 10 });
+    fireEvent.pointerMove(svg, { pointerType: "mouse", clientX: 40, clientY: 25 });
+    fireEvent.pointerLeave(svg);
+    fireEvent.pointerMove(svg, { pointerType: "mouse", clientX: 60, clientY: 30 });
+    await waitFor(() => expect(screen.queryByText(/Something went wrong/)).toBeNull());
+    expect(screen.getByTestId("geo-map")).toBeTruthy();
+  });
+
   it("builds the CSV link from the current metric and range (range bar lives in the Performance card)", async () => {
     const { fn } = makeFetch();
     vi.stubGlobal("fetch", vi.fn(fn));
@@ -241,7 +252,12 @@ describe("TeacherDashboard", () => {
       ...SCORES,
       entity: block.geo_entity,
       child_type: "school" as const,
-      children: [school("g-s1", "09010100101", "PS Govt", 26.86, 80.96, "government"), school("g-s2", "09010100102", "Little Stars", 26.84, 80.94, "private")],
+      children: [
+        school("g-s1", "09010100101", "PS Govt", 26.86, 80.96, "government"),
+        school("g-s2", "09010100102", "Little Stars", 26.84, 80.94, "private"),
+        // listed first but unscored: must be painted BELOW the coloured dots
+        { ...school("g-s0", "09010100100", "Empty School", 26.85, 80.95, "government"), using_lifteracy: false, pass_rate: null, n: 0 },
+      ],
       most_improved: [],
     };
     const { fn } = makeFetch({ scoresById: { "g-blk": scores } });
@@ -256,6 +272,11 @@ describe("TeacherDashboard", () => {
     expect(priv.getAttribute("data-management")).toBe("private");
     expect(container.querySelector('circle[data-id="g-s1"]')).not.toBeNull();
     expect(container.querySelector('rect[data-id="g-s1"]')).toBeNull();
+    // grey dot first in document order, coloured dots after it (on top)
+    const order = [...container.querySelectorAll("[data-id]")].map((el) => el.getAttribute("data-id"));
+    expect(order).toContain("g-s0");
+    expect(order.indexOf("g-s0")).toBeLessThan(order.indexOf("g-s1"));
+    expect(order.indexOf("g-s0")).toBeLessThan(order.indexOf("g-s2"));
     // same colour scale for both (score colour, not a management colour)
     expect(priv.getAttribute("fill")).toBe(container.querySelector('circle[data-id="g-s1"]')!.getAttribute("fill"));
     const legend = screen.getByTestId("school-kind-legend").textContent ?? "";
