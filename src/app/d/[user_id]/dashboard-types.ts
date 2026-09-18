@@ -2,7 +2,11 @@
 // Mirrors the pp-sketch contract for /users/:id/public, /geo-entities/:id/scores
 // and /geo-entities/:id/spotlight. No React, no DOM — safe to import anywhere.
 
-export type Metric = "nipun_g2" | "nipun_g3" | "mpl_b";
+// "usage" is the leading indicator: active minutes per student on the day
+// before as_of; pass = strictly more than USAGE_PASS_MINUTES. Its per-student
+// `score` is minutes (absent = 0), its `delta` is in minutes.
+export type Metric = "usage" | "nipun_g2" | "nipun_g3" | "mpl_b";
+export const USAGE_PASS_MINUTES = 5;
 export type Range = 30 | 90;
 export type GeoType = "country" | "state" | "district" | "block" | "school";
 // school → teacher (the referrers of its students) → student
@@ -77,7 +81,8 @@ export type StudentChild = {
 export type TestSnapshotPoint = { at: string; score: number; passed: boolean };
 export type SnapshotTestScore = { status: "ok" | "insufficient_data"; attempts_available: number; latest?: TestSnapshotPoint; history?: TestSnapshotPoint[] };
 export type LiteracyTestScores = { nipun_grade_2: SnapshotTestScore; nipun_grade_3: SnapshotTestScore; mpl_b: SnapshotTestScore };
-export const TEST_KEY_OF: Record<Metric, keyof LiteracyTestScores> = { nipun_g2: "nipun_grade_2", nipun_g3: "nipun_grade_3", mpl_b: "mpl_b" };
+// No test history for "usage" (undefined → empty series).
+export const TEST_KEY_OF: Partial<Record<Metric, keyof LiteracyTestScores>> = { nipun_g2: "nipun_grade_2", nipun_g3: "nipun_grade_3", mpl_b: "mpl_b" };
 
 // GET users/:id/media — the student's recent voice notes (newest first).
 export type MediaRow = {
@@ -117,14 +122,16 @@ export type SpotlightEntry = { child: Child; official: Official } | null;
 export type SpotlightResponse = { top: SpotlightEntry; most_improved: SpotlightEntry };
 
 export const METRICS: { key: Metric; label: string; short: string }[] = [
+  { key: "usage", label: "Daily usage (5+ min)", short: "Usage" },
   { key: "nipun_g2", label: "NIPUN grade 2 proxy", short: "NIPUN g2 proxy" },
   { key: "nipun_g3", label: "NIPUN grade 3 proxy", short: "NIPUN g3 proxy" },
   { key: "mpl_b", label: "MPL-B proxy", short: "MPL-B proxy" },
 ];
 export const METRIC_BY: Record<Metric, { key: Metric; label: string; short: string }> = {
-  nipun_g2: METRICS[0],
-  nipun_g3: METRICS[1],
-  mpl_b: METRICS[2],
+  usage: METRICS[0],
+  nipun_g2: METRICS[1],
+  nipun_g3: METRICS[2],
+  mpl_b: METRICS[3],
 };
 export const RANGES: Range[] = [30, 90];
 export const DEFAULT_METRIC: Metric = "nipun_g3";
@@ -213,6 +220,9 @@ export function binOf(passRate: number | null): Bin {
 // tint, headline figure and legend swatch (the map keeps the continuous scale).
 // `v` is a percentage 0–100; null → UNCOVERED grey.
 export const nipColor = (v: number | null): string => (v == null ? UNCOVERED : v >= 80 ? "#16a34a" : v >= 50 ? "#f59e0b" : "#dc2626");
+// Per-student usage: green past the 5-minute mark, amber for some use, red for none.
+export const usageColor = (minutes: number | null): string => (minutes == null || minutes <= 0 ? "#dc2626" : minutes > USAGE_PASS_MINUTES ? "#16a34a" : "#f59e0b");
+export const fmtMinutes = (minutes: number | null): string => (minutes == null ? "—" : `${Math.round(minutes)} min`);
 
 // ------------------------------------------------------------------ urls
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { binColor, binOf, childFill, scoreColor, UNCOVERED } from "./dashboard-types";
+import { binColor, binOf, childFill, DEFAULT_METRIC, fmtMinutes, METRIC_BY, METRICS, scoreColor, TEST_KEY_OF, UNCOVERED, usageColor } from "./dashboard-types";
 import { parseIncompleteStates } from "./incomplete-states";
 import { jitterLatLng, JITTER_MAX_M } from "./map-helpers";
 
@@ -43,5 +43,22 @@ describe("school jitter", () => {
     const dLng = (lng - 80.9) * 111_320 * Math.cos((26.8 * Math.PI) / 180);
     expect(Math.hypot(dLat, dLng)).toBeLessThanOrEqual(JITTER_MAX_M + 1);
     expect(jitterLatLng("SCH-2", 26.8, 80.9)).not.toEqual([lat, lng]);
+  });
+});
+
+describe("usage metric", () => {
+  it("sits first in the toggle order, has no test history, and formats minutes", () => {
+    expect(METRICS[0].key).toBe("usage");
+    expect(METRICS.map((m) => m.key)).toEqual(["usage", "nipun_g2", "nipun_g3", "mpl_b"]);
+    expect(METRIC_BY.usage.short).toBe("Usage");
+    expect(DEFAULT_METRIC).toBe("nipun_g3");
+    expect(TEST_KEY_OF.usage).toBeUndefined();
+    expect(fmtMinutes(null)).toBe("—");
+    expect(fmtMinutes(7.4)).toBe("7 min");
+    // strictly more than 5 minutes is a pass
+    expect(usageColor(5)).toBe("#f59e0b");
+    expect(usageColor(5.1)).toBe("#16a34a");
+    expect(usageColor(0)).toBe("#dc2626");
+    expect(usageColor(null)).toBe("#dc2626");
   });
 });
