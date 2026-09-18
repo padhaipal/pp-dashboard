@@ -349,7 +349,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
           </div>
 
           {/* teachers only: the referral link parents use to enrol under this teacher, right below the map card */}
-          {profile.geo_entity?.type === "school" && <MvpShareBar shareLink={profile.share_link} explainerUrl={profile.explainer_url} t={t} />}
+          {profile.geo_entity?.type === "school" && <MvpShareBar shareLink={profile.share_link} t={t} />}
 
           {scores && !emptyRoot && childType && (
             <>
