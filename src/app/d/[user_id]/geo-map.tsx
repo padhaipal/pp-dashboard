@@ -338,7 +338,12 @@ export function GeoMap(props: GeoMapProps) {
     const dx = e.clientX - drag.current.x,
       dy = e.clientY - drag.current.y;
     if (Math.abs(dx) + Math.abs(dy) > 4) moved.current = true;
-    setTf((t) => ({ ...t, x: drag.current!.tx + dx, y: drag.current!.ty + dy }));
+    // Read the ref here, not inside the updater: React applies continuous
+    // (pointermove) updates after discrete ones (pointerup/leave), by which
+    // time onPointerUp has nulled drag.current.
+    const nx = drag.current.tx + dx,
+      ny = drag.current.ty + dy;
+    setTf((t) => ({ ...t, x: nx, y: ny }));
   };
   const onPointerUp = () => {
     drag.current = null;

@@ -101,6 +101,17 @@ describe("TeacherDashboard", () => {
     expect(screen.getByTestId("location-title").textContent).toBe("India");
   });
 
+  it("survives a pan whose release lands before the queued move (no error box)", async () => {
+    render(<TeacherDashboard profile={PROFILE} incompleteStates={[]} />);
+    const svg = (await screen.findByTestId("geo-map")).querySelector("svg")!;
+    fireEvent.pointerDown(svg, { pointerType: "mouse", clientX: 10, clientY: 10 });
+    fireEvent.pointerMove(svg, { pointerType: "mouse", clientX: 40, clientY: 25 });
+    fireEvent.pointerLeave(svg);
+    fireEvent.pointerMove(svg, { pointerType: "mouse", clientX: 60, clientY: 30 });
+    await waitFor(() => expect(screen.queryByText(/Something went wrong/)).toBeNull());
+    expect(screen.getByTestId("geo-map")).toBeTruthy();
+  });
+
   it("builds the CSV link from the current metric and range (range bar lives in the Performance card)", async () => {
     const { fn } = makeFetch();
     vi.stubGlobal("fetch", vi.fn(fn));
