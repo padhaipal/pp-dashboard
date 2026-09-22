@@ -35,7 +35,8 @@ export type StaffUser = {
   id: string;
   external_id: string;
   name: string | null;
-  role: string;
+  // null on accounts created before pp-sketch defaulted role to 'student'.
+  role: string | null;
   role_title: string | null;
   staff_notes: string | null;
   geo_entity_id: string | null;
@@ -64,7 +65,7 @@ async function serverMessage(res: Response): Promise<string> {
   return `HTTP ${res.status}`;
 }
 
-function isStaffRole(role: string): boolean {
+function isStaffRole(role: string | null): boolean {
   return role !== "dev" && role !== "admin";
 }
 
@@ -405,14 +406,15 @@ type CreateResult =
 // deactivated account: the tab must not touch either.
 type Mode = "create" | "update" | "promote" | "blocked";
 
-function isProtectedRole(role: string): boolean {
+function isProtectedRole(role: string | null): boolean {
   return role === "dev" || role === "admin";
 }
 
 function modeFor(row: StaffUser | null): Mode {
   if (!row) return "create";
   if (isProtectedRole(row.role) || row.deleted_at !== null) return "blocked";
-  if (row.role === "student") return "promote";
+  // A null role is a learner from before the server defaulted it.
+  if (row.role === "student" || row.role === null) return "promote";
   return "update";
 }
 
@@ -635,7 +637,7 @@ function ExistingNote({ row, mode }: { row: StaffUser; mode: Mode }) {
   if (mode === "promote") {
     return (
       <p className="text-xs text-emerald-800 mt-1">
-        Existing learner: {who} (student). Submitting promotes this account to staff; pick a geo entity
+        Existing learner: {who} ({row.role ?? "student"}). Submitting promotes this account to staff; pick a geo entity
         {row.name ? "" : " and enter a name"}. Blank fields keep their current values.
       </p>
     );
