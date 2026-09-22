@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useState, type ReactNode } from "react";
 
-// Staff onboarding console: "Create" (new staff user + WhatsApp deep link)
-// and "Find" (lookup, edit, deactivate/reactivate). Every backend call goes
+// Staff onboarding console: "Create / update" (new staff user + WhatsApp
+// deep link, or a partial update when the number already belongs to a staff
+// user) and "Find" (lookup, edit, deactivate/reactivate). Every backend call goes
 // through /api/proxy/<path> to pp-sketch; the proxy allowlist in
 // src/app/api/proxy/[...path]/route.ts must permit each path used here.
 
@@ -252,8 +253,12 @@ const EMPTY_FORM: FormValues = {
   roleTouched: false,
 };
 
-function canSubmit(v: FormValues): boolean {
-  return v.name.trim().length > 0 && normalisePhone(v.phone).length > 0 && v.geo !== null;
+// Create needs every field; update only needs the phone (blank fields keep
+// the stored value).
+function canSubmit(v: FormValues, mode: "create" | "update" = "create"): boolean {
+  if (normalisePhone(v.phone).length === 0) return false;
+  if (mode === "update") return true;
+  return v.name.trim().length > 0 && v.geo !== null;
 }
 
 function StaffForm({
@@ -263,6 +268,8 @@ function StaffForm({
   submitLabel,
   busy,
   submitDisabled,
+  mode = "create",
+  phoneNote,
 }: {
   values: FormValues;
   onChange: (next: FormValues) => void;
@@ -270,6 +277,9 @@ function StaffForm({
   submitLabel: string;
   busy: boolean;
   submitDisabled?: boolean;
+  mode?: "create" | "update";
+  // Rendered under the WhatsApp number (Create tab: existing-user notice).
+  phoneNote?: ReactNode;
 }) {
   const uid = useId();
   const [phoneBlurred, setPhoneBlurred] = useState(false);
@@ -310,11 +320,15 @@ function StaffForm({
           placeholder="10-digit number or full international"
           className={inputCls}
         />
-        {phoneBlurred && values.phone.length > 0 && (
+        {phoneBlurred && normalised.length === 0 && (
+          <p className="text-xs text-red-600 mt-1">WhatsApp number required</p>
+        )}
+        {phoneBlurred && normalised.length > 0 && (
           <p className="text-xs text-zinc-500 mt-1">
             Will be saved as <code className="text-zinc-800">{normalised}</code>
           </p>
         )}
+        {phoneNote}
       </div>
       <div>
         <span className={labelCls}>Geo entity</span>
@@ -366,7 +380,7 @@ function StaffForm({
       </div>
       <button
         type="submit"
-        disabled={busy || submitDisabled || !canSubmit(values)}
+        disabled={busy || submitDisabled || !canSubmit(values, mode)}
         className={primaryBtnCls}
       >
         {busy ? "..." : submitLabel}
@@ -375,67 +389,165 @@ function StaffForm({
   );
 }
 
-// --------------------------------------------------------------- create tab
+// ------------------------------------------------------- create / update tab
 
-type CreateResult = { ok: true; name: string; link: string } | { ok: false; message: string };
+type CreateResult =
+  | { ok: true; verb: "Created" | "Updated"; name: string; link: string }
+  | { ok: false; verb: "created" | "updated"; message: string };
+
+// Staff user whose external_id equals `phone` exactly, or null. Keyed by
+// phone so a stale lookup never applies to the number now in the field.
+type PhoneLookup = { phone: string; row: StaffUser | null };
 
 function CreateTab() {
   const [values, setValues] = useState<FormValues>(EMPTY_FORM);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<CreateResult | null>(null);
+  const [lookup, setLookup] = useState<PhoneLookup | null>(null);
+  const [lookupError, setLookupError] = useState<string | null>(null);
+
+  const phone = normalisePhone(values.phone);
+  const debouncedPhone = useDebounced(phone, 300);
+  // Only a settled lookup for the current number counts; while it is in
+  // flight (or the number is too short) the form behaves as "create".
+  const existing = lookup?.phone === phone ? lookup.row : null;
+  const mode: "create" | "update" = existing ? "update" : "create";
+  const deactivated = existing !== null && existing.deleted_at !== null;
+
+  useEffect(() => {
+    if (debouncedPhone.length < 10) return;
+    let cancelled = false;
+    const params = new URLSearchParams({ q: debouncedPhone });
+    fetch(`/api/proxy/users/lookup?${params.toString()}`)
+      .then(async (res) => {
+        if (!res.ok) throw new Error(await serverMessage(res));
+        return (await res.json()) as StaffUser[];
+      })
+      .then((rows) => {
+        if (cancelled) return;
+        const row = rows.find((u) => u.external_id === debouncedPhone && isStaffRole(u.role)) ?? null;
+        setLookup({ phone: debouncedPhone, row });
+        setLookupError(null);
+      })
+      .catch((err: Error) => {
+        if (cancelled) return;
+        setLookup({ phone: debouncedPhone, row: null });
+        setLookupError(err.message);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [debouncedPhone]);
 
   const submit = async () => {
-    if (!values.geo) return;
-    const name = values.name.trim();
-    const body: Record<string, string> = {
-      name,
-      external_id: normalisePhone(values.phone),
-      geo_entity_id: values.geo.id,
-    };
-    if (values.roleTitle.trim()) body.role_title = values.roleTitle.trim();
-    if (values.notes.trim()) body.staff_notes = values.notes.trim();
-
     setBusy(true);
     setResult(null);
     try {
-      const res = await fetch("/api/proxy/users/staff-create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      if (!res.ok) {
-        setResult({ ok: false, message: await serverMessage(res) });
-        return;
+      if (existing) {
+        await update(existing);
+      } else {
+        await create();
       }
-      const data = (await res.json()) as { user: StaffUser; link: string };
-      setResult({ ok: true, name, link: data.link });
-      setValues(EMPTY_FORM);
     } catch (err) {
-      setResult({ ok: false, message: (err as Error).message });
+      setResult({ ok: false, verb: existing ? "updated" : "created", message: (err as Error).message });
     } finally {
       setBusy(false);
     }
   };
 
+  const create = async () => {
+    if (!values.geo) return;
+    const name = values.name.trim();
+    const body: Record<string, string> = {
+      name,
+      external_id: phone,
+      geo_entity_id: values.geo.id,
+    };
+    if (values.roleTitle.trim()) body.role_title = values.roleTitle.trim();
+    if (values.notes.trim()) body.staff_notes = values.notes.trim();
+
+    const res = await fetch("/api/proxy/users/staff-create", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      setResult({ ok: false, verb: "created", message: await serverMessage(res) });
+      return;
+    }
+    const data = (await res.json()) as { user: StaffUser; link: string };
+    setResult({ ok: true, verb: "Created", name, link: data.link });
+    setValues(EMPTY_FORM);
+  };
+
+  // Only non-blank fields are sent, so a blank field keeps its stored value.
+  const update = async (user: StaffUser) => {
+    const body: Record<string, string> = {};
+    if (values.name.trim()) body.name = values.name.trim();
+    if (values.geo) body.new_geo_entity_id = values.geo.id;
+    if (values.roleTitle.trim()) body.new_role_title = values.roleTitle.trim();
+    if (values.notes.trim()) body.new_staff_notes = values.notes.trim();
+    if (Object.keys(body).length === 0) {
+      setResult({ ok: false, verb: "updated", message: "fill in at least one field to change" });
+      return;
+    }
+
+    const res = await fetch(`/api/proxy/users/${encodeURIComponent(user.id)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      setResult({ ok: false, verb: "updated", message: await serverMessage(res) });
+      return;
+    }
+    const name = body.name ?? user.name ?? user.external_id;
+    setResult({ ok: true, verb: "Updated", name, link: user.link });
+    setValues(EMPTY_FORM);
+  };
+
+  const phoneNote = existing ? (
+    deactivated ? (
+      <p className="text-xs text-red-600 mt-1">
+        This number belongs to a deactivated account ({existing.name ?? "(no name)"}) and cannot be
+        updated here. Please contact the next level up the Lifteracy hierarchy about reactivating it.
+      </p>
+    ) : (
+      <p className="text-xs text-emerald-800 mt-1">
+        Existing user: {existing.name ?? "(no name)"}
+        {existing.role_title ? ` · ${existing.role_title}` : ""}
+        {existing.geo_entity_name ? ` · ${existing.geo_entity_name}` : ""}. Submitting updates this
+        user; blank fields keep their current values.
+      </p>
+    )
+  ) : lookupError ? (
+    <p className="text-xs text-red-600 mt-1">Could not check for an existing user — {lookupError}</p>
+  ) : null;
+
   return (
     <div className="space-y-4">
       {result && result.ok && (
         <div className="border border-emerald-300 bg-emerald-50 rounded p-3 space-y-2 text-sm">
-          <p className="text-emerald-800">Created. Send this link to {result.name}:</p>
+          <p className="text-emerald-800">
+            {result.verb}. Send this link to {result.name}:
+          </p>
           <CopyLink link={result.link} />
         </div>
       )}
       {result && !result.ok && (
         <p className="text-sm text-red-600 border border-red-200 bg-red-50 rounded p-3">
-          Not created — {result.message}
+          Not {result.verb} — {result.message}
         </p>
       )}
       <StaffForm
         values={values}
         onChange={setValues}
         onSubmit={submit}
-        submitLabel="Create user"
+        submitLabel={mode === "update" ? "Update user" : "Create user"}
         busy={busy}
+        mode={mode}
+        submitDisabled={deactivated}
+        phoneNote={phoneNote}
       />
     </div>
   );
@@ -721,7 +833,7 @@ export function OnboardingConsole() {
     <div className="bg-white rounded-lg border border-zinc-200 shadow-sm">
       <div className="flex gap-1 border-b border-zinc-200 px-3" role="tablist">
         <button type="button" role="tab" aria-selected={tab === "create"} className={tabCls("create")} onClick={() => setTab("create")}>
-          Create
+          Create / update
         </button>
         <button type="button" role="tab" aria-selected={tab === "find"} className={tabCls("find")} onClick={() => setTab("find")}>
           Find

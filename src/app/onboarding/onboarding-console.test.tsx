@@ -19,12 +19,31 @@ function jsonResponse(status: number, body: unknown): Response {
   } as unknown as Response;
 }
 
-// Routes geo search to a fixed hit and staff-create to the given response.
-function mockFetch(create: { status: number; body: unknown }) {
+const EXISTING = {
+  id: "u1",
+  external_id: "919876543210",
+  name: "Asha",
+  role: "education_official",
+  role_title: "Teacher",
+  staff_notes: null,
+  geo_entity_id: "g1",
+  geo_entity_name: "Govt Primary School",
+  geo_entity_type: "school",
+  deleted_at: null,
+  link: "https://wa.me/1234567890?text=hi",
+};
+
+// Routes geo search to a fixed hit, the phone lookup to `lookup` (default:
+// no existing user) and staff-create / PATCH users/:id to `create`.
+function mockFetch(create: { status: number; body: unknown }, lookup: unknown[] = []) {
   const fn = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = typeof input === "string" ? input : input.toString();
     if (url.startsWith("/api/proxy/geo-entities/search")) return jsonResponse(200, [GEO]);
+    if (url.startsWith("/api/proxy/users/lookup")) return jsonResponse(200, lookup);
     if (url === "/api/proxy/users/staff-create" && init?.method === "POST") {
+      return jsonResponse(create.status, create.body);
+    }
+    if (url === "/api/proxy/users/u1" && init?.method === "PATCH") {
       return jsonResponse(create.status, create.body);
     }
     return jsonResponse(404, { message: `unmocked ${url}` });
@@ -82,5 +101,53 @@ describe("OnboardingConsole create tab", () => {
     await fillAndSubmit();
 
     expect(await screen.findByText("Not created — phone already registered")).toBeDefined();
+  });
+
+  it("shows 'WhatsApp number required' when the number is left blank", async () => {
+    mockFetch({ status: 201, body: {} });
+    render(<OnboardingConsole />);
+    fireEvent.blur(screen.getByLabelText("WhatsApp number"));
+    expect(screen.getByText("WhatsApp number required")).toBeDefined();
+    expect((screen.getByRole("button", { name: "Create user" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+});
+
+describe("OnboardingConsole update mode", () => {
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
+
+  it("switches to update when the number belongs to a staff user and PATCHes only filled fields", async () => {
+    const fetchMock = mockFetch({ status: 200, body: { id: "u1" } }, [EXISTING]);
+    render(<OnboardingConsole />);
+    fireEvent.change(screen.getByLabelText("WhatsApp number"), { target: { value: "9876543210" } });
+
+    // Debounced lookup → existing-user notice and relabelled button.
+    expect(await screen.findByText(/Existing user: Asha · Teacher · Govt Primary School/)).toBeDefined();
+    const button = screen.getByRole("button", { name: "Update user" }) as HTMLButtonElement;
+    expect(button.disabled).toBe(false);
+
+    fireEvent.change(screen.getByLabelText("Notes"), { target: { value: "Prefers Hindi" } });
+    fireEvent.click(button);
+
+    expect(await screen.findByText("Updated. Send this link to Asha:")).toBeDefined();
+    expect(screen.getByDisplayValue(EXISTING.link)).toBeDefined();
+
+    const patchCall = fetchMock.mock.calls.find(([u, init]) => u === "/api/proxy/users/u1" && init?.method === "PATCH");
+    expect(patchCall).toBeDefined();
+    expect(JSON.parse(patchCall![1]!.body as string)).toEqual({ new_staff_notes: "Prefers Hindi" });
+    expect(fetchMock.mock.calls.find(([u]) => u === "/api/proxy/users/staff-create")).toBeUndefined();
+    expect((screen.getByLabelText("WhatsApp number") as HTMLInputElement).value).toBe("");
+  });
+
+  it("refuses to update a deactivated user and points up the hierarchy", async () => {
+    mockFetch({ status: 200, body: {} }, [{ ...EXISTING, deleted_at: "2026-01-01T00:00:00Z" }]);
+    render(<OnboardingConsole />);
+    fireEvent.change(screen.getByLabelText("WhatsApp number"), { target: { value: "9876543210" } });
+
+    expect(await screen.findByText(/deactivated account \(Asha\)/)).toBeDefined();
+    expect(screen.getByText(/next level up the Lifteracy hierarchy/)).toBeDefined();
+    expect((screen.getByRole("button", { name: "Update user" }) as HTMLButtonElement).disabled).toBe(true);
   });
 });
