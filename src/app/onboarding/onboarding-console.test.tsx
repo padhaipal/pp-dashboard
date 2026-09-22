@@ -170,6 +170,15 @@ describe("OnboardingConsole update mode", () => {
     expect(fetchMock.mock.calls.find(([u]) => u === "/api/proxy/users/staff-create")).toBeUndefined();
   });
 
+  it("treats a null role as a student to promote", async () => {
+    mockFetch({ status: 200, body: { id: "u1" } }, [{ ...EXISTING, role: null, name: "Ravi" }]);
+    render(<OnboardingConsole />);
+    fireEvent.change(screen.getByLabelText("WhatsApp number"), { target: { value: "9876543210" } });
+
+    expect(await screen.findByText(/Existing learner: Ravi \(student\)/)).toBeDefined();
+    expect(screen.getByRole("button", { name: "Promote to staff" })).toBeDefined();
+  });
+
   it("refuses dev/admin numbers", async () => {
     mockFetch({ status: 200, body: {} }, [{ ...EXISTING, role: "dev", name: "David" }]);
     render(<OnboardingConsole />);
