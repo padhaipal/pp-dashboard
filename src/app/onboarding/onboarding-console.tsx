@@ -253,12 +253,17 @@ const EMPTY_FORM: FormValues = {
   roleTouched: false,
 };
 
-// Create needs every field; update only needs the phone (blank fields keep
-// the stored value).
-function canSubmit(v: FormValues, mode: "create" | "update" = "create"): boolean {
+// Which fields must be filled besides the phone. Create needs both; an
+// update of an existing staff user needs neither (blank keeps the stored
+// value); promoting a student needs a geo entity and a name if it has none.
+type Required = { name: boolean; geo: boolean };
+const REQUIRE_ALL: Required = { name: true, geo: true };
+
+function canSubmit(v: FormValues, required: Required = REQUIRE_ALL): boolean {
   if (normalisePhone(v.phone).length === 0) return false;
-  if (mode === "update") return true;
-  return v.name.trim().length > 0 && v.geo !== null;
+  if (required.name && v.name.trim().length === 0) return false;
+  if (required.geo && v.geo === null) return false;
+  return true;
 }
 
 function StaffForm({
@@ -268,7 +273,7 @@ function StaffForm({
   submitLabel,
   busy,
   submitDisabled,
-  mode = "create",
+  required = REQUIRE_ALL,
   phoneNote,
 }: {
   values: FormValues;
@@ -277,7 +282,7 @@ function StaffForm({
   submitLabel: string;
   busy: boolean;
   submitDisabled?: boolean;
-  mode?: "create" | "update";
+  required?: Required;
   // Rendered under the WhatsApp number (Create tab: existing-user notice).
   phoneNote?: ReactNode;
 }) {
@@ -380,7 +385,7 @@ function StaffForm({
       </div>
       <button
         type="submit"
-        disabled={busy || submitDisabled || !canSubmit(values, mode)}
+        disabled={busy || submitDisabled || !canSubmit(values, required)}
         className={primaryBtnCls}
       >
         {busy ? "..." : submitLabel}
@@ -391,13 +396,46 @@ function StaffForm({
 
 // ------------------------------------------------------- create / update tab
 
+type Verb = "Created" | "Updated" | "Promoted";
 type CreateResult =
-  | { ok: true; verb: "Created" | "Updated"; name: string; link: string }
-  | { ok: false; verb: "created" | "updated"; message: string };
+  | { ok: true; verb: Verb; name: string; link: string }
+  | { ok: false; verb: "created" | "updated" | "promoted"; message: string };
 
-// Staff user whose external_id equals `phone` exactly, or null. Keyed by
-// phone so a stale lookup never applies to the number now in the field.
+// What the number resolves to. "blocked" covers dev/admin accounts and any
+// deactivated account: the tab must not touch either.
+type Mode = "create" | "update" | "promote" | "blocked";
+
+function isProtectedRole(role: string): boolean {
+  return role === "dev" || role === "admin";
+}
+
+function modeFor(row: StaffUser | null): Mode {
+  if (!row) return "create";
+  if (isProtectedRole(row.role) || row.deleted_at !== null) return "blocked";
+  if (row.role === "student") return "promote";
+  return "update";
+}
+
+// Exact-match lookup across every role (any_role=1); null when the number
+// belongs to nobody.
+async function findByPhone(phone: string): Promise<StaffUser | null> {
+  const params = new URLSearchParams({ q: phone, any_role: "1" });
+  const res = await fetch(`/api/proxy/users/lookup?${params.toString()}`);
+  if (!res.ok) throw new Error(await serverMessage(res));
+  const rows = (await res.json()) as StaffUser[];
+  return rows.find((u) => u.external_id === phone) ?? null;
+}
+
+// Result of the debounced lookup, keyed by phone so a stale response never
+// applies to the number now in the field.
 type PhoneLookup = { phone: string; row: StaffUser | null };
+
+const SUBMIT_LABEL: Record<Mode, string> = {
+  create: "Create user",
+  update: "Update user",
+  promote: "Promote to staff",
+  blocked: "Create user",
+};
 
 function CreateTab() {
   const [values, setValues] = useState<FormValues>(EMPTY_FORM);
@@ -409,23 +447,21 @@ function CreateTab() {
   const phone = normalisePhone(values.phone);
   const debouncedPhone = useDebounced(phone, 300);
   // Only a settled lookup for the current number counts; while it is in
-  // flight (or the number is too short) the form behaves as "create".
+  // flight (or the number is too short) the form behaves as "create". The
+  // submit handler re-checks the number so this only drives the UI.
   const existing = lookup?.phone === phone ? lookup.row : null;
-  const mode: "create" | "update" = existing ? "update" : "create";
-  const deactivated = existing !== null && existing.deleted_at !== null;
+  const mode = modeFor(existing);
+  const required: Required = {
+    name: mode === "create" || (mode === "promote" && !existing?.name),
+    geo: mode === "create" || mode === "promote",
+  };
 
   useEffect(() => {
     if (debouncedPhone.length < 10) return;
     let cancelled = false;
-    const params = new URLSearchParams({ q: debouncedPhone });
-    fetch(`/api/proxy/users/lookup?${params.toString()}`)
-      .then(async (res) => {
-        if (!res.ok) throw new Error(await serverMessage(res));
-        return (await res.json()) as StaffUser[];
-      })
-      .then((rows) => {
+    findByPhone(debouncedPhone)
+      .then((row) => {
         if (cancelled) return;
-        const row = rows.find((u) => u.external_id === debouncedPhone && isStaffRole(u.role)) ?? null;
         setLookup({ phone: debouncedPhone, row });
         setLookupError(null);
       })
@@ -439,25 +475,45 @@ function CreateTab() {
     };
   }, [debouncedPhone]);
 
+  // Fresh lookup at submit time: the debounced one can be stale or missing
+  // (number typed before hydration, fast paste-and-submit).
   const submit = async () => {
     setBusy(true);
     setResult(null);
     try {
-      if (existing) {
-        await update(existing);
-      } else {
-        await create();
+      const row = await findByPhone(phone);
+      setLookup({ phone, row });
+      switch (modeFor(row)) {
+        case "create":
+          await create();
+          break;
+        case "update":
+          await patch(row!, "Updated", {});
+          break;
+        case "promote":
+          await promote(row!);
+          break;
+        case "blocked":
+          setResult({ ok: false, verb: "updated", message: blockedMessage(row!) });
+          break;
       }
     } catch (err) {
-      setResult({ ok: false, verb: existing ? "updated" : "created", message: (err as Error).message });
+      setResult({ ok: false, verb: "created", message: (err as Error).message });
     } finally {
       setBusy(false);
     }
   };
 
   const create = async () => {
-    if (!values.geo) return;
+    if (!values.geo) {
+      setResult({ ok: false, verb: "created", message: "pick a geo entity" });
+      return;
+    }
     const name = values.name.trim();
+    if (!name) {
+      setResult({ ok: false, verb: "created", message: "full name required" });
+      return;
+    }
     const body: Record<string, string> = {
       name,
       external_id: phone,
@@ -480,15 +536,31 @@ function CreateTab() {
     setValues(EMPTY_FORM);
   };
 
-  // Only non-blank fields are sent, so a blank field keeps its stored value.
-  const update = async (user: StaffUser) => {
-    const body: Record<string, string> = {};
+  // A student becomes education_official. Needs a geo entity (and a name if
+  // the learner record has none) — the same minimum a fresh staff row gets.
+  const promote = async (user: StaffUser) => {
+    if (!values.geo) {
+      setResult({ ok: false, verb: "promoted", message: "pick a geo entity" });
+      return;
+    }
+    if (!user.name && !values.name.trim()) {
+      setResult({ ok: false, verb: "promoted", message: "full name required" });
+      return;
+    }
+    await patch(user, "Promoted", { role: "education_official" });
+  };
+
+  // PATCH users/:id with `extra` plus only the non-blank fields, so a blank
+  // field keeps its stored value.
+  const patch = async (user: StaffUser, verb: "Updated" | "Promoted", extra: Record<string, string>) => {
+    const body: Record<string, string> = { ...extra };
     if (values.name.trim()) body.name = values.name.trim();
     if (values.geo) body.new_geo_entity_id = values.geo.id;
     if (values.roleTitle.trim()) body.new_role_title = values.roleTitle.trim();
     if (values.notes.trim()) body.new_staff_notes = values.notes.trim();
+    const failVerb = verb === "Promoted" ? "promoted" : "updated";
     if (Object.keys(body).length === 0) {
-      setResult({ ok: false, verb: "updated", message: "fill in at least one field to change" });
+      setResult({ ok: false, verb: failVerb, message: "fill in at least one field to change" });
       return;
     }
 
@@ -498,28 +570,16 @@ function CreateTab() {
       body: JSON.stringify(body),
     });
     if (!res.ok) {
-      setResult({ ok: false, verb: "updated", message: await serverMessage(res) });
+      setResult({ ok: false, verb: failVerb, message: await serverMessage(res) });
       return;
     }
     const name = body.name ?? user.name ?? user.external_id;
-    setResult({ ok: true, verb: "Updated", name, link: user.link });
+    setResult({ ok: true, verb, name, link: user.link });
     setValues(EMPTY_FORM);
   };
 
   const phoneNote = existing ? (
-    deactivated ? (
-      <p className="text-xs text-red-600 mt-1">
-        This number belongs to a deactivated account ({existing.name ?? "(no name)"}) and cannot be
-        updated here. Please contact the next level up the Lifteracy hierarchy about reactivating it.
-      </p>
-    ) : (
-      <p className="text-xs text-emerald-800 mt-1">
-        Existing user: {existing.name ?? "(no name)"}
-        {existing.role_title ? ` · ${existing.role_title}` : ""}
-        {existing.geo_entity_name ? ` · ${existing.geo_entity_name}` : ""}. Submitting updates this
-        user; blank fields keep their current values.
-      </p>
-    )
+    <ExistingNote row={existing} mode={mode} />
   ) : lookupError ? (
     <p className="text-xs text-red-600 mt-1">Could not check for an existing user — {lookupError}</p>
   ) : null;
@@ -543,13 +603,50 @@ function CreateTab() {
         values={values}
         onChange={setValues}
         onSubmit={submit}
-        submitLabel={mode === "update" ? "Update user" : "Create user"}
+        submitLabel={SUBMIT_LABEL[mode]}
         busy={busy}
-        mode={mode}
-        submitDisabled={deactivated}
+        required={required}
+        submitDisabled={mode === "blocked"}
         phoneNote={phoneNote}
       />
     </div>
+  );
+}
+
+function blockedMessage(row: StaffUser): string {
+  const who = row.name ?? "(no name)";
+  if (isProtectedRole(row.role)) {
+    return `this number belongs to a ${row.role} account (${who}), which cannot be managed here`;
+  }
+  return `this number belongs to a deactivated account (${who}). Please contact the next level up the Lifteracy hierarchy about reactivating it`;
+}
+
+function ExistingNote({ row, mode }: { row: StaffUser; mode: Mode }) {
+  const who = row.name ?? "(no name)";
+  if (mode === "blocked") {
+    return (
+      <p className="text-xs text-red-600 mt-1">
+        {isProtectedRole(row.role)
+          ? `This number belongs to a ${row.role} account (${who}) and cannot be managed here.`
+          : `This number belongs to a deactivated account (${who}) and cannot be updated here. Please contact the next level up the Lifteracy hierarchy about reactivating it.`}
+      </p>
+    );
+  }
+  if (mode === "promote") {
+    return (
+      <p className="text-xs text-emerald-800 mt-1">
+        Existing learner: {who} (student). Submitting promotes this account to staff; pick a geo entity
+        {row.name ? "" : " and enter a name"}. Blank fields keep their current values.
+      </p>
+    );
+  }
+  return (
+    <p className="text-xs text-emerald-800 mt-1">
+      Existing user: {who}
+      {row.role_title ? ` · ${row.role_title}` : ""}
+      {row.geo_entity_name ? ` · ${row.geo_entity_name}` : ""}. Submitting updates this user; blank fields
+      keep their current values.
+    </p>
   );
 }
 
