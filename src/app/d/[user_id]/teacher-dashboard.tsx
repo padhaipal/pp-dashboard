@@ -31,6 +31,7 @@ import {
   METRIC_BY,
   usageColor,
   nipColor,
+  binColor,
   profileUrl,
   scoresUrl,
   spotlightUrl,
@@ -47,6 +48,7 @@ import {
   type StudentChild,
   UNNAMED,
 } from "./dashboard-types";
+import { BarStrip, type BarItem } from "./bar-strip";
 import { GeoMap } from "./geo-map";
 import { isLang, LANG_STORAGE_KEY, makeT, type Lang, type T } from "./i18n";
 import { AvatarImg, EditableStudentName, MvpLangToggle, MvpMetricToggle, MvpRangeBar, MvpShareBar, MvpTeacherModal, MvpTrend, type ModalSubject } from "./mvp-widgets";
@@ -161,7 +163,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
   const isUsageMetric = metric === "usage";
   const [nounS, nounP] = childType ? CHILD_NOUN[childType] : ["Area", "areas"];
   const officer = childType ? CHILD_OFFICER[childType] : "Official";
-  const metricLabel = t(METRIC_BY[metric].label);
+  const metricLabel = metric === "usage" ? `${t(METRIC_BY[metric].label)} · ${t("yesterday")}` : t(METRIC_BY[metric].label);
 
   // ---- navigation ----
   const drill = useCallback((c: Child) => {
@@ -202,6 +204,35 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
     const pick = (id: string | null) => (id ? geoChildren.find((c) => c.id === id) ?? null : null);
     return pick(hoverId) ?? pick(selId) ?? (spotlight?.top?.child ?? null) ?? geoChildren[0] ?? null;
   }, [hoverId, selId, geoChildren, spotlight]);
+
+  // Bars under the map card: every child of this level (or every student in
+  // the class) with its metric value — pass rate at geo levels, score % or
+  // minutes per student in the class view.
+  const barItems: BarItem[] = useMemo(
+    () =>
+      inClass
+        ? students.map((s) => {
+            const pct = s.score == null ? null : s.score * 100;
+            return {
+              id: s.student_id,
+              name: s.name ?? UNNAMED,
+              sub: t("Student"),
+              value: isUsageMetric ? s.score : pct,
+              display: isUsageMetric ? fmtMinutes(s.score) : fmtPctInt(pct),
+              color: isUsageMetric ? usageColor(s.score) : nipColor(pct),
+            };
+          })
+        : geoChildren.map((c) => ({
+            id: c.id,
+            name: c.name,
+            sub: c.official?.name ? `${c.official.role_title ?? t(CHILD_OFFICER[c.type as keyof typeof CHILD_OFFICER] ?? "")} · ${c.official.name}` : "",
+            value: c.using_lifteracy ? c.pass_rate : null,
+            display: c.using_lifteracy ? fmtPctInt(c.pass_rate) : t("Not using Lifteracy"),
+            color: binColor(c.bin),
+          })),
+    [inClass, students, geoChildren, isUsageMetric, t],
+  );
+  const barMax = inClass && isUsageMetric ? Math.max(30, Math.ceil(Math.max(0, ...students.map((s) => s.score ?? 0)) / 10) * 10) : 100;
 
   // Class view: rank the students by delta ourselves (the API's most_improved is for ChildRows).
   const improvedRows: ImprovedRow[] = useMemo(
@@ -318,7 +349,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
 
           {/* map card: the map (geo levels), teacher cards (school) or student tiles (class), + the up-a-level button */}
           <div
-            className="relative mx-auto mt-6 h-[460px] shrink-0 overflow-hidden rounded-2xl border border-zinc-200 bg-[#eaf0f6] shadow-sm"
+            className="relative mx-auto mt-6 h-[460px] shrink-0 overflow-hidden rounded-t-2xl border border-zinc-200 bg-[#eaf0f6] shadow-sm"
             style={{ width: "min(calc(100% - 3rem), 69rem)" }}
             data-testid="map-card"
           >
@@ -364,6 +395,29 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
               </div>
             </div>
           </div>
+
+          {scores && !emptyRoot && barItems.length > 0 && (
+            <div className="mx-auto shrink-0" style={{ width: "min(calc(100% - 3rem), 69rem)" }} data-testid="bar-strip-wrap">
+              <BarStrip
+                items={barItems}
+                max={barMax}
+                hoverId={hoverId}
+                setHoverId={setHoverId}
+                selId={selId}
+                onClick={(b) => {
+                  if (inClass) {
+                    const st = students.find((x) => x.student_id === b.id);
+                    if (st) openStudent(st);
+                  } else {
+                    const c = geoChildren.find((x) => x.id === b.id);
+                    if (c) select(c);
+                  }
+                }}
+                hint={`${t(inClass ? "students" : nounP)} · ${isUsageMetric ? (inClass ? t("min yesterday") : t("5+ min yesterday")) : t(METRIC_BY[metric].short)} · ${t("click a bar to select")}`}
+                t={t}
+              />
+            </div>
+          )}
 
           {/* teachers only: the referral link parents use to enrol under this teacher, right below the map card */}
           {profile.geo_entity?.type === "school" && <MvpShareBar shareLink={profile.share_link} t={t} />}
@@ -580,7 +634,7 @@ function TeacherCards({
                   <span className="text-lg font-extrabold tabular-nums" style={{ color: col }}>
                     {fmtPctInt(c.pass_rate)}
                   </span>
-                  <span className="text-[10px] leading-tight text-zinc-500">{short}</span>
+                  <span className="text-[10px] leading-tight text-zinc-500">{metric === "usage" ? t("5+ min yesterday") : short}</span>
                 </div>
               </div>
               {/* ≥sm: score + zig-zag trend on the right */}
@@ -589,7 +643,7 @@ function TeacherCards({
                   <div className="text-2xl font-extrabold tabular-nums" style={{ color: col }}>
                     {fmtPctInt(c.pass_rate)}
                   </div>
-                  <div className="text-[10px] leading-tight text-zinc-500">{short}</div>
+                  <div className="text-[10px] leading-tight text-zinc-500">{metric === "usage" ? t("5+ min yesterday") : short}</div>
                 </div>
                 <MvpTrend delta={c.delta} suffix={`${t("last")} ${range} ${t("days")}`} />
               </div>
@@ -647,7 +701,7 @@ function StudentTiles({
                 <EditableStudentName studentId={s.student_id} name={s.name} fallback={UNNAMED} onSaved={(name) => onRename(s.student_id, name)} t={t} />
               </div>
               <div className="text-xl font-extrabold tabular-nums sm:text-2xl">{isUsage ? fmtMinutes(s.score) : fmtPctInt(pct)}</div>
-              <div className="text-[9px] font-semibold opacity-90">{short}</div>
+              <div className="text-[9px] font-semibold opacity-90">{isUsage ? t("min yesterday") : short}</div>
               <div className="text-[11px] font-bold tabular-nums">{d == null ? "—" : `${Math.abs(d) < 0.5 ? "→" : d > 0 ? "▲" : "▼"} ${(d >= 0 ? "+" : "") + d.toFixed(1)}${isUsage ? ` ${t("min")}` : "%"}`}</div>
             </div>
           );
