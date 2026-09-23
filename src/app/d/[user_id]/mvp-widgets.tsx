@@ -107,7 +107,7 @@ export function MvpTrend({ delta, suffix = "" }: { delta: number | null; suffix?
 
 // ------------------------------------------------------------------ toggles
 
-export function MvpMetricToggle({ metric, setMetric }: { metric: Metric; setMetric: (m: Metric) => void }) {
+export function MvpMetricToggle({ metric, setMetric, t = same }: { metric: Metric; setMetric: (m: Metric) => void; t?: T }) {
   return (
     <div className="inline-flex overflow-hidden rounded-lg border border-zinc-300 bg-white text-xs font-semibold shadow-sm" role="group" aria-label="Metric">
       {METRICS.map((m) => (
@@ -118,7 +118,7 @@ export function MvpMetricToggle({ metric, setMetric }: { metric: Metric; setMetr
           aria-pressed={metric === m.key}
           className={"px-3 py-1.5 transition " + (metric === m.key ? "bg-blue-600 text-white" : "text-zinc-600 hover:bg-zinc-50")}
         >
-          {m.label}
+          {t(m.label)}
         </button>
       ))}
     </div>
@@ -231,7 +231,9 @@ export function MvpShareBar({ shareLink, t = same }: { shareLink: string; t?: T 
             <IconCopy /> {link.copied ? t("Copied!") : t("Copy")}
           </button>
         </div>
-        <video src={EXPLAINER_VIDEO_URL} controls preload="metadata" playsInline className="mt-1 w-full max-w-2xl rounded-xl bg-black" data-testid="explainer-video" />
+        {/* poster = a frame of the clip (public/explainer-poster.jpg) so the
+            player never shows a black box before play */}
+        <video src={EXPLAINER_VIDEO_URL} poster="/explainer-poster.jpg" controls preload="metadata" playsInline className="mt-1 w-full max-w-2xl rounded-xl bg-black" data-testid="explainer-video" />
         <div className="flex items-center gap-2 text-[11px] text-zinc-400">
           <span>{t("Share this video")}</span>
           <a href={EXPLAINER_SHARE_URL} target="_blank" rel="noreferrer" className="select-all font-mono text-zinc-500 hover:text-zinc-700" data-testid="video-share-link">

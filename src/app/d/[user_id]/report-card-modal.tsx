@@ -135,7 +135,7 @@ export function RepTrend({ series, label, t = same }: { series: SeriesPoint[]; l
           </text>
         </g>
       ))}
-      <text transform={`translate(12 ${mT + ih / 2}) rotate(-90)`} textAnchor="middle" fontSize={mobile ? 11 : 8.5} fill="#64748b">
+      <text transform={`translate(12 ${mT + ih / 2}) rotate(-90)`} textAnchor="middle" fontSize={mobile ? 12 : 11} fontWeight="600" fill="#475569">
         {yLabel}
       </text>
       {li < 0 ? (

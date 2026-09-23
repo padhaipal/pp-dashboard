@@ -157,7 +157,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
   const inClass = childType === "student";
   const [nounS, nounP] = childType ? CHILD_NOUN[childType] : ["Area", "areas"];
   const officer = childType ? CHILD_OFFICER[childType] : "Official";
-  const metricLabel = METRIC_BY[metric].label;
+  const metricLabel = t(METRIC_BY[metric].label);
 
   // ---- navigation ----
   const drill = useCallback((c: Child) => {
@@ -190,7 +190,10 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
     setModal((m) => (m && m.kind === "student" && m.student.student_id === studentId ? { ...m, student: { ...m.student, name } } : m));
   }, []);
 
-  const locationTitle = [...profile.ancestors, ...stack].map((a) => t(displayName(a.name, a.type))).join("  -  ");
+  // Smallest area first (school, block, district, state, country); the PDF
+  // title reuses the joined string.
+  const titleSegments = [...profile.ancestors, ...stack].reverse().map((a) => t(displayName(a.name, a.type)));
+  const locationTitle = titleSegments.join("  -  ");
   const detailChild = useMemo(() => {
     const pick = (id: string | null) => (id ? geoChildren.find((c) => c.id === id) ?? null : null);
     return pick(hoverId) ?? pick(selId) ?? (spotlight?.top?.child ?? null) ?? geoChildren[0] ?? null;
@@ -274,15 +277,20 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
         <>
           {/* large location title */}
           <div className="mx-auto max-w-6xl px-6 pt-8">
-            <h1 className="text-center text-3xl font-extrabold tracking-tight text-zinc-900 sm:text-4xl" data-testid="location-title">
-              {locationTitle}
+            <h1 className="text-center text-3xl font-extrabold tracking-tight sm:text-4xl" data-testid="location-title">
+              {titleSegments.map((s, i) => (
+                <span key={i} className={i === 0 ? "text-zinc-900" : "font-semibold text-zinc-400"}>
+                  {i > 0 ? "  -  " : ""}
+                  {s}
+                </span>
+              ))}
             </h1>
           </div>
 
           {/* headline stats — narrower, with the shared metric tab */}
           <div className="mx-auto mt-6 max-w-5xl px-6">
             <div className="mb-3 flex justify-center">
-              <MvpMetricToggle metric={metric} setMetric={setMetric} />
+              <MvpMetricToggle metric={metric} setMetric={setMetric} t={t} />
             </div>
             {loaded?.error && <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">Could not load results — {loaded.error}</p>}
             {loading && <p className="text-center text-sm text-zinc-400">{t("Loading your dashboard…")}</p>}
@@ -381,7 +389,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                     {t(nounS)} {t("Performance")}
                   </div>
                   <div className="-mt-3 mb-5 flex justify-center">
-                    <MvpMetricToggle metric={metric} setMetric={setMetric} />
+                    <MvpMetricToggle metric={metric} setMetric={setMetric} t={t} />
                   </div>
                   <div className={CARD + " space-y-6"}>
                     {/* headline share of areas not on Lifteracy at all — hidden at school/class level */}
@@ -404,7 +412,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                         </div>
                         <MvpRangeBar range={range} setRange={setRange} entityId={entity.id} metric={metric} t={t} />
                       </div>
-                      <RepTrend series={scores.series} t={t} />
+                      <RepTrend series={scores.series} label={t(METRIC_BY[metric].short)} t={t} />
                     </div>
                     <div className="border-t border-zinc-100 pt-5">
                       <div className="mb-1 text-base font-semibold text-zinc-800">
@@ -512,7 +520,7 @@ function TeacherCards({
   onClear: () => void;
   t: T;
 }) {
-  const short = METRIC_BY[metric].short;
+  const short = t(METRIC_BY[metric].short);
   return (
     <div className="absolute inset-0 z-10 overflow-y-auto bg-[#eaf0f6] p-3 sm:p-5" onClick={onClear} data-testid="teacher-cards">
       <div className="mx-auto flex max-w-3xl flex-col gap-3">
@@ -583,7 +591,7 @@ function StudentTiles({
   onRename: (studentId: string, name: string) => void;
   t: T;
 }) {
-  const short = METRIC_BY[metric].short;
+  const short = t(METRIC_BY[metric].short);
   const isUsage = metric === "usage"; // score = minutes, delta in minutes
   return (
     <div className="absolute inset-0 z-10 overflow-y-auto bg-[#eaf0f6] p-3 sm:p-5" data-testid="student-tiles">
@@ -608,7 +616,7 @@ function StudentTiles({
               </div>
               <div className="text-xl font-extrabold tabular-nums sm:text-2xl">{isUsage ? fmtMinutes(s.score) : fmtPctInt(pct)}</div>
               <div className="text-[9px] font-semibold opacity-90">{short}</div>
-              <div className="text-[11px] font-bold tabular-nums">{d == null ? "—" : `${Math.abs(d) < 0.5 ? "→" : d > 0 ? "▲" : "▼"} ${(d >= 0 ? "+" : "") + d.toFixed(1)}${isUsage ? " min" : "%"}`}</div>
+              <div className="text-[11px] font-bold tabular-nums">{d == null ? "—" : `${Math.abs(d) < 0.5 ? "→" : d > 0 ? "▲" : "▼"} ${(d >= 0 ? "+" : "") + d.toFixed(1)}${isUsage ? ` ${t("min")}` : "%"}`}</div>
             </div>
           );
         })}

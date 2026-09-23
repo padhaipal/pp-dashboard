@@ -153,8 +153,12 @@ describe("TeacherDashboard", () => {
     expect(screen.getByTestId("explainer-video").getAttribute("src")).toBe("https://framerusercontent.com/assets/UzlwOpPmZp3DVtJKOUr7hrlM8.mp4");
     expect(screen.getByTestId("video-share-link").getAttribute("href")).toBe("https://www.lifteracy.ai/#video");
     expect(screen.getByRole("button", { name: "Copy link" })).toBeDefined();
-    // ancestors are title-cased, the school name is left as-is
-    expect(screen.getByTestId("location-title").textContent).toBe("India  -  Uttar Pradesh  -  JHS CHINHAT");
+    // smallest area first; ancestors are title-cased, the school name is left as-is
+    expect(screen.getByTestId("location-title").textContent).toBe("JHS CHINHAT  -  Uttar Pradesh  -  India");
+    // only the first (smallest) segment is dark
+    const segs = screen.getByTestId("location-title").querySelectorAll("span");
+    expect(segs[0].className).toContain("text-zinc-900");
+    expect(segs[1].className).toContain("text-zinc-400");
     // one headline card only at school level
     const kpis = screen.getByTestId("root-kpis");
     expect(kpis.textContent).toContain("75%");
@@ -170,7 +174,7 @@ describe("TeacherDashboard", () => {
     const tiles = await screen.findAllByTestId("student-tile");
     expect(calls.some((u) => u.includes("/geo-entities/t-1/scores"))).toBe(true);
     expect(tiles.length).toBe(2);
-    expect(screen.getByTestId("location-title").textContent).toBe("India  -  Uttar Pradesh  -  JHS CHINHAT  -  Asha");
+    expect(screen.getByTestId("location-title").textContent).toBe("Asha  -  JHS CHINHAT  -  Uttar Pradesh  -  India");
     // full, uncensored names; a nameless student shows the label as a muted placeholder
     expect(tiles[0].textContent).toContain("Rani Devi");
     expect(tiles[0].textContent).not.toContain("Student 1");
@@ -231,6 +235,8 @@ describe("TeacherDashboard", () => {
     expect(screen.getByRole("link", { name: "ऊपर" })).toBeDefined();
     expect(screen.getByRole("link", { name: "आपकी प्रोफ़ाइल" })).toBeDefined();
     expect(screen.getByTestId("location-title").textContent).toBe("भारत");
+    // the metric toggle follows the language too
+    expect(screen.getAllByRole("button", { name: "निपुण कक्षा 3 प्रॉक्सी" }).length).toBeGreaterThan(0);
     expect(window.localStorage.getItem("lifteracy-dashboard-lang")).toBe("hi");
     window.localStorage.removeItem("lifteracy-dashboard-lang");
   });
