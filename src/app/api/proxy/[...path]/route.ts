@@ -21,6 +21,7 @@ const ADMIN_ALLOWED: { pattern: RegExp; methods: string[] }[] = [
   { pattern: /^media-meta-data\/stid-counts$/, methods: ["GET"] },
   { pattern: /^media-meta-data\/passage-stats$/, methods: ["GET"] },
   { pattern: /^media-meta-data\/passages$/, methods: ["GET"] },
+  { pattern: /^media-meta-data\/passages\.csv$/, methods: ["GET"] },
   { pattern: /^media-meta-data\/generation-failures$/, methods: ["GET"] },
   { pattern: /^media-meta-data\/llm-generate$/, methods: ["POST"] },
   { pattern: /^media-meta-data\/elevenlabs-generate$/, methods: ["POST"] },

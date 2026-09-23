@@ -66,10 +66,19 @@ export function PassageStats() {
           Active reading passages
         </h3>
         <span className="text-xs text-zinc-400">{total} live</span>
+        {/* Plain navigation: the session cookie rides along and the proxy
+            forwards Content-Disposition, so the browser saves the file. */}
+        <a
+          href="/api/proxy/media-meta-data/passages.csv"
+          download
+          className="ml-auto text-xs text-zinc-500 underline hover:text-zinc-700"
+        >
+          Download CSV
+        </a>
         <button
           onClick={() => void load()}
           disabled={loading}
-          className="ml-auto text-xs text-zinc-500 hover:text-zinc-700 disabled:opacity-40"
+          className="text-xs text-zinc-500 hover:text-zinc-700 disabled:opacity-40"
         >
           {loading ? "Refreshing..." : "Refresh"}
         </button>
