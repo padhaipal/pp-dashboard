@@ -34,6 +34,7 @@ import {
   type SeriesPoint,
   type StudentChild,
   type UserMedia,
+  UNNAMED,
 } from "./dashboard-types";
 import { LANGS, type Lang, type T } from "./i18n";
 import { IconCopy } from "./icons";
@@ -107,7 +108,7 @@ export function MvpTrend({ delta, suffix = "" }: { delta: number | null; suffix?
 
 // ------------------------------------------------------------------ toggles
 
-export function MvpMetricToggle({ metric, setMetric }: { metric: Metric; setMetric: (m: Metric) => void }) {
+export function MvpMetricToggle({ metric, setMetric, t = same }: { metric: Metric; setMetric: (m: Metric) => void; t?: T }) {
   return (
     <div className="inline-flex overflow-hidden rounded-lg border border-zinc-300 bg-white text-xs font-semibold shadow-sm" role="group" aria-label="Metric">
       {METRICS.map((m) => (
@@ -118,7 +119,7 @@ export function MvpMetricToggle({ metric, setMetric }: { metric: Metric; setMetr
           aria-pressed={metric === m.key}
           className={"px-3 py-1.5 transition " + (metric === m.key ? "bg-blue-600 text-white" : "text-zinc-600 hover:bg-zinc-50")}
         >
-          {m.label}
+          {t(m.label)}
         </button>
       ))}
     </div>
@@ -231,7 +232,9 @@ export function MvpShareBar({ shareLink, t = same }: { shareLink: string; t?: T 
             <IconCopy /> {link.copied ? t("Copied!") : t("Copy")}
           </button>
         </div>
-        <video src={EXPLAINER_VIDEO_URL} controls preload="metadata" playsInline className="mt-1 w-full max-w-2xl rounded-xl bg-black" data-testid="explainer-video" />
+        {/* poster = a frame of the clip (public/explainer-poster.jpg) so the
+            player never shows a black box before play */}
+        <video src={EXPLAINER_VIDEO_URL} poster="/explainer-poster.jpg" controls preload="metadata" playsInline className="mt-1 w-full max-w-2xl rounded-xl bg-black" data-testid="explainer-video" />
         <div className="flex items-center gap-2 text-[11px] text-zinc-400">
           <span>{t("Share this video")}</span>
           <a href={EXPLAINER_SHARE_URL} target="_blank" rel="noreferrer" className="select-all font-mono text-zinc-500 hover:text-zinc-700" data-testid="video-share-link">
@@ -429,8 +432,8 @@ export function EditableStudentName({
       data-testid="student-name"
     >
       <span className={"truncate " + (name ? "" : "italic opacity-70")}>{name ?? fallback}</span>
-      <span aria-hidden className="text-[0.7em] opacity-40 group-hover:opacity-90">
-        ✎
+      <span aria-hidden className="ml-0.5 inline-flex items-center rounded border border-current px-1 text-[0.65em] font-semibold leading-4 opacity-75 group-hover:opacity-100">
+        ✎ {t("Rename")}
       </span>
     </button>
   );
@@ -498,7 +501,7 @@ export function activitySeries(media: MediaRow[], now = Date.now()): SeriesPoint
   const out: SeriesPoint[] = [];
   for (let i = 6; i >= 0; i--) {
     const d = dayOf(now - i * 86400000);
-    out.push({ date: d, pass_rate: null, n: counts.get(d) ?? 0 });
+    out.push({ date: d, pass_rate: null, n: counts.get(d) ?? 0, mean: null });
   }
   return out;
 }
@@ -510,7 +513,7 @@ export function historySeries(scores: LiteracyTestScores | null, metric: Metric,
   const since = now - range * 86400000;
   return (test?.history ?? [])
     .filter((h) => new Date(h.at).getTime() >= since)
-    .map((h) => ({ date: h.at.slice(0, 10), pass_rate: Math.round(h.score * 1000) / 10, n: 1 }));
+    .map((h) => ({ date: h.at.slice(0, 10), pass_rate: Math.round(h.score * 1000) / 10, n: 1, mean: null }));
 }
 
 // Opens from the Detail card (geo child / teacher) or a student tile.
@@ -611,7 +614,7 @@ export function MvpTeacherModal({
                   <EditableStudentName
                     studentId={subject.student.student_id}
                     name={subject.student.name}
-                    fallback={subject.student.label}
+                    fallback={UNNAMED}
                     onSaved={(name) => onRename?.(subject.student.student_id, name)}
                     t={t}
                   />{" "}

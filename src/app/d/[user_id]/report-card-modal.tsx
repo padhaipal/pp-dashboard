@@ -23,6 +23,7 @@ import {
   type Range,
   type RootStats,
   type SeriesPoint,
+  UNNAMED,
   type SpotlightEntry,
   type SpotlightResponse,
   type StudentChild,
@@ -93,10 +94,37 @@ export function RepKpis({
 
 // ------------------------------------------------------------------ trend
 
-// mvp2's spaghetti chart with the one series the API exposes: the root average
-// (navy, labelled "Average" at its end point) over the 80 % target.
-export function RepTrend({ series, label, t = same }: { series: SeriesPoint[]; label?: string; t?: T }) {
+// mvp2's spaghetti chart. The navy line is the root series; at class level
+// `students` adds one faint line per student (hover a line or its tile to
+// light it up and dim the rest, click a line to pin it). The y-axis follows
+// the metric: percentages with the 80 % NIPUN target for the two NIPUN
+// proxies, percentages without a target for MPL-B, and minutes (from
+// `mean` / student `value`) for usage.
+export type TrendStudent = { id: string; label: string; points: { date: string; value: number | null }[] };
+export function RepTrend({
+  series,
+  label,
+  metric = "nipun_g3",
+  students = [],
+  hoverId = null,
+  setHoverId,
+  pinId = null,
+  setPinId,
+  t = same,
+}: {
+  series: SeriesPoint[];
+  label?: string;
+  metric?: Metric;
+  students?: TrendStudent[];
+  hoverId?: string | null;
+  setHoverId?: (id: string | null) => void;
+  pinId?: string | null;
+  setPinId?: (id: string | null) => void;
+  t?: T;
+}) {
   const mobile = useIsMobile();
+  const isUsage = metric === "usage";
+  const showTarget = metric === "nipun_g2" || metric === "nipun_g3";
   const yLabel = label ?? t("Oral Literacy NIPUN Proxy percentage pass rate");
   const W = mobile ? 440 : 900,
     H = mobile ? 300 : 280,
@@ -106,28 +134,53 @@ export function RepTrend({ series, label, t = same }: { series: SeriesPoint[]; l
     mB = mobile ? 40 : 34,
     iw = W - mL - mR,
     ih = H - mT - mB;
+  // Root value per point: pass rate for the tests, mean minutes for usage.
+  const rootVal = (p: SeriesPoint) => (isUsage ? p.mean : p.pass_rate);
   const n = series.length;
+  const byDate = new Map(series.map((p, i) => [p.date, i]));
+  // Minutes axis grows with the data (multiples of 10, at least 30).
+  const yMax = isUsage
+    ? Math.max(30, Math.ceil(Math.max(0, ...series.map((p) => p.mean ?? 0), ...students.flatMap((s) => s.points.map((q) => q.value ?? 0))) / 10) * 10)
+    : 100;
+  const ticks = isUsage ? Array.from({ length: yMax / 10 + 1 }, (_, i) => i * 10) : [0, 20, 40, 60, 80, 100];
   const x = (i: number) => mL + (n <= 1 ? iw / 2 : (i / (n - 1)) * iw),
-    y = (v: number) => mT + ih - (v / 100) * ih;
-  let d = "",
-    pen = false;
-  series.forEach((s, i) => {
-    if (s.pass_rate == null) {
+    y = (v: number) => mT + ih - (v / yMax) * ih;
+  const pathOf = (pts: Array<{ i: number; v: number | null }>) => {
+    let d = "",
       pen = false;
-      return;
+    for (const p of pts) {
+      if (p.v == null) {
+        pen = false;
+        continue;
+      }
+      d += (pen ? "L" : "M") + x(p.i).toFixed(1) + " " + y(p.v).toFixed(1);
+      pen = true;
     }
-    d += (pen ? "L" : "M") + x(i).toFixed(1) + " " + y(s.pass_rate).toFixed(1);
-    pen = true;
-  });
+    return d;
+  };
+  const rootPts = series.map((p, i) => ({ i, v: rootVal(p) }));
+  const d = pathOf(rootPts);
   let li = -1;
-  for (let i = n - 1; i >= 0; i--) if (series[i].pass_rate != null) {
+  for (let i = n - 1; i >= 0; i--) if (rootPts[i].v != null) {
     li = i;
     break;
   }
+  const hot = pinId ?? hoverId;
   const every = Math.max(1, Math.ceil(n / (mobile ? 4 : 8)));
+  const lines = students.map((s) => {
+    const pts = s.points.filter((q) => byDate.has(q.date)).map((q) => ({ i: byDate.get(q.date)!, v: q.value }));
+    let last = -1;
+    for (let k = pts.length - 1; k >= 0; k--) if (pts[k].v != null) {
+      last = k;
+      break;
+    }
+    return { s, d: pathOf(pts), end: last >= 0 ? pts[last] : null };
+  });
+  // Draw the hot line last so it sits on top.
+  const ordered = [...lines.filter((l) => l.s.id !== hot), ...lines.filter((l) => l.s.id === hot)];
   return (
     <svg data-rep-chart="trend" viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ maxHeight: 300, fontFamily: "Arial, Helvetica, sans-serif" }}>
-      {[0, 20, 40, 60, 80, 100].map((g) => (
+      {ticks.map((g) => (
         <g key={g}>
           <line x1={mL} x2={W - mR} y1={y(g)} y2={y(g)} stroke="#f1f5f9" />
           <text x={mL - 5} y={y(g) + 3} textAnchor="end" fontSize={mobile ? 13 : 9} fill="#94a3b8">
@@ -135,25 +188,58 @@ export function RepTrend({ series, label, t = same }: { series: SeriesPoint[]; l
           </text>
         </g>
       ))}
-      <text transform={`translate(12 ${mT + ih / 2}) rotate(-90)`} textAnchor="middle" fontSize={mobile ? 11 : 8.5} fill="#64748b">
+      <text transform={`translate(12 ${mT + ih / 2}) rotate(-90)`} textAnchor="middle" fontSize={mobile ? 12 : 11} fontWeight="600" fill="#475569">
         {yLabel}
       </text>
-      {li < 0 ? (
+      {li < 0 && lines.every((l) => !l.d) ? (
         <text x={W / 2} y={H / 2} textAnchor="middle" fontSize={mobile ? 16 : 13} fill="#94a3b8">
           {t("No results in this window")}
         </text>
       ) : (
         <>
-          <path d={d} fill="none" stroke="#1e3a5f" strokeWidth={mobile ? 3.8 : 2.8} pointerEvents="none" />
-          <text x={x(li) - 4} y={y(series[li].pass_rate!) - 7} textAnchor="end" fontSize={mobile ? 15 : 11} fontWeight="800" fill="#1e3a5f" pointerEvents="none">
-            {t("Average")}
+          {ordered.map(({ s, d: sd, end }) => {
+            if (!sd) return null;
+            const on = hot === s.id;
+            const dim = hot != null && !on;
+            return (
+              <g key={s.id} data-testid="student-line" data-student-id={s.id} data-hot={on ? "1" : undefined}>
+                <path
+                  d={sd}
+                  fill="none"
+                  stroke={on ? "#2563eb" : "#94a3b8"}
+                  strokeWidth={(on ? 2.4 : 1.4) * (mobile ? 1.5 : 1)}
+                  opacity={dim ? 0.3 : 0.9}
+                  style={{ cursor: setPinId ? "pointer" : undefined }}
+                  onMouseEnter={() => setHoverId?.(s.id)}
+                  onMouseLeave={() => setHoverId?.(null)}
+                  onClick={() => setPinId?.(pinId === s.id ? null : s.id)}
+                />
+                {on && end && end.v != null && (
+                  <text x={x(end.i) - 4} y={y(end.v) - 6} textAnchor="end" fontSize={mobile ? 13 : 10} fontWeight="700" fill="#2563eb" pointerEvents="none">
+                    {s.label}
+                  </text>
+                )}
+              </g>
+            );
+          })}
+          {li >= 0 && (
+            <>
+              <path d={d} fill="none" stroke="#1e3a5f" strokeWidth={mobile ? 3.8 : 2.8} pointerEvents="none" opacity={hot != null ? 0.55 : 1} />
+              <text x={x(li) - 4} y={y(rootPts[li].v!) - 7} textAnchor="end" fontSize={mobile ? 15 : 11} fontWeight="800" fill="#1e3a5f" pointerEvents="none">
+                {t("Average")}
+              </text>
+            </>
+          )}
+        </>
+      )}
+      {showTarget && (
+        <>
+          <line x1={mL} x2={W - mR} y1={y(80)} y2={y(80)} stroke="#ef4444" strokeWidth={mobile ? 2 : 1.3} strokeDasharray="5 3" pointerEvents="none" />
+          <text x={mL + 3} y={y(80) - 4} fontSize={mobile ? 12 : 9} fill="#ef4444" fontWeight="700" pointerEvents="none">
+            {t("80% NIPUN target")}
           </text>
         </>
       )}
-      <line x1={mL} x2={W - mR} y1={y(80)} y2={y(80)} stroke="#ef4444" strokeWidth={mobile ? 2 : 1.3} strokeDasharray="5 3" pointerEvents="none" />
-      <text x={mL + 3} y={y(80) - 4} fontSize={mobile ? 12 : 9} fill="#ef4444" fontWeight="700" pointerEvents="none">
-        {t("80% NIPUN target")}
-      </text>
       {series.map((s, i) =>
         i % every === 0 || i === n - 1 ? (
           <text key={"l" + i} x={x(i)} y={H - 6} textAnchor="middle" fontSize={mobile ? 11 : 8} fill="#94a3b8">
@@ -410,8 +496,8 @@ export function RepMeta({
     return box(
       col,
       <div className="min-w-0">
-        <div className="truncate text-xl font-bold leading-tight text-zinc-900" title={student.label}>
-          {student.label}
+        <div className="truncate text-xl font-bold leading-tight text-zinc-900" title={student.name ?? UNNAMED}>
+          {student.name ?? UNNAMED}
         </div>
         <div className="mt-0.5 text-sm font-medium text-zinc-700">{t("Student")}</div>
         <div className="text-[12px] text-zinc-500">

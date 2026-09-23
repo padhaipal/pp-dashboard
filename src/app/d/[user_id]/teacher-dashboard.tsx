@@ -45,6 +45,7 @@ import {
   type ScoresResponse,
   type SpotlightResponse,
   type StudentChild,
+  UNNAMED,
 } from "./dashboard-types";
 import { GeoMap } from "./geo-map";
 import { isLang, LANG_STORAGE_KEY, makeT, type Lang, type T } from "./i18n";
@@ -88,6 +89,8 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
   const [stack, setStack] = useState<GeoRef[]>(() => (initialProfile.geo_entity ? [toRef(initialProfile.geo_entity)] : []));
   const [data, setData] = useState<Loaded | null>(null);
   const [hoverId, setHoverId] = useState<string | null>(null);
+  // Class view: a student line pinned on the trend chart (click to toggle).
+  const [pinId, setPinId] = useState<string | null>(null);
   const [selId, setSelId] = useState<string | null>(null);
   const [modal, setModal] = useState<ModalSubject | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
@@ -155,9 +158,10 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
   const usingN = geoChildren.filter((c) => c.using_lifteracy).length;
   // mvp2's `inClass`: a drilled class (the children are students) hides Detail + Spotlight.
   const inClass = childType === "student";
+  const isUsageMetric = metric === "usage";
   const [nounS, nounP] = childType ? CHILD_NOUN[childType] : ["Area", "areas"];
   const officer = childType ? CHILD_OFFICER[childType] : "Official";
-  const metricLabel = METRIC_BY[metric].label;
+  const metricLabel = t(METRIC_BY[metric].label);
 
   // ---- navigation ----
   const drill = useCallback((c: Child) => {
@@ -190,7 +194,10 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
     setModal((m) => (m && m.kind === "student" && m.student.student_id === studentId ? { ...m, student: { ...m.student, name } } : m));
   }, []);
 
-  const locationTitle = [...profile.ancestors, ...stack].map((a) => t(displayName(a.name, a.type))).join("  -  ");
+  // Smallest area first (school, block, district, state, country); the PDF
+  // title reuses the joined string.
+  const titleSegments = [...profile.ancestors, ...stack].reverse().map((a) => t(displayName(a.name, a.type)));
+  const locationTitle = titleSegments.join("  -  ");
   const detailChild = useMemo(() => {
     const pick = (id: string | null) => (id ? geoChildren.find((c) => c.id === id) ?? null : null);
     return pick(hoverId) ?? pick(selId) ?? (spotlight?.top?.child ?? null) ?? geoChildren[0] ?? null;
@@ -204,7 +211,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
             .filter((s) => s.delta != null)
             .sort((a, b) => (b.delta ?? 0) - (a.delta ?? 0))
             .slice(0, 5)
-            .map((s) => ({ id: s.student_id, name: s.name ?? s.label, delta: s.delta }))
+            .map((s) => ({ id: s.student_id, name: s.name ?? UNNAMED, delta: s.delta }))
         : (scores?.most_improved ?? []),
     [inClass, students, scores],
   );
@@ -274,15 +281,20 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
         <>
           {/* large location title */}
           <div className="mx-auto max-w-6xl px-6 pt-8">
-            <h1 className="text-center text-3xl font-extrabold tracking-tight text-zinc-900 sm:text-4xl" data-testid="location-title">
-              {locationTitle}
+            <h1 className="text-center text-3xl font-extrabold tracking-tight sm:text-4xl" data-testid="location-title">
+              {titleSegments.map((s, i) => (
+                <span key={i} className={i === 0 ? "text-zinc-900" : "font-semibold text-zinc-400"}>
+                  {i > 0 ? "  -  " : ""}
+                  {s}
+                </span>
+              ))}
             </h1>
           </div>
 
           {/* headline stats — narrower, with the shared metric tab */}
           <div className="mx-auto mt-6 max-w-5xl px-6">
             <div className="mb-3 flex justify-center">
-              <MvpMetricToggle metric={metric} setMetric={setMetric} />
+              <MvpMetricToggle metric={metric} setMetric={setMetric} t={t} />
             </div>
             {loaded?.error && <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">Could not load results — {loaded.error}</p>}
             {loading && <p className="text-center text-sm text-zinc-400">{t("Loading your dashboard…")}</p>}
@@ -313,7 +325,10 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
             {entity.type === "school" ? (
               scores && <TeacherCards teachers={geoChildren} metric={metric} range={range} selId={selId} onSelect={select} onDrill={drill} onClear={() => setSelId(null)} t={t} />
             ) : entity.type === "teacher" ? (
-              scores && <StudentTiles students={students} metric={metric} onOpen={openStudent} onRename={renameStudent} t={t} />
+              scores && <StudentTiles students={students} metric={metric} onOpen={openStudent} onRename={renameStudent} t={t}
+                  hoverId={hoverId}
+                  setHoverId={setHoverId}
+                />
             ) : (
               <GeoMap
                 entity={entity}
@@ -381,7 +396,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                     {t(nounS)} {t("Performance")}
                   </div>
                   <div className="-mt-3 mb-5 flex justify-center">
-                    <MvpMetricToggle metric={metric} setMetric={setMetric} />
+                    <MvpMetricToggle metric={metric} setMetric={setMetric} t={t} />
                   </div>
                   <div className={CARD + " space-y-6"}>
                     {/* headline share of areas not on Lifteracy at all — hidden at school/class level */}
@@ -404,7 +419,25 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                         </div>
                         <MvpRangeBar range={range} setRange={setRange} entityId={entity.id} metric={metric} t={t} />
                       </div>
-                      <RepTrend series={scores.series} t={t} />
+                      <RepTrend
+                        series={scores.series}
+                        label={isUsageMetric ? t("Minutes per student") : t(METRIC_BY[metric].short)}
+                        metric={metric}
+                        students={
+                          inClass
+                            ? (scores.students_series ?? []).map((ss) => ({
+                                id: ss.student_id,
+                                label: students.find((s) => s.student_id === ss.student_id)?.name?.split(/\s+/)[0] ?? UNNAMED,
+                                points: ss.points,
+                              }))
+                            : []
+                        }
+                        hoverId={hoverId}
+                        setHoverId={setHoverId}
+                        pinId={pinId}
+                        setPinId={setPinId}
+                        t={t}
+                      />
                     </div>
                     <div className="border-t border-zinc-100 pt-5">
                       <div className="mb-1 text-base font-semibold text-zinc-800">
@@ -512,7 +545,7 @@ function TeacherCards({
   onClear: () => void;
   t: T;
 }) {
-  const short = METRIC_BY[metric].short;
+  const short = t(METRIC_BY[metric].short);
   return (
     <div className="absolute inset-0 z-10 overflow-y-auto bg-[#eaf0f6] p-3 sm:p-5" onClick={onClear} data-testid="teacher-cards">
       <div className="mx-auto flex max-w-3xl flex-col gap-3">
@@ -575,15 +608,19 @@ function StudentTiles({
   metric,
   onOpen,
   onRename,
+  hoverId,
+  setHoverId,
   t,
 }: {
   students: StudentChild[];
   metric: Metric;
   onOpen: (s: StudentChild) => void;
   onRename: (studentId: string, name: string) => void;
+  hoverId: string | null;
+  setHoverId: (id: string | null) => void;
   t: T;
 }) {
-  const short = METRIC_BY[metric].short;
+  const short = t(METRIC_BY[metric].short);
   const isUsage = metric === "usage"; // score = minutes, delta in minutes
   return (
     <div className="absolute inset-0 z-10 overflow-y-auto bg-[#eaf0f6] p-3 sm:p-5" data-testid="student-tiles">
@@ -601,14 +638,17 @@ function StudentTiles({
               style={{ background: col, color: fg }}
               title="Click for this student's dashboard"
               onClick={() => onOpen(s)}
+              onMouseEnter={() => setHoverId(s.student_id)}
+              onMouseLeave={() => setHoverId(null)}
               data-testid="student-tile"
+              data-hot={hoverId === s.student_id ? "1" : undefined}
             >
               <div className="flex w-full justify-center text-[13px] font-bold sm:text-sm">
-                <EditableStudentName studentId={s.student_id} name={s.name} fallback={s.label} onSaved={(name) => onRename(s.student_id, name)} t={t} />
+                <EditableStudentName studentId={s.student_id} name={s.name} fallback={UNNAMED} onSaved={(name) => onRename(s.student_id, name)} t={t} />
               </div>
               <div className="text-xl font-extrabold tabular-nums sm:text-2xl">{isUsage ? fmtMinutes(s.score) : fmtPctInt(pct)}</div>
               <div className="text-[9px] font-semibold opacity-90">{short}</div>
-              <div className="text-[11px] font-bold tabular-nums">{d == null ? "—" : `${Math.abs(d) < 0.5 ? "→" : d > 0 ? "▲" : "▼"} ${(d >= 0 ? "+" : "") + d.toFixed(1)}${isUsage ? " min" : "%"}`}</div>
+              <div className="text-[11px] font-bold tabular-nums">{d == null ? "—" : `${Math.abs(d) < 0.5 ? "→" : d > 0 ? "▲" : "▼"} ${(d >= 0 ? "+" : "") + d.toFixed(1)}${isUsage ? ` ${t("min")}` : "%"}`}</div>
             </div>
           );
         })}
