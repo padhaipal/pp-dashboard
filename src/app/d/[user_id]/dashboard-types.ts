@@ -94,7 +94,10 @@ export type MediaRow = {
 };
 export type UserMedia = { user: { name: string | null }; media: MediaRow[] };
 
-export type SeriesPoint = { date: string; pass_rate: number | null; n: number };
+// mean: usage = minutes per student that day (absent = 0); tests = mean score × 100.
+export type SeriesPoint = { date: string; pass_rate: number | null; n: number; mean: number | null };
+// Class level only: one line per student (minutes for usage, score × 100 for tests, null = gap).
+export type StudentSeries = { student_id: string; points: { date: string; value: number | null }[] };
 
 export type RootStats = {
   pass_rate: number | null;
@@ -113,6 +116,7 @@ export type ScoresResponse = {
   entity: GeoRef;
   root: RootStats;
   series: SeriesPoint[];
+  students_series?: StudentSeries[];
   child_type: ChildType;
   children: Child[] | StudentChild[];
   most_improved: Child[];
@@ -134,6 +138,9 @@ export const METRIC_BY: Record<Metric, { key: Metric; label: string; short: stri
   mpl_b: METRICS[3],
 };
 export const RANGES: Range[] = [30, 90];
+// Shown wherever a student has no name yet (the API's "Student N" label is
+// never displayed): tiles, modal title, most-improved rows, trend lines.
+export const UNNAMED = "~";
 export const DEFAULT_METRIC: Metric = "nipun_g3";
 export const DEFAULT_RANGE: Range = 30;
 

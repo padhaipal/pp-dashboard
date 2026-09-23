@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { TeacherDashboard } from "./teacher-dashboard";
+import { RepTrend } from "./report-card-modal";
 import { EMPTY_ROOT_TEXT, INCOMPLETE_TOOLTIP } from "./dashboard-types";
 import { CHILD_UP, EMPTY_SCORES, PROFILE, PROFILE_SCHOOL, SCORES, SCORES_CLASS, SCORES_SCHOOL, SCORES_UP, makeFetch } from "./test-fixtures";
 
@@ -180,7 +181,16 @@ describe("TeacherDashboard", () => {
     expect(tiles[0].textContent).not.toContain("Student 1");
     expect(tiles[0].textContent).toContain("90%");
     expect(tiles[0].textContent).toContain("▲ +5.0%");
-    expect(tiles[1].textContent).toContain("Student 2");
+    // an unnamed student shows "~" (never the API's "Student N"), with a visible Rename pill
+    expect(tiles[1].textContent).not.toContain("Student 2");
+    expect(tiles[1].textContent).toContain("~");
+    expect(tiles[1].textContent).toContain("Rename");
+    // the trend draws one faint line per student with data; hovering a tile lights its line
+    expect(document.querySelectorAll('[data-testid="student-line"]')).toHaveLength(1);
+    fireEvent.mouseEnter(tiles[0]);
+    expect(document.querySelector('[data-testid="student-line"][data-student-id="s-1"]')?.getAttribute("data-hot")).toBe("1");
+    fireEvent.mouseLeave(tiles[0]);
+    expect(document.querySelector('[data-testid="student-line"][data-student-id="s-1"]')?.getAttribute("data-hot")).toBeNull();
     expect(tiles[1].textContent).toContain("—");
     // the teacher renames a student in place: click the name → input → Enter → PATCH users/:id/profile
     fireEvent.click(tiles[1].querySelector('[data-testid="student-name"]')!);
@@ -223,6 +233,22 @@ describe("TeacherDashboard", () => {
     // up → back to the teacher cards
     fireEvent.click(screen.getByRole("button", { name: "Up a level" }));
     expect((await screen.findAllByTestId("teacher-card")).length).toBe(1);
+  });
+
+  it("trend axis follows the metric: minutes without a target for usage, 80% target only for NIPUN", () => {
+    const pts = [
+      { date: "2026-09-17", pass_rate: 25, n: 4, mean: 12.5 },
+      { date: "2026-09-18", pass_rate: 50, n: 4, mean: 41 },
+    ];
+    const { container, rerender } = render(<RepTrend series={pts} metric="usage" label="Minutes per student" />);
+    expect(container.textContent).not.toContain("80% NIPUN target");
+    expect(container.textContent).toContain("Minutes per student");
+    // axis grows to the next multiple of 10 above the data (41 → 50)
+    expect(container.textContent).toContain("50");
+    rerender(<RepTrend series={pts} metric="mpl_b" label="MPL-B proxy" />);
+    expect(container.textContent).not.toContain("80% NIPUN target");
+    rerender(<RepTrend series={pts} metric="nipun_g3" label="NIPUN g3 proxy" />);
+    expect(container.textContent).toContain("80% NIPUN target");
   });
 
   it("switches the UI to Hindi and remembers the choice", async () => {

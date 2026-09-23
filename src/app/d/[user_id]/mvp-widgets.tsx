@@ -34,6 +34,7 @@ import {
   type SeriesPoint,
   type StudentChild,
   type UserMedia,
+  UNNAMED,
 } from "./dashboard-types";
 import { LANGS, type Lang, type T } from "./i18n";
 import { IconCopy } from "./icons";
@@ -431,8 +432,8 @@ export function EditableStudentName({
       data-testid="student-name"
     >
       <span className={"truncate " + (name ? "" : "italic opacity-70")}>{name ?? fallback}</span>
-      <span aria-hidden className="text-[0.7em] opacity-40 group-hover:opacity-90">
-        ✎
+      <span aria-hidden className="ml-0.5 inline-flex items-center rounded border border-current px-1 text-[0.65em] font-semibold leading-4 opacity-75 group-hover:opacity-100">
+        ✎ {t("Rename")}
       </span>
     </button>
   );
@@ -500,7 +501,7 @@ export function activitySeries(media: MediaRow[], now = Date.now()): SeriesPoint
   const out: SeriesPoint[] = [];
   for (let i = 6; i >= 0; i--) {
     const d = dayOf(now - i * 86400000);
-    out.push({ date: d, pass_rate: null, n: counts.get(d) ?? 0 });
+    out.push({ date: d, pass_rate: null, n: counts.get(d) ?? 0, mean: null });
   }
   return out;
 }
@@ -512,7 +513,7 @@ export function historySeries(scores: LiteracyTestScores | null, metric: Metric,
   const since = now - range * 86400000;
   return (test?.history ?? [])
     .filter((h) => new Date(h.at).getTime() >= since)
-    .map((h) => ({ date: h.at.slice(0, 10), pass_rate: Math.round(h.score * 1000) / 10, n: 1 }));
+    .map((h) => ({ date: h.at.slice(0, 10), pass_rate: Math.round(h.score * 1000) / 10, n: 1, mean: null }));
 }
 
 // Opens from the Detail card (geo child / teacher) or a student tile.
@@ -613,7 +614,7 @@ export function MvpTeacherModal({
                   <EditableStudentName
                     studentId={subject.student.student_id}
                     name={subject.student.name}
-                    fallback={subject.student.label}
+                    fallback={UNNAMED}
                     onSaved={(name) => onRename?.(subject.student.student_id, name)}
                     t={t}
                   />{" "}

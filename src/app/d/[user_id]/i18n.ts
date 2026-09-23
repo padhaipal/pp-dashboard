@@ -73,6 +73,7 @@ const HI: Record<string, string> = {
   "NIPUN g2 proxy": "निपुण क.2 प्रॉक्सी",
   "NIPUN g3 proxy": "निपुण क.3 प्रॉक्सी",
   min: "मिनट",
+  "Minutes per student": "प्रति छात्र मिनट",
   "No results in this window": "इस अवधि में कोई परिणाम नहीं",
   "Download CSV": "CSV डाउनलोड करें",
   attempts: "प्रयास",
