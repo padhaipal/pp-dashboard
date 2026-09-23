@@ -145,9 +145,17 @@ describe("TeacherDashboard", () => {
     expect(cards[0].textContent).toContain("Teacher · 4 students");
     expect(cards[0].textContent).toContain("75%");
     expect(cards[0].textContent).toContain("+2.0% last 30 days");
-    // teachers get their referral link right under the map card (officials never do — see the country test)
+    // teachers get their referral link right under the map card + bar strip (officials never do — see the country test)
     const shareBar = screen.getByTestId("share-bar");
-    expect(shareBar.previousElementSibling?.getAttribute("data-testid")).toBe("map-card");
+    expect(shareBar.previousElementSibling?.getAttribute("data-testid")).toBe("bar-strip-wrap");
+    expect(shareBar.previousElementSibling?.previousElementSibling?.getAttribute("data-testid")).toBe("map-card");
+    // one bar per teacher under the map; hovering it marks the bar hot and shows the card
+    const teacherBars = document.querySelectorAll('[data-testid="bar-strip"] [data-testid="bar"]');
+    expect(teacherBars).toHaveLength(1);
+    fireEvent.mouseEnter(teacherBars[0]);
+    expect(teacherBars[0].getAttribute("data-hot")).toBe("1");
+    expect(screen.getByTestId("bar-card").textContent).toContain("Rank");
+    fireEvent.mouseLeave(screen.getByTestId("bar-strip"));
     expect(screen.getByTestId("share-link").textContent).toBe("lifteracy.ai/d/u1");
     // the website's "See Lifteracy in Action" clip is embedded, with a quiet share row for it
     expect(screen.queryByRole("link", { name: /What is Lifteracy\?/ })).toBeNull();
@@ -185,6 +193,8 @@ describe("TeacherDashboard", () => {
     expect(tiles[1].textContent).not.toContain("Student 2");
     expect(tiles[1].textContent).toContain("~");
     expect(tiles[1].textContent).toContain("Rename");
+    // one bar per student in the class view, valued by score
+    expect(document.querySelectorAll('[data-testid="bar-strip"] [data-testid="bar"]')).toHaveLength(2);
     // the trend draws one faint line per student with data; hovering a tile lights its line
     expect(document.querySelectorAll('[data-testid="student-line"]')).toHaveLength(1);
     fireEvent.mouseEnter(tiles[0]);
@@ -245,10 +255,23 @@ describe("TeacherDashboard", () => {
     expect(container.textContent).toContain("Minutes per student");
     // axis grows to the next multiple of 10 above the data (41 → 50)
     expect(container.textContent).toContain("50");
+    // usage rows are dated the morning after the activity: labels show the activity day
+    expect(container.textContent).toContain("16 Sept");
+    expect(container.textContent).toContain("17 Sept");
+    expect(container.textContent).not.toContain("18 Sept");
     rerender(<RepTrend series={pts} metric="mpl_b" label="MPL-B proxy" />);
     expect(container.textContent).not.toContain("80% NIPUN target");
     rerender(<RepTrend series={pts} metric="nipun_g3" label="NIPUN g3 proxy" />);
     expect(container.textContent).toContain("80% NIPUN target");
+  });
+
+  it("trend average line plots the metric mean, not the pass rate", () => {
+    // pass rate 100 but mean score 50 → the Average label sits at the 50 line
+    const pts = [{ date: "2026-09-18", pass_rate: 100, n: 2, mean: 50 }];
+    const { container } = render(<RepTrend series={pts} metric="nipun_g3" label="NIPUN g3 proxy" />);
+    const avg = Array.from(container.querySelectorAll("text")).find((el) => el.textContent === "Average")!;
+    // desktop geometry: mT 12, ih 234 → y(50) = 129, label 7 above
+    expect(Number(avg.getAttribute("y"))).toBeCloseTo(122, 0);
   });
 
   it("switches the UI to Hindi and remembers the choice", async () => {

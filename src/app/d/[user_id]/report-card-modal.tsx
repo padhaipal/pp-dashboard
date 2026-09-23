@@ -49,6 +49,7 @@ export function useIsMobile(bp = 640): boolean {
   return m;
 }
 
+const shiftDay = (iso: string, days: number) => new Date(new Date(`${iso}T00:00:00Z`).getTime() + days * 86400000).toISOString().slice(0, 10);
 const fmtDay = (iso: string) => {
   const d = new Date(iso + "T00:00:00Z");
   return isNaN(d.getTime()) ? iso : d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", timeZone: "UTC" });
@@ -134,8 +135,12 @@ export function RepTrend({
     mB = mobile ? 40 : 34,
     iw = W - mL - mR,
     ih = H - mT - mB;
-  // Root value per point: pass rate for the tests, mean minutes for usage.
-  const rootVal = (p: SeriesPoint) => (isUsage ? p.mean : p.pass_rate);
+  // Root value per point: the MEAN of the metric (mean score × 100, or mean
+  // minutes for usage) — the average of the student lines, not the pass rate.
+  const rootVal = (p: SeriesPoint) => p.mean;
+  // A usage row dated D holds the previous IST day's minutes: label it by
+  // that day so the axis ends at yesterday, the last complete day.
+  const dayLabel = (iso: string) => fmtDay(isUsage ? shiftDay(iso, -1) : iso);
   const n = series.length;
   const byDate = new Map(series.map((p, i) => [p.date, i]));
   // Minutes axis grows with the data (multiples of 10, at least 30).
@@ -243,7 +248,7 @@ export function RepTrend({
       {series.map((s, i) =>
         i % every === 0 || i === n - 1 ? (
           <text key={"l" + i} x={x(i)} y={H - 6} textAnchor="middle" fontSize={mobile ? 11 : 8} fill="#94a3b8">
-            {fmtDay(s.date)}
+            {dayLabel(s.date)}
           </text>
         ) : null,
       )}
