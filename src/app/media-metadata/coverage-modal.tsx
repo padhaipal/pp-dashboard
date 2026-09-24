@@ -16,6 +16,9 @@ interface MediaItem {
   content_mime: string | null;
   generation_script: string | null;
   wa_media_url: string | null;
+  // media_details.sendable !== false. Optional until the backend that
+  // returns it is deployed; absent = on.
+  sendable?: boolean;
 }
 
 function formatIST(iso: string) {
@@ -166,6 +169,33 @@ function MediaCard({
   const [confirming, setConfirming] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Reversible per-row opt-out from random selection (unlike Delete, which
+  // drops S3 and cascades). Local state so the card reflects the flip
+  // without a refetch; offered on every card, view-only ones included, since
+  // explanation text rows live in the view-only comprehension table.
+  const [sendable, setSendable] = useState(item.sendable !== false);
+  const [toggling, setToggling] = useState(false);
+
+  const handleToggleSendable = async () => {
+    setToggling(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/proxy/media-meta-data/${item.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sendable: !sendable }),
+      });
+      if (!res.ok) {
+        setError(`Update failed (${res.status})`);
+        return;
+      }
+      setSendable(!sendable);
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setToggling(false);
+    }
+  };
 
   const handleDelete = async () => {
     setDeleting(true);
@@ -208,10 +238,30 @@ function MediaCard({
           <span className="text-xs text-zinc-400">
             {formatIST(item.created_at)}
           </span>
+          {!sendable && (
+            <span
+              className="text-xs px-1.5 py-0.5 rounded bg-amber-50 text-amber-700"
+              title="Excluded from random selection — never sent to students"
+            >
+              off
+            </span>
+          )}
         </div>
-        {onDelete && (
-          <div className="flex items-center gap-2">
-            {!confirming ? (
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => void handleToggleSendable()}
+            disabled={toggling || deleting}
+            title={
+              sendable
+                ? "Stop sending this row (reversible)"
+                : "Resume sending this row"
+            }
+            className="text-xs text-zinc-500 hover:text-zinc-700 disabled:opacity-40"
+          >
+            {toggling ? "..." : sendable ? "Turn off" : "Turn on"}
+          </button>
+          {onDelete &&
+            (!confirming ? (
               <button
                 onClick={() => setConfirming(true)}
                 disabled={deleting}
@@ -236,9 +286,8 @@ function MediaCard({
                   Cancel
                 </button>
               </>
-            )}
-          </div>
-        )}
+            ))}
+        </div>
       </div>
 
       <div className="mb-3">
