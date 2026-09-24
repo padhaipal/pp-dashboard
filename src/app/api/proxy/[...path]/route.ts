@@ -14,6 +14,8 @@ const ADMIN_ALLOWED: { pattern: RegExp; methods: string[] }[] = [
   { pattern: /^users\/[^/]+\/scores$/, methods: ["GET"] },
   { pattern: /^users\/[^/]+\/literacy-test-scores$/, methods: ["GET"] },
   { pattern: /^media-meta-data\/[^/]+\/audio$/, methods: ["GET"] },
+  // Reversible sendable toggle on one media row (uuid-guarded upstream).
+  { pattern: /^media-meta-data\/[^/]+$/, methods: ["PATCH"] },
   { pattern: /^media-meta-data\/[^/]+\/dashboard-transcript$/, methods: ["POST", "PATCH", "DELETE"] },
   { pattern: /^media-meta-data\/coverage$/, methods: ["GET"] },
   { pattern: /^media-meta-data\/by-state-transition-id$/, methods: ["GET", "DELETE"] },
