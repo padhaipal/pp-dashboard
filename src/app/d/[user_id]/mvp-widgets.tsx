@@ -15,6 +15,8 @@ import {
   csvUrl,
   DEFAULT_RANGE,
   EXPLAINER_SHARE_URL,
+  MODAL_METRICS,
+  rangeLabel,
   EXPLAINER_VIDEO_URL,
   mediaUrl,
   METRIC_BY,
@@ -29,6 +31,7 @@ import {
   type LiteracyTestScores,
   type MediaRow,
   type Metric,
+  type ModalMetric,
   type Range,
   type ScoresResponse,
   type SeriesPoint,
@@ -38,6 +41,7 @@ import {
 } from "./dashboard-types";
 import { LANGS, type Lang, type T } from "./i18n";
 import { IconCopy } from "./icons";
+import { ScoreChart } from "../../user/[id]/score-chart";
 
 const same: T = (s) => s;
 
@@ -108,10 +112,23 @@ export function MvpTrend({ delta, suffix = "" }: { delta: number | null; suffix?
 
 // ------------------------------------------------------------------ toggles
 
-export function MvpMetricToggle({ metric, setMetric, t = same }: { metric: Metric; setMetric: (m: Metric) => void; t?: T }) {
+// `options` defaults to the dashboard METRICS; the student modal passes
+// MODAL_METRICS (letter scores first).
+export function MvpMetricToggle<M extends string = Metric>({
+  metric,
+  setMetric,
+  options,
+  t = same,
+}: {
+  metric: M;
+  setMetric: (m: M) => void;
+  options?: { key: M; label: string }[];
+  t?: T;
+}) {
+  const opts = (options ?? METRICS) as { key: M; label: string }[];
   return (
     <div className="inline-flex overflow-hidden rounded-lg border border-zinc-300 bg-white text-xs font-semibold shadow-sm" role="group" aria-label="Metric">
-      {METRICS.map((m) => (
+      {opts.map((m) => (
         <button
           key={m.key}
           type="button"
@@ -126,7 +143,7 @@ export function MvpMetricToggle({ metric, setMetric, t = same }: { metric: Metri
   );
 }
 
-// 30 / 90 day window + "Download CSV" (link built from the CURRENT metric +
+// 30 days / all time window + "Download CSV" (link built from the CURRENT metric +
 // range; desktop-only like mvp2 — hidden below the sm breakpoint).
 export function MvpRangeBar({
   range,
@@ -152,7 +169,7 @@ export function MvpRangeBar({
             aria-pressed={range === r}
             className={"px-3 py-1.5 transition " + (range === r ? "bg-zinc-900 text-white" : "text-zinc-600 hover:bg-zinc-50")}
           >
-            {r} {t("days")}
+            {rangeLabel(r, t)}
           </button>
         ))}
       </div>
@@ -510,7 +527,7 @@ export function activitySeries(media: MediaRow[], now = Date.now()): SeriesPoint
 export function historySeries(scores: LiteracyTestScores | null, metric: Metric, range: Range, now = Date.now()): SeriesPoint[] {
   const key = TEST_KEY_OF[metric];
   const test = scores && key ? scores[key] : null;
-  const since = now - range * 86400000;
+  const since = range === "all" ? -Infinity : now - range * 86400000;
   return (test?.history ?? [])
     .filter((h) => new Date(h.at).getTime() >= since)
     .map((h) => ({ date: h.at.slice(0, 10), pass_rate: Math.round(h.score * 1000) / 10, n: 1, mean: null }));
@@ -519,9 +536,11 @@ export function historySeries(scores: LiteracyTestScores | null, metric: Metric,
 // Opens from the Detail card (geo child / teacher) or a student tile.
 // Geo children: the official (name / role / avatar / spotlight message) + that
 // entity's own trend, fetched on demand. Students (mvp2's student dashboard):
-// name · Student + 7-day activity, metric/range toggles over the student's
-// score history (GET users/:id/literacy-test-scores), then every recent voice
-// note as one sentence with a playable "▶ audio" (GET users/:id/media).
+// name · Student + 7-day activity, a chart picker — the letter-score chart
+// (/user/[id]'s ScoreChart, the default; GET users/:id/scores +
+// scores/letter-bins) or a metric with a range toggle over the student's
+// score history (GET users/:id/literacy-test-scores) —, then every recent
+// voice note as one sentence with a playable "▶ audio" (GET users/:id/media).
 export function MvpTeacherModal({
   subject,
   metric,
@@ -536,32 +555,35 @@ export function MvpTeacherModal({
   onRename?: (studentId: string, name: string) => void;
   t?: T;
 }) {
-  const [mMetric, setMMetric] = useState<Metric>(metric);
+  // Students open on the letter chart; geo children have no letter scores.
+  const [mMetric, setMMetric] = useState<ModalMetric>(subject.kind === "student" ? "letters" : metric);
   const [mRange, setMRange] = useState<Range>(DEFAULT_RANGE);
+  // The dashboard metric the trend uses when the letter chart is showing.
+  const testMetric: Metric = mMetric === "letters" ? metric : mMetric;
   const [data, setData] = useState<{ key: string; scores: ScoresResponse | null; error: string | null } | null>(null);
   const [student, setStudent] = useState<{ id: string; tests: LiteracyTestScores | null; media: MediaRow[] | null; error: string | null } | null>(null);
   const childId = subject.kind === "child" ? subject.child.id : null;
   const studentId = subject.kind === "student" ? subject.student.student_id : null;
-  const key = `${childId}|${mMetric}|${mRange}`;
+  const key = `${childId}|${testMetric}|${mRange}`;
 
   useEffect(() => {
     if (!childId) return;
     let cancelled = false;
-    fetch(scoresUrl(childId, mMetric, mRange))
+    fetch(scoresUrl(childId, testMetric, mRange))
       .then(async (res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return (await res.json()) as ScoresResponse;
       })
       .then((scores) => {
-        if (!cancelled) setData({ key: `${childId}|${mMetric}|${mRange}`, scores, error: null });
+        if (!cancelled) setData({ key: `${childId}|${testMetric}|${mRange}`, scores, error: null });
       })
       .catch((err: Error) => {
-        if (!cancelled) setData({ key: `${childId}|${mMetric}|${mRange}`, scores: null, error: err.message });
+        if (!cancelled) setData({ key: `${childId}|${testMetric}|${mRange}`, scores: null, error: err.message });
       });
     return () => {
       cancelled = true;
     };
-  }, [childId, mMetric, mRange]);
+  }, [childId, testMetric, mRange]);
 
   useEffect(() => {
     if (!studentId) return;
@@ -630,20 +652,27 @@ export function MvpTeacherModal({
         </div>
 
         <div className="bg-white">
-          {/* score-over-time chart with its own metric + range toggles */}
+          {/* chart with its own picker: letter scores (students, default) or a metric + range */}
           <div className="border-b border-zinc-100 px-6 py-5">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <div className="flex flex-wrap items-center gap-2">
-                <MvpMetricToggle metric={mMetric} setMetric={setMMetric} />
-                <MvpRangeBar range={mRange} setRange={setMRange} entityId={childId} metric={mMetric} t={t} />
+                {subject.kind === "student" ? (
+                  <MvpMetricToggle<ModalMetric> metric={mMetric} setMetric={setMMetric} options={MODAL_METRICS} t={t} />
+                ) : (
+                  <MvpMetricToggle metric={testMetric} setMetric={setMMetric} t={t} />
+                )}
+                {/* the letter chart is per interaction, not per day — no range */}
+                {mMetric !== "letters" && <MvpRangeBar range={mRange} setRange={setMRange} entityId={childId} metric={testMetric} t={t} />}
               </div>
             </div>
             {subject.kind === "child" ? (
               <>
                 {error && <p className="text-sm text-red-600">{error}</p>}
                 {!scores && !error && <p className="text-sm text-zinc-400">{t("Loading…")}</p>}
-                {scores && <MvpStudentTrend series={scores.series} label={`${METRIC_BY[mMetric].label}`} />}
+                {scores && <MvpStudentTrend series={scores.series} label={`${METRIC_BY[testMetric].label}`} />}
               </>
+            ) : mMetric === "letters" ? (
+              <ScoreChart userId={subject.student.student_id} t={t} />
             ) : (
               <>
                 {st?.error && <p className="text-sm text-red-600">{st.error}</p>}

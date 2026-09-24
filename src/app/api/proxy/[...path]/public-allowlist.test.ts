@@ -20,6 +20,14 @@ describe("proxy public allowlist", () => {
     expect(isPublicAllowed("users/abc/metrics", "GET")).toBe(false);
   });
 
+  it("accepts the student-modal letter chart reads (scores, letter-bins) — GET only", () => {
+    expect(isPublicAllowed("users/abc/scores", "GET")).toBe(true);
+    expect(isPublicAllowed("scores/letter-bins", "GET")).toBe(true);
+    expect(isPublicAllowed("users/abc/scores", "POST")).toBe(false);
+    expect(isPublicAllowed("scores/letter-bins", "POST")).toBe(false);
+    expect(isPublicAllowed("scores", "GET")).toBe(false);
+  });
+
   it("rejects staff detail and wrong methods", () => {
     expect(isPublicAllowed("users/abc", "GET")).toBe(false);
     expect(isPublicAllowed("users/abc", "PATCH")).toBe(false);

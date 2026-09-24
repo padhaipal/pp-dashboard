@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
 import { logger } from "@/lib/logger";
 import { NextRequest } from "next/server";
-import { isPublicAllowed, PUBLIC_MEDIA_RE } from "./public-allowlist";
+import { isPublicAllowed, PUBLIC_LETTER_BINS_RE, PUBLIC_MEDIA_RE } from "./public-allowlist";
 
 export const runtime = "nodejs";
 
@@ -72,14 +72,16 @@ async function proxyToSketch(req: NextRequest, { params }: { params: Promise<{ p
       return new Response("Unauthorized", { status: 401 });
     }
     staff = true;
-  } else if (PUBLIC_MEDIA_RE.test(joined) && req.method === "GET") {
-    // The media payload carries the student's phone: only a staff session
-    // (the admin /user/:id page) may see it; the public /d modal gets it stripped.
+  } else if ((PUBLIC_MEDIA_RE.test(joined) || PUBLIC_LETTER_BINS_RE.test(joined)) && req.method === "GET") {
+    // The media and letter-bins payloads carry the student's phone: only a
+    // staff session (the admin /user/:id page) may see it; the public /d
+    // modal gets it stripped.
     const session = await auth().catch(() => null);
     const role = session?.user?.role;
     staff = role === "dev" || role === "admin";
   }
   const stripPhone = !staff && PUBLIC_MEDIA_RE.test(joined) && req.method === "GET";
+  const stripBinsPhone = !staff && PUBLIC_LETTER_BINS_RE.test(joined) && req.method === "GET";
   const qs = req.nextUrl.search;
   const target = `${process.env.PP_SKETCH_INTERNAL_URL}/${path.join("/")}${qs}`;
 
@@ -107,6 +109,11 @@ async function proxyToSketch(req: NextRequest, { params }: { params: Promise<{ p
   if (stripPhone && res.ok) {
     const body = (await res.json()) as { user?: { phone?: string } };
     if (body && body.user) delete body.user.phone;
+    return Response.json(body, { status: res.status, headers: responseHeaders });
+  }
+  if (stripBinsPhone && res.ok) {
+    const body = (await res.json()) as { userPhone?: string }[];
+    if (Array.isArray(body)) for (const row of body) delete row.userPhone;
     return Response.json(body, { status: res.status, headers: responseHeaders });
   }
 

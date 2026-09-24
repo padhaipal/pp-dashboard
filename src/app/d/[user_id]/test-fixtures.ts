@@ -230,6 +230,9 @@ export function makeFetch(opts: { scores?: ScoresResponse; scoresById?: Record<s
     // student modal
     if (/^\/api\/proxy\/users\/[^/]+\/literacy-test-scores$/.test(path)) return jsonResponse(200, TEST_SCORES);
     if (/^\/api\/proxy\/users\/[^/]+\/media$/.test(path)) return jsonResponse(200, MEDIA);
+    // letter-score chart (default modal view): no rows → "No scores recorded"
+    if (/^\/api\/proxy\/users\/[^/]+\/scores$/.test(path)) return jsonResponse(200, []);
+    if (/^\/api\/proxy\/scores\/letter-bins$/.test(path)) return jsonResponse(200, []);
     // student rename (PATCH users/:id/profile { name }) → { id, name }
     const p = path.match(/^\/api\/proxy\/users\/([^/]+)\/profile$/);
     if (p && init?.method === "PATCH") {

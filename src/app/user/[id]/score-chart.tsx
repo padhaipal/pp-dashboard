@@ -40,7 +40,9 @@ const COLORS = [
 
 const PADDING = { top: 20, right: 20, bottom: 30, left: 50 };
 
-export function ScoreChart({ userId }: { userId: string }) {
+// `t` translates the few captions (the public /d student modal passes its
+// dictionary; the admin /user/[id] page leaves them in English).
+export function ScoreChart({ userId, t = (s) => s }: { userId: string; t?: (s: string) => string }) {
   const [series, setSeries] = useState<LetterSeries[]>([]);
   const [loading, setLoading] = useState(true);
   const [hoveredLetter, setHoveredLetter] = useState<string | null>(null);
@@ -127,7 +129,7 @@ export function ScoreChart({ userId }: { userId: string }) {
   if (loading) {
     return (
       <div className="bg-white rounded-lg border border-zinc-200 shadow-sm p-6 mb-6">
-        <p className="text-zinc-400 text-sm text-center">Loading scores...</p>
+        <p className="text-zinc-400 text-sm text-center">{t("Loading scores...")}</p>
       </div>
     );
   }
@@ -135,7 +137,7 @@ export function ScoreChart({ userId }: { userId: string }) {
   if (series.length === 0) {
     return (
       <div className="bg-white rounded-lg border border-zinc-200 shadow-sm p-6 mb-6">
-        <p className="text-zinc-400 text-sm text-center">No scores recorded</p>
+        <p className="text-zinc-400 text-sm text-center">{t("No scores recorded")}</p>
       </div>
     );
   }
@@ -188,10 +190,10 @@ export function ScoreChart({ userId }: { userId: string }) {
   return (
     <div className="bg-white rounded-lg border border-zinc-200 shadow-sm p-4 mb-6">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-sm font-medium text-zinc-500">Letter Scores Over Time</h2>
+        <h2 className="text-sm font-medium text-zinc-500">{t("Letter Scores Over Time")}</h2>
         <div className="flex items-center gap-1.5 text-xs text-zinc-500">
           <span className="text-amber-400 text-sm leading-none">★</span>
-          <span>Letter learnt</span>
+          <span>{t("Letter learnt")}</span>
         </div>
       </div>
       <div className="flex gap-4">

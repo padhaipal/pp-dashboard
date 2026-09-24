@@ -7,7 +7,9 @@
 // `score` is minutes (absent = 0), its `delta` is in minutes.
 export type Metric = "usage" | "nipun_g2" | "nipun_g3" | "mpl_b";
 export const USAGE_PASS_MINUTES = 5;
-export type Range = 30 | 90;
+// 30 = last 30 days; "all" = all time (no lower bound; deltas are vs the
+// student's / entity's oldest row).
+export type Range = 30 | "all";
 export type GeoType = "country" | "state" | "district" | "block" | "school";
 // school → teacher (the referrers of its students) → student
 export type ChildType = "state" | "district" | "block" | "school" | "teacher" | "student";
@@ -137,7 +139,15 @@ export const METRIC_BY: Record<Metric, { key: Metric; label: string; short: stri
   nipun_g3: METRICS[2],
   mpl_b: METRICS[3],
 };
-export const RANGES: Range[] = [30, 90];
+export const RANGES: Range[] = [30, "all"];
+// "30 days" / "All time" on toggles; "last 30 days" / "all time" in suffixes.
+export const rangeLabel = (r: Range, t: (s: string) => string = (s) => s) => (r === "all" ? t("All time") : `${r} ${t("days")}`);
+export const rangeSuffix = (r: Range, t: (s: string) => string = (s) => s) => (r === "all" ? t("all time") : `${t("last")} ${r} ${t("days")}`);
+// The student modal's chart picker: the letter-score chart (default) plus the
+// dashboard metrics.
+export type ModalMetric = Metric | "letters";
+export const LETTERS_LABEL = "Letter scores";
+export const MODAL_METRICS: { key: ModalMetric; label: string }[] = [{ key: "letters", label: LETTERS_LABEL }, ...METRICS];
 // Shown wherever a student has no name yet (the API's "Student N" label is
 // never displayed): tiles, modal title, most-improved rows, trend lines.
 export const UNNAMED = "~";
@@ -242,6 +252,9 @@ export const spotlightUrl = (id: string, metric: Metric, range: Range) =>
 export const profileUrl = (id: string) => `/api/proxy/users/${encodeURIComponent(id)}/profile`;
 // student modal: per-test history, recent voice notes and one note's audio
 export const testScoresUrl = (id: string) => `/api/proxy/users/${encodeURIComponent(id)}/literacy-test-scores`;
+// letter-score chart (ScoreChart on /user/[id]) — every score row + the learnt bins
+export const letterScoresUrl = (id: string) => `/api/proxy/users/${encodeURIComponent(id)}/scores`;
+export const letterBinsUrl = (id: string) => `/api/proxy/scores/letter-bins?users=${encodeURIComponent(id)}`;
 export const mediaUrl = (id: string) => `/api/proxy/users/${encodeURIComponent(id)}/media`;
 export const audioUrl = (mediaId: string) => `/api/proxy/media-meta-data/${encodeURIComponent(mediaId)}/audio`;
 
