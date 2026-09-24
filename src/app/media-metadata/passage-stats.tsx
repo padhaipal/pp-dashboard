@@ -4,7 +4,9 @@ import { useCallback, useEffect, useState } from "react";
 import type { PassageStatsResponse } from "./types";
 
 // Live inventory of active (ready, non-deleted) reading passages, grouped by
-// level with a narrative/expository split and per-R-code counts. Mounted on
+// level with a narrative/expository split and per-R-code counts, plus per
+// level the total and how many of them the furthest-along student has
+// already been assigned (are we about to run out?). Mounted on
 // /media-metadata and inside /llm's Seed database section so the operator
 // can see which cells need seeding before firing a batch.
 export function PassageStats() {
@@ -38,6 +40,26 @@ export function PassageStats() {
   const levels = Array.from(
     new Set((data?.rows ?? []).map((r) => r.level ?? 0)),
   ).sort((a, b) => a - b);
+  const levelRow = (level: number) =>
+    data?.levels?.find((r) => (r.level ?? 0) === level);
+  // "seen / total" for the student furthest through this level; amber when
+  // ≤5 unseen remain, red when none (that student is on the reuse path).
+  const runway = (level: number) => {
+    const r = levelRow(level);
+    if (!r) return <span className="text-zinc-300">—</span>;
+    const remaining = Math.max(0, r.passages - r.max_seen);
+    const tone =
+      remaining === 0
+        ? "text-red-600"
+        : remaining <= 5
+          ? "text-amber-600"
+          : "text-zinc-600";
+    return (
+      <span className={`font-mono ${tone}`}>
+        {r.max_seen}&thinsp;/&thinsp;{r.passages}
+      </span>
+    );
+  };
   const cell = (level: number, passageType: string) => {
     const rows = (data?.rows ?? []).filter(
       (r) => (r.level ?? 0) === level && r.passage_type === passageType,
@@ -94,6 +116,13 @@ export function PassageStats() {
           <thead>
             <tr className="text-left text-zinc-500">
               <th className="py-1 pr-4 font-medium">level</th>
+              <th className="py-1 pr-4 font-medium">total</th>
+              <th
+                className="py-1 pr-6 font-medium"
+                title="Passages at this level already assigned to the student who has seen the most of them / total. Red = that student has run out."
+              >
+                furthest student
+              </th>
               <th className="py-1 pr-6 font-medium">narrative</th>
               <th className="py-1 font-medium">expository</th>
             </tr>
@@ -104,6 +133,12 @@ export function PassageStats() {
                 <td className="py-1 pr-4 font-mono text-zinc-800">
                   {level || "?"}
                 </td>
+                <td className="py-1 pr-4 font-mono text-zinc-600">
+                  {levelRow(level)?.passages ?? (
+                    <span className="text-zinc-300">—</span>
+                  )}
+                </td>
+                <td className="py-1 pr-6">{runway(level)}</td>
                 <td className="py-1 pr-6">{cell(level, "narrative")}</td>
                 <td className="py-1">{cell(level, "expository")}</td>
               </tr>
