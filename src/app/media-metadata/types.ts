@@ -1,4 +1,5 @@
-export type MediaType = "audio" | "text" | "video" | "image" | "sticker" | "flow";
+export type MediaType =
+  "audio" | "text" | "video" | "image" | "sticker" | "flow";
 
 export type MediaTypeCounts = Record<MediaType, number>;
 
@@ -140,8 +141,18 @@ export interface PassageStatsRow {
   passages: number;
 }
 
+// Per passage level: total live passages and the most distinct live passages
+// any one live student has been assigned at that level (runway signal).
+export interface PassageLevelRow {
+  level: number | null;
+  passages: number;
+  max_seen: number;
+}
+
 export interface PassageStatsResponse {
   rows: PassageStatsRow[];
+  // Optional until the backend deploy that adds it lands.
+  levels?: PassageLevelRow[];
 }
 
 // Per-gate filter states for /passages (quality / judge / solvability).
