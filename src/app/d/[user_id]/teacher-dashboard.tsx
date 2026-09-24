@@ -43,6 +43,7 @@ import {
   type Metric,
   type PublicProfile,
   type Range,
+  rangeSuffix,
   type ScoresResponse,
   type SpotlightResponse,
   type StudentChild,
@@ -495,7 +496,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                     </div>
                     <div className="border-t border-zinc-100 pt-5">
                       <div className="mb-1 text-base font-semibold text-zinc-800">
-                        {t("Most improved")} · {t("last")} {range} {t("days")}
+                        {t("Most improved")} · {rangeSuffix(range, t)}
                         <HoverLabel child={hoverId ? geoChildren.find((c) => c.id === hoverId) ?? null : null} t={t} />
                       </div>
                       <RepImproved
@@ -645,7 +646,7 @@ function TeacherCards({
                   </div>
                   <div className="text-[10px] leading-tight text-zinc-500">{metric === "usage" ? t("5+ min yesterday") : short}</div>
                 </div>
-                <MvpTrend delta={c.delta} suffix={`${t("last")} ${range} ${t("days")}`} />
+                <MvpTrend delta={c.delta} suffix={rangeSuffix(range, t)} />
               </div>
             </div>
           );

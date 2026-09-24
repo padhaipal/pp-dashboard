@@ -13,7 +13,16 @@ export const PUBLIC_ALLOWED: { pattern: RegExp; methods: string[] }[] = [
   { pattern: /^users\/[^/]+\/literacy-test-scores$/, methods: ["GET"] },
   { pattern: /^users\/[^/]+\/media$/, methods: ["GET"] },
   { pattern: /^media-meta-data\/[^/]+\/audio$/, methods: ["GET"] },
+  // Student modal letter-score chart: every score row (letters only, no
+  // PII) and the learnt bins (phone stripped by route.ts for sessionless
+  // callers).
+  { pattern: /^users\/[^/]+\/scores$/, methods: ["GET"] },
+  { pattern: /^scores\/letter-bins$/, methods: ["GET"] },
 ];
+
+// Letter-bins rows carry `userPhone`; sessionless callers get it removed
+// (route.ts).
+export const PUBLIC_LETTER_BINS_RE = /^scores\/letter-bins$/;
 
 // Public media responses carry the student's phone; sessionless callers get
 // it removed (route.ts).

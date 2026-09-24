@@ -21,6 +21,8 @@ import {
   type ChildType,
   type Metric,
   type Range,
+  rangeLabel,
+  rangeSuffix,
   type RootStats,
   type SeriesPoint,
   UNNAMED,
@@ -430,7 +432,7 @@ export function RepQuote({
     );
   }
   const { child, official } = entry;
-  const when = range ? `${t("last")} ${range} ${t("days")}` : t("this week");
+  const when = range ? rangeSuffix(range, t) : t("this week");
   const head =
     kind === "top"
       ? `${title} — ${fmtPctInt(child.pass_rate)}`
@@ -474,7 +476,7 @@ export function RepMeta({
   range?: Range;
   t?: T;
 }) {
-  const suffix = range ? `${t("last")} ${range} ${t("days")}` : "";
+  const suffix = range ? rangeSuffix(range, t) : "";
   const box = (col: string, left: React.ReactNode, big: string, trend: React.ReactNode) => (
     <div className="flex flex-col gap-5 sm:flex-row sm:items-stretch" data-testid="rep-meta">
       <div className="flex flex-1 items-center gap-4 rounded-xl px-5 py-5" style={{ background: col + "1f", border: "1px solid " + col + "55" }}>
@@ -614,7 +616,7 @@ export async function exportReportPdf(data: ReportData, root: HTMLElement | null
   doc.text(`${data.title} Report`, PW / 2, y, { align: "center" });
   y += 15;
   doc.setFont("helvetica", "normal").setFontSize(9).setTextColor(150);
-  doc.text(`${metricLabel} · last ${data.range} days · as of ${data.asOf ?? "—"}`, PW / 2, y, { align: "center" });
+  doc.text(`${metricLabel} · ${rangeSuffix(data.range)} · as of ${data.asOf ?? "—"}`, PW / 2, y, { align: "center" });
 
   // KPIs
   y += 20;
@@ -680,7 +682,7 @@ export async function exportReportPdf(data: ReportData, root: HTMLElement | null
   }
 
   // most improved — primitive bars
-  section(`Most improved (last ${data.range} days)`);
+  section(`Most improved (${rangeSuffix(data.range)})`);
   {
     const arr = data.mostImproved.filter((c) => c.delta != null).slice(0, 5);
     if (!arr.length) {
@@ -726,7 +728,7 @@ export async function exportReportPdf(data: ReportData, root: HTMLElement | null
   // footer / generation metadata
   const gen = new Date();
   doc.setFont("helvetica", "normal").setFontSize(7.5).setTextColor(150);
-  doc.text(`Generated ${gen.toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST · ${data.shareLink} · ${metricLabel} · ${data.range}-day window · Lifteracy`, M, PH - M + 6);
+  doc.text(`Generated ${gen.toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST · ${data.shareLink} · ${metricLabel} · ${data.range === "all" ? "all-time" : `${data.range}-day`} window · Lifteracy`, M, PH - M + 6);
   doc.save(`lifteracy-${data.title.replace(/[^A-Za-z0-9]+/g, "-").toLowerCase()}-report.pdf`);
 }
 
@@ -794,7 +796,7 @@ export function ReportCardModal({ data, onClose }: { data: ReportData; onClose: 
             <div className="text-right text-[10px] text-zinc-500">
               {data.title}
               <br />
-              {metricLabel} · {data.range} days · as of {data.asOf ?? "—"}
+              {metricLabel} · {rangeLabel(data.range)} · as of {data.asOf ?? "—"}
             </div>
           </div>
           <RepKpis root={data.root} metricLabel={metricLabel} nounP={nounP} usingN={usingN} totalN={data.childrenRows.length} showUsing={data.childType !== "student"} />

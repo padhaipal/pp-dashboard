@@ -126,8 +126,8 @@ describe("TeacherDashboard", () => {
     expect(toggles.length).toBe(2);
     fireEvent.click(toggles[1]);
     // a metric change refetches; the Performance card (and its range bar) comes back with the new data
-    fireEvent.click(await screen.findByRole("button", { name: "90 days" }));
-    await waitFor(() => expect(screen.getByTestId("csv-link").getAttribute("href")).toBe("/api/proxy/geo-entities/g-in/scores.csv?metric=mpl_b&range=90"));
+    fireEvent.click(await screen.findByRole("button", { name: "All time" }));
+    await waitFor(() => expect(screen.getByTestId("csv-link").getAttribute("href")).toBe("/api/proxy/geo-entities/g-in/scores.csv?metric=mpl_b&range=all"));
     expect(screen.getAllByRole("button", { name: "MPL-B proxy" })[0].getAttribute("aria-pressed")).toBe("true");
   });
 
@@ -234,9 +234,18 @@ describe("TeacherDashboard", () => {
     expect(sentences).toContain("correct");
     expect(sentences).toContain("nothing (no recording)");
     expect(sentences).toContain("incorrect");
-    // the modal has its own metric + range toggles
+    // the modal opens on the letter-score chart (no range: it is per interaction), with its own picker
     expect(dialog.querySelectorAll('[aria-label="Metric"]').length).toBe(1);
+    const modalButton = (name: string) => Array.from(dialog.querySelectorAll("button")).find((b) => b.textContent === name)!;
+    expect(modalButton("Letter scores").getAttribute("aria-pressed")).toBe("true");
+    expect(calls.some((u) => u.includes("/users/s-1/scores"))).toBe(true);
+    expect(calls.some((u) => u.includes("/scores/letter-bins?users=s-1"))).toBe(true);
+    await waitFor(() => expect(dialog.textContent).toContain("No scores recorded"));
+    expect(dialog.querySelectorAll('[aria-label="Range"]').length).toBe(0);
+    // picking a test metric brings the range toggle (30 days / All time)
+    fireEvent.click(modalButton("NIPUN grade 3 proxy"));
     expect(dialog.querySelectorAll('[aria-label="Range"]').length).toBe(1);
+    expect(modalButton("All time")).toBeDefined();
     fireEvent.click(screen.getByRole("button", { name: /Close/ }));
     expect(screen.queryByRole("dialog")).toBeNull();
 
