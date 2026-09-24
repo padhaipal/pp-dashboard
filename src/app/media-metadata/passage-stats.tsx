@@ -42,18 +42,13 @@ export function PassageStats() {
   ).sort((a, b) => a - b);
   const levelRow = (level: number) =>
     data?.levels?.find((r) => (r.level ?? 0) === level);
-  // "seen / total" for the student furthest through this level; amber when
-  // ≤5 unseen remain, red when none (that student is on the reuse path).
+  // "seen / total" for the student furthest through this level; red when
+  // ≤50 unseen remain (time to seed more before they hit the reuse path).
   const runway = (level: number) => {
     const r = levelRow(level);
     if (!r) return <span className="text-zinc-300">—</span>;
     const remaining = Math.max(0, r.passages - r.max_seen);
-    const tone =
-      remaining === 0
-        ? "text-red-600"
-        : remaining <= 5
-          ? "text-amber-600"
-          : "text-zinc-600";
+    const tone = remaining <= 50 ? "text-red-600" : "text-zinc-600";
     return (
       <span className={`font-mono ${tone}`}>
         {r.max_seen}&thinsp;/&thinsp;{r.passages}
@@ -119,7 +114,7 @@ export function PassageStats() {
               <th className="py-1 pr-4 font-medium">total</th>
               <th
                 className="py-1 pr-6 font-medium"
-                title="Passages at this level already assigned to the student who has seen the most of them / total. Red = that student has run out."
+                title="Passages at this level already assigned to the student who has seen the most of them / total. Red = fewer than 50 unseen left for that student."
               >
                 furthest student
               </th>
