@@ -67,6 +67,14 @@ export const NON_LESSON_STIDS: string[] = [
   // below the grid, not here.
   "sentence-start-sentence-initial",
   "sentence-sentence-complete-maxErrors",
+  // Comprehension flow tap outcome (pp-sketch
+  // COMPREHENSION_ANSWER_{CORRECT,INCORRECT}_STATE_TRANSITION_ID — keep in
+  // sync): sent right after the tapped option's
+  // `${answerId}-comprehension-complete` explanation, whichever option it
+  // was. Upload the right/wrong feedback (e.g. a sticker) here ONCE; several
+  // rows of a type → one picked at random. Unseeded → nothing extra is sent.
+  "comprehension-answer-correct",
+  "comprehension-answer-incorrect",
   // Level-8 passages (<10 words, 2026-08) skip comprehension: a correct read
   // ends the lesson with the runtime stid
   // `${passageId}-sentence-complete-correct-{first,retry}`, which pp-sketch's
