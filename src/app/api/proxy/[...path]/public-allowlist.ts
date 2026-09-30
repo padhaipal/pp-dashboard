@@ -11,6 +11,8 @@ export const PUBLIC_ALLOWED: { pattern: RegExp; methods: string[] }[] = [
   // Student modal on /d: score history, recent voice notes (phone stripped
   // by route.ts for sessionless callers) and one note's audio bytes.
   { pattern: /^users\/[^/]+\/literacy-test-scores$/, methods: ["GET"] },
+  // Student modal "Time" chart: the student's active minutes per day.
+  { pattern: /^users\/[^/]+\/usage-history$/, methods: ["GET"] },
   { pattern: /^users\/[^/]+\/media$/, methods: ["GET"] },
   { pattern: /^media-meta-data\/[^/]+\/audio$/, methods: ["GET"] },
   // Student modal letter-score chart: every score row (letters only, no

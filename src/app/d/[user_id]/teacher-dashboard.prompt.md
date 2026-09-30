@@ -12,3 +12,12 @@
 11.) Language: `lang` state ("en" default so SSR matches), read from `localStorage["lifteracy-dashboard-lang"]` in a deferred effect (setTimeout 0 — never setState synchronously in an effect), written on toggle; `t = makeT(lang)` (i18n.ts) is passed down to every block. Untranslated strings fall back to English.
 12.) Wording that differs from mvp2 on purpose, because the API window is 30 days / all time, not weeks: "Trend" (not "Weekly trend"), "Most improved · {rangeSuffix}" ("last 30 days" / "all time", not "this week"), trend arrows "+1.8% {rangeSuffix}".
 13.) Lint constraints: never setState synchronously in an effect body; no ref reads during render.
+12.) TIME METRIC (2026-09). "Daily usage (5+ min)" is now "Time". While it is selected a second toggle (`MvpTimeWindowToggle`, `data-testid="time-window-toggle"`) sits under BOTH copies of the metric toggle: Yesterday · Last seven days · All time, default Last seven days (`timeWindow` state; part of the data key, so changing it refetches scores + spotlight with `&window=`). In Time mode (`isTimeMode(scores)`):
+ - headline card (`RepKpis timeWindow`): the total as the big figure ("38 min" / "2.5 hours"), minutes per day under it (`data-testid="kpi-per-day"`), both coloured by the per-day average, label "average time per student · {window}";
+ - map (`GeoMap time`): fill by minutes per student per day, tooltip "{total} · {per day} · n=N", legend "more than 5 min per day / up to 5 min per day / no time / Not using Lifteracy";
+ - bars: height = minutes per day (per student for areas), hover value "{total} · {per day}", axis fits the data;
+ - teacher cards / student tiles: total + minutes per day (`data-testid="tile-per-day"`), coloured by the per-day average, NO trend arrow / ▲▼;
+ - detail card (`RepMeta time`): total, per day (`data-testid="rep-meta-per-day"`), caption "{Time · window} · per student", no arrow;
+ - "Most improved" (`data-testid="most-improved"`) and the "most improved" spotlight card are not rendered for the usage metric; the top spotlight card shows "{total} · {per day}";
+ - the trend chart keeps its own 30 days / All time range; the CSV link carries the window.
+ A usage response WITHOUT an echoed window (older pp-sketch) renders the previous pass-rate view, labelled "Time · 5+ min yesterday".

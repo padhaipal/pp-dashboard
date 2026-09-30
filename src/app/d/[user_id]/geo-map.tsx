@@ -22,7 +22,10 @@ import {
   INCOMPLETE_TOOLTIP,
   isPrivateSchool,
   UNCOVERED,
+  fmtDuration,
   fmtPct,
+  fmtPerDay,
+  timeFill,
   type Child,
   type ChildType,
   type GeoRef,
@@ -54,6 +57,10 @@ export type GeoMapProps = {
   onSelect: (c: Child) => void;
   onDrill: (c: Child) => void;
   metricLabel: string;
+  // Time mode: areas / labels / dots are coloured by minutes per student per
+  // day (green past 5, amber for some, red for none) and the tooltip shows
+  // the active time, not a pass rate.
+  time?: boolean;
   t?: T;
 };
 
@@ -94,15 +101,16 @@ async function loadBoundary(url: string): Promise<Feature | null> {
 
 // Solid area fill: grey when the area has no Lifteracy user, otherwise the
 // score colour. Interactions live on the outline path drawn on top.
-export function areaFill(d: string, child: Child, incomplete: boolean) {
+export function areaFill(d: string, child: Child, incomplete: boolean, fill: (c: Child) => string = childFill) {
   if (!d) return null;
-  return <path d={d} fill={incomplete ? INCOMPLETE_FILL : childFill(child)} fillOpacity={1} pointerEvents="none" />;
+  return <path d={d} fill={incomplete ? INCOMPLETE_FILL : fill(child)} fillOpacity={1} pointerEvents="none" />;
 }
 
 type Tip = { x: number; y: number; title: string; sub: string | null };
 
 export function GeoMap(props: GeoMapProps) {
-  const { entity, childType, childrenRows, incompleteStates, hoverId, setHoverId, selectedId, onSelect, onDrill, metricLabel, t = same } = props;
+  const { entity, childType, childrenRows, incompleteStates, hoverId, setHoverId, selectedId, onSelect, onDrill, metricLabel, time = false, t = same } = props;
+  const fillOf = time ? timeFill : childFill;
   const wrapRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 640, h: 420 });
   const [geo, setGeo] = useState<{ key: string; outline: Feature | null; byCode: Map<string, Feature> } | null>(null);
@@ -308,7 +316,14 @@ export function GeoMap(props: GeoMapProps) {
   const tipFor = (c: Child, incomplete: boolean): [string, string | null] =>
     incomplete
       ? [c.name, INCOMPLETE_TOOLTIP]
-      : [c.name, (c.using_lifteracy ? `${fmtPct(c.pass_rate)} · n=${c.n}` : t("Not using Lifteracy")) + (isPrivateSchool(c) ? ` · ${t("private school")}` : "")];
+      : [
+          c.name,
+          (c.using_lifteracy
+            ? time
+              ? `${fmtDuration(c.time_total, t)} · ${fmtPerDay(c.time_per_day, t)} · n=${c.n}`
+              : `${fmtPct(c.pass_rate)} · n=${c.n}`
+            : t("Not using Lifteracy")) + (isPrivateSchool(c) ? ` · ${t("private school")}` : ""),
+        ];
 
   const onPointerDown = (e: React.PointerEvent) => {
     if (e.pointerType !== "mouse") return;
@@ -373,7 +388,7 @@ export function GeoMap(props: GeoMapProps) {
             const [t1, t2] = tipFor(a.child, a.incomplete);
             return (
               <g key={a.child.id}>
-                {areaFill(a.d, a.child, a.incomplete)}
+                {areaFill(a.d, a.child, a.incomplete, fillOf)}
                 <path
                   d={a.d}
                   fill="none"
@@ -423,7 +438,7 @@ export function GeoMap(props: GeoMapProps) {
                   dominantBaseline="middle"
                   fontSize={fs}
                   fontWeight="700"
-                  fill={childFill(p.child)}
+                  fill={fillOf(p.child)}
                   stroke={on ? "#0f172a" : "#ffffff"}
                   strokeWidth={fs / (on ? 10 : 8)}
                   paintOrder="stroke"
@@ -455,7 +470,7 @@ export function GeoMap(props: GeoMapProps) {
               user / no score) dots go first and coloured ones sit on top */}
           {childType === "school" &&
             [...projected]
-              .sort((a, b) => Number(childFill(a.child) !== UNCOVERED) - Number(childFill(b.child) !== UNCOVERED))
+              .sort((a, b) => Number(fillOf(a.child) !== UNCOVERED) - Number(fillOf(b.child) !== UNCOVERED))
               .map((p) => {
               const on = hoverId === p.child.id || selectedId === p.child.id;
               const [t1, t2] = tipFor(p.child, false);
@@ -463,7 +478,7 @@ export function GeoMap(props: GeoMapProps) {
               // same colour scale for every school; private schools get a
               // diamond instead of a dot (subtle — the legend explains it)
               const common = {
-                fill: childFill(p.child),
+                fill: fillOf(p.child),
                 stroke: selectedId === p.child.id ? "#2563eb" : on ? "#0f172a" : "#ffffff",
                 strokeWidth: (on ? 2 : 1.2) / k,
                 "data-id": p.child.id,
@@ -532,15 +547,21 @@ export function GeoMap(props: GeoMapProps) {
 
       {/* small NIPUN dot legend (mvp2: bottom-left; the up-a-level button sits bottom-right, in the card) */}
       <div className="pointer-events-none absolute bottom-3 left-3 z-20 rounded-lg border border-zinc-200 bg-white/95 px-2.5 py-2 text-[10px] leading-tight text-zinc-600 shadow">
-        <div className="mb-1 font-semibold text-zinc-700">
-          {t("Latest")} {metricLabel}
-        </div>
-        {[
-          ["≥80", "#16a34a"],
-          ["50–79", "#f59e0b"],
-          ["<50", "#dc2626"],
-          [t("Not using Lifteracy"), UNCOVERED],
-        ].map(([l, c]) => (
+        <div className="mb-1 font-semibold text-zinc-700">{time ? `${metricLabel} · ${t("per student")}` : `${t("Latest")} ${metricLabel}`}</div>
+        {(time
+          ? [
+              [t("more than 5 min per day"), "#16a34a"],
+              [t("up to 5 min per day"), "#f59e0b"],
+              [t("no time"), "#dc2626"],
+              [t("Not using Lifteracy"), UNCOVERED],
+            ]
+          : [
+              ["≥80", "#16a34a"],
+              ["50–79", "#f59e0b"],
+              ["<50", "#dc2626"],
+              [t("Not using Lifteracy"), UNCOVERED],
+            ]
+        ).map(([l, c]) => (
           <div key={l} className="flex items-center gap-1.5">
             <span className="h-2.5 w-2.5 rounded-full" style={{ background: c }} />
             {l}

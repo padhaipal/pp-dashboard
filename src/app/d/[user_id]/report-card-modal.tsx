@@ -12,10 +12,16 @@ import {
   binColor,
   CHILD_NOUN,
   CHILD_OFFICER,
+  fmtDuration,
   fmtPct,
   fmtPctInt,
+  fmtPerDay,
   METRIC_BY,
   nipColor,
+  timeColor,
+  timeFill,
+  timeWindowSuffix,
+  type TimeWindow,
   UNCOVERED,
   type Child,
   type ChildType,
@@ -68,6 +74,7 @@ export function RepKpis({
   usingN,
   totalN,
   showUsing = true,
+  timeWindow,
   t = same,
 }: {
   root: RootStats;
@@ -76,19 +83,35 @@ export function RepKpis({
   usingN: number;
   totalN: number;
   showUsing?: boolean;
+  // Time mode: the headline is the active time per student over this window
+  // (total + minutes per day, coloured by the per-day average), not a pass rate.
+  timeWindow?: TimeWindow;
   t?: T;
 }) {
-  const card = (big: string, label: string, color: string, key: string) => (
+  const card = (big: string, label: string, color: string, key: string, sub?: string) => (
     <div key={key} className="flex-1 rounded-xl bg-zinc-50 px-4 py-6 text-center">
       <div className="whitespace-nowrap text-5xl font-extrabold tracking-tight" style={{ color }}>
         {big}
       </div>
+      {sub && (
+        <div className="mt-1 whitespace-nowrap text-base font-bold leading-tight" style={{ color }} data-testid="kpi-per-day">
+          {sub}
+        </div>
+      )}
       <div className="mt-1.5 whitespace-nowrap text-sm font-medium leading-tight text-zinc-500">{label}</div>
     </div>
   );
   return (
     <div className="flex flex-col gap-3 sm:flex-row" data-testid="root-kpis">
-      {card(fmtPctInt(root.pass_rate), `${t("average")} ${metricLabel}`, nipColor(root.pass_rate), "pass")}
+      {timeWindow
+        ? card(
+            fmtDuration(root.time_total, t),
+            `${t("average time per student")} · ${timeWindowSuffix(timeWindow, t)}`,
+            timeColor(root.time_per_day),
+            "pass",
+            fmtPerDay(root.time_per_day, t),
+          )
+        : card(fmtPctInt(root.pass_rate), `${t("average")} ${metricLabel}`, nipColor(root.pass_rate), "pass")}
       {/* the share of children on Lifteracy follows the same red / amber / green rule as a score */}
       {showUsing && card(`${usingN} ${t("of")} ${totalN}`, `${t(nounP)} ${t("using Lifteracy")}`, nipColor(totalN > 0 ? (usingN / totalN) * 100 : null), "using")}
     </div>
@@ -260,8 +283,10 @@ export function RepTrend({
 
 // ------------------------------------------------------------------ latest bars
 
-export function sortedLatest(children: Child[]): Child[] {
-  return children.slice().sort((a, b) => (b.using_lifteracy ? (b.pass_rate ?? -1) : -2) - (a.using_lifteracy ? (a.pass_rate ?? -1) : -2));
+// Best first; children not using Lifteracy last. Time mode ranks by minutes per day.
+export function sortedLatest(children: Child[], time = false): Child[] {
+  const v = (c: Child) => (c.using_lifteracy ? ((time ? c.time_per_day : c.pass_rate) ?? -1) : -2);
+  return children.slice().sort((a, b) => v(b) - v(a));
 }
 
 export function RepLatest({
@@ -272,6 +297,7 @@ export function RepLatest({
   onSelect,
   onPick,
   label,
+  time = false,
 }: {
   childrenRows: Child[];
   hoverId: string | null;
@@ -280,8 +306,13 @@ export function RepLatest({
   onSelect: (c: Child) => void;
   onPick: (c: Child) => void;
   label: string;
+  // Time mode: bars are minutes per student per day on an axis that fits the
+  // data, coloured by the 5-minute rule; no NIPUN target line.
+  time?: boolean;
 }) {
-  const arr = sortedLatest(childrenRows);
+  const arr = sortedLatest(childrenRows, time);
+  const valueOf = (c: Child) => (time ? c.time_per_day : c.pass_rate) ?? null;
+  const top = time ? Math.max(10, Math.ceil(Math.max(0, ...arr.map((c) => c.time_per_day ?? 0)) / 10) * 10) : 100;
   const W = 900,
     H = 232,
     mT = 8,
@@ -292,10 +323,10 @@ export function RepLatest({
   const bw = iw / Math.max(1, arr.length);
   return (
     <svg data-rep-chart="latest" viewBox={`0 0 ${W} ${H}`} className="w-full select-none" style={{ maxHeight: 244, fontFamily: "Arial, Helvetica, sans-serif" }}>
-      {[0, 50, 100].map((g) => (
+      {[0, top / 2, top].map((g) => (
         <g key={g}>
-          <line x1={mL} x2={mL + iw} y1={mT + ih - (g / 100) * ih} y2={mT + ih - (g / 100) * ih} stroke="#f1f5f9" />
-          <text x={mL - 5} y={mT + ih - (g / 100) * ih + 3} textAnchor="end" fontSize="9" fill="#94a3b8">
+          <line x1={mL} x2={mL + iw} y1={mT + ih - (g / top) * ih} y2={mT + ih - (g / top) * ih} stroke="#f1f5f9" />
+          <text x={mL - 5} y={mT + ih - (g / top) * ih + 3} textAnchor="end" fontSize="9" fill="#94a3b8">
             {g}
           </text>
         </g>
@@ -304,10 +335,11 @@ export function RepLatest({
         {label}
       </text>
       {arr.map((it, i) => {
-        const has = it.using_lifteracy && it.pass_rate != null;
-        const v = has ? it.pass_rate! : 0,
-          h = has ? (v / 100) * ih : ih;
-        const col = has ? binColor(it.bin) : "#e5e7eb",
+        const val = valueOf(it);
+        const has = it.using_lifteracy && val != null;
+        const v = has ? val : 0,
+          h = has ? (v / top) * ih : ih;
+        const col = has ? (time ? timeFill(it) : binColor(it.bin)) : "#e5e7eb",
           xx = mL + i * bw,
           on = hoverId === it.id || selId === it.id;
         return (
@@ -327,14 +359,18 @@ export function RepLatest({
             onDoubleClick={() => onPick(it)}
             style={{ cursor: "pointer" }}
           >
-            <title>{`${it.name} — ${has ? fmtPct(it.pass_rate) : "not using Lifteracy"}`}</title>
+            <title>{`${it.name} — ${has ? (time ? `${fmtDuration(it.time_total)} · ${fmtPerDay(it.time_per_day)}` : fmtPct(it.pass_rate)) : "not using Lifteracy"}`}</title>
           </rect>
         );
       })}
-      <line x1={mL} x2={mL + iw} y1={mT + ih - 0.8 * ih} y2={mT + ih - 0.8 * ih} stroke="#ef4444" strokeWidth="1.3" strokeDasharray="5 3" pointerEvents="none" />
-      <text x={mL + iw} y={mT + ih - 0.8 * ih - 4} textAnchor="end" fontSize="9" fontWeight="700" fill="#ef4444" pointerEvents="none">
-        80% NIPUN target
-      </text>
+      {!time && (
+        <>
+          <line x1={mL} x2={mL + iw} y1={mT + ih - 0.8 * ih} y2={mT + ih - 0.8 * ih} stroke="#ef4444" strokeWidth="1.3" strokeDasharray="5 3" pointerEvents="none" />
+          <text x={mL + iw} y={mT + ih - 0.8 * ih - 4} textAnchor="end" fontSize="9" fontWeight="700" fill="#ef4444" pointerEvents="none">
+            80% NIPUN target
+          </text>
+        </>
+      )}
     </svg>
   );
 }
@@ -413,6 +449,7 @@ export function RepQuote({
   nounS,
   officer,
   range,
+  time = false,
   t = same,
 }: {
   kind: "top" | "improved";
@@ -420,6 +457,8 @@ export function RepQuote({
   nounS: string;
   officer: string;
   range?: Range;
+  // Time mode: the top card's figure is the child's active time, not a pass rate.
+  time?: boolean;
   t?: T;
 }) {
   const title = kind === "top" ? `${t("Top")} ${t(nounS).toLowerCase()}` : t("Most improved");
@@ -435,7 +474,7 @@ export function RepQuote({
   const when = range ? rangeSuffix(range, t) : t("this week");
   const head =
     kind === "top"
-      ? `${title} — ${fmtPctInt(child.pass_rate)}`
+      ? `${title} — ${time ? `${fmtDuration(child.time_total, t)} · ${fmtPerDay(child.time_per_day, t)}` : fmtPctInt(child.pass_rate)}`
       : `${title} — ${child.delta != null && child.delta >= 0 ? "+" : ""}${child.delta?.toFixed(1) ?? "—"} ${t("pts")} ${when}`;
   return (
     <div className="flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-100/80 px-4 py-4" data-testid={`spotlight-${kind}`}>
@@ -467,6 +506,7 @@ export function RepMeta({
   metricLabel,
   officer,
   range,
+  time = false,
   t = same,
 }: {
   child?: Child | null;
@@ -474,10 +514,13 @@ export function RepMeta({
   metricLabel: string;
   officer: string;
   range?: Range;
+  // Time mode: the figure is the child's active time per student (total, with
+  // minutes per day under it), coloured by the per-day average; no trend arrow.
+  time?: boolean;
   t?: T;
 }) {
   const suffix = range ? rangeSuffix(range, t) : "";
-  const box = (col: string, left: React.ReactNode, big: string, trend: React.ReactNode) => (
+  const box = (col: string, left: React.ReactNode, big: string, trend: React.ReactNode, sub?: string) => (
     <div className="flex flex-col gap-5 sm:flex-row sm:items-stretch" data-testid="rep-meta">
       <div className="flex flex-1 items-center gap-4 rounded-xl px-5 py-5" style={{ background: col + "1f", border: "1px solid " + col + "55" }}>
         {left}
@@ -490,9 +533,12 @@ export function RepMeta({
             </div>
             {trend}
           </div>
-          <div className="mt-1.5 w-full text-[13px] leading-tight text-zinc-500">
-            {t("Latest")} {metricLabel}
-          </div>
+          {sub && (
+            <div className="mt-0.5 text-base font-bold leading-tight" style={{ color: col }} data-testid="rep-meta-per-day">
+              {sub}
+            </div>
+          )}
+          <div className="mt-1.5 w-full text-[13px] leading-tight text-zinc-500">{sub ? `${metricLabel} · ${t("per student")}` : `${t("Latest")} ${metricLabel}`}</div>
         </div>
       </div>
     </div>
@@ -516,7 +562,7 @@ export function RepMeta({
     );
   }
   if (!child) return <p className="text-sm text-zinc-400">{t("Hover or click a row or map area to see its details.")}</p>;
-  const col = child.using_lifteracy ? nipColor(child.pass_rate) : UNCOVERED;
+  const col = time ? timeFill(child) : child.using_lifteracy ? nipColor(child.pass_rate) : UNCOVERED;
   return box(
     col,
     <>
@@ -529,8 +575,9 @@ export function RepMeta({
         <div className="text-[12px] text-zinc-500">{child.official?.role_title ?? t(officer)}</div>
       </div>
     </>,
-    child.using_lifteracy ? fmtPctInt(child.pass_rate) : "—",
-    child.using_lifteracy ? <MvpTrend delta={child.delta} suffix={suffix} /> : null,
+    child.using_lifteracy ? (time ? fmtDuration(child.time_total, t) : fmtPctInt(child.pass_rate)) : "—",
+    child.using_lifteracy && !time ? <MvpTrend delta={child.delta} suffix={suffix} /> : null,
+    time && child.using_lifteracy ? fmtPerDay(child.time_per_day, t) : undefined,
   );
 }
 
@@ -541,6 +588,8 @@ export type ReportData = {
   shareLink: string;
   metric: Metric;
   range: Range;
+  // Set when the dashboard is showing Time figures for this window.
+  timeWindow?: TimeWindow;
   asOf: string | null;
   root: RootStats;
   series: SeriesPoint[];
@@ -609,19 +658,25 @@ export async function exportReportPdf(data: ReportData, root: HTMLElement | null
     FOOT = 30;
   const AC = hex(ACCENT);
   const [nounS, nounP] = CHILD_NOUN[data.childType];
-  const metricLabel = METRIC_BY[data.metric].label;
+  const time = data.timeWindow != null;
+  const metricLabel = time ? `${METRIC_BY[data.metric].label} · ${timeWindowSuffix(data.timeWindow!)}` : METRIC_BY[data.metric].label;
   let y = 54;
 
   doc.setFont("helvetica", "bold").setFontSize(18).setTextColor(AC[0], AC[1], AC[2]);
   doc.text(`${data.title} Report`, PW / 2, y, { align: "center" });
   y += 15;
   doc.setFont("helvetica", "normal").setFontSize(9).setTextColor(150);
-  doc.text(`${metricLabel} · ${rangeSuffix(data.range)} · as of ${data.asOf ?? "—"}`, PW / 2, y, { align: "center" });
+  // Time: the window is already in the label; the 30-day / all-time range only drives the trend chart.
+  doc.text(time ? `${metricLabel} · as of ${data.asOf ?? "—"}` : `${metricLabel} · ${rangeSuffix(data.range)} · as of ${data.asOf ?? "—"}`, PW / 2, y, { align: "center" });
 
   // KPIs
   y += 20;
   const usingN = data.childrenRows.filter((c) => c.using_lifteracy).length;
-  const kpis: [string, string, [number, number, number]][] = [[fmtPctInt(data.root.pass_rate), `average ${metricLabel}`, rgb(nipColor(data.root.pass_rate))]];
+  const kpis: [string, string, [number, number, number]][] = [
+    time
+      ? [`${fmtDuration(data.root.time_total)} (${fmtPerDay(data.root.time_per_day)})`, `average time per student · ${timeWindowSuffix(data.timeWindow!)}`, rgb(timeColor(data.root.time_per_day))]
+      : [fmtPctInt(data.root.pass_rate), `average ${metricLabel}`, rgb(nipColor(data.root.pass_rate))],
+  ];
   if (data.childType !== "student") kpis.push([`${usingN} of ${data.childrenRows.length}`, `${nounP} using Lifteracy`, [22, 163, 74]]);
   const kw = (CW - 10 * (kpis.length - 1)) / kpis.length,
     kh = 58;
@@ -662,28 +717,31 @@ export async function exportReportPdf(data: ReportData, root: HTMLElement | null
   // latest — primitive bars
   section(`Latest ${metricLabel} — all ${nounP}`);
   {
-    const arr = sortedLatest(data.childrenRows);
+    const arr = sortedLatest(data.childrenRows, time);
     const bh = 90,
       bx = M + 24,
       bw = CW - 24;
+    // Time: minutes per student per day on an axis that fits the data, no target line.
+    const top = time ? Math.max(10, Math.ceil(Math.max(0, ...arr.map((c) => c.time_per_day ?? 0)) / 10) * 10) : 100;
     doc.setDrawColor(230).line(bx, y + bh, bx + bw, y + bh);
-    doc.setDrawColor(239, 68, 68).setLineDashPattern([3, 2], 0).line(bx, y + bh * 0.2, bx + bw, y + bh * 0.2).setLineDashPattern([], 0);
+    if (!time) doc.setDrawColor(239, 68, 68).setLineDashPattern([3, 2], 0).line(bx, y + bh * 0.2, bx + bw, y + bh * 0.2).setLineDashPattern([], 0);
     doc.setFont("helvetica", "normal").setFontSize(6.5).setTextColor(120);
-    doc.text("100", bx - 3, y + 4, { align: "right" });
+    doc.text(String(top), bx - 3, y + 4, { align: "right" });
     doc.text("0", bx - 3, y + bh + 2, { align: "right" });
     const w = bw / Math.max(1, arr.length);
     arr.forEach((c, i) => {
-      const has = c.using_lifteracy && c.pass_rate != null;
-      const h = has ? (c.pass_rate! / 100) * bh : bh;
-      const col: [number, number, number] = has ? rgb(binColor(c.bin)) : [229, 231, 235];
+      const val = time ? c.time_per_day : c.pass_rate;
+      const has = c.using_lifteracy && val != null;
+      const h = has ? (val / top) * bh : bh;
+      const col: [number, number, number] = has ? rgb(time ? timeFill(c) : binColor(c.bin)) : [229, 231, 235];
       doc.setFillColor(col[0], col[1], col[2]).rect(bx + i * w + 0.3, y + bh - h, Math.max(0.6, w - 0.6), h, "F");
     });
     y += bh + 16;
   }
 
-  // most improved — primitive bars
-  section(`Most improved (${rangeSuffix(data.range)})`);
-  {
+  // most improved — primitive bars (not shown for Time: there is no change figure)
+  if (!time) {
+    section(`Most improved (${rangeSuffix(data.range)})`);
     const arr = data.mostImproved.filter((c) => c.delta != null).slice(0, 5);
     if (!arr.length) {
       doc.setFont("helvetica", "normal").setFontSize(8).setTextColor(120).text("Not enough data yet.", M, y + 8);
@@ -707,10 +765,8 @@ export async function exportReportPdf(data: ReportData, root: HTMLElement | null
   }
 
   // spotlight quotes
-  const quotes: [string, SpotlightEntry][] = [
-    [`Top ${nounS.toLowerCase()}`, data.spotlight?.top ?? null],
-    ["Most improved", data.spotlight?.most_improved ?? null],
-  ];
+  const quotes: [string, SpotlightEntry][] = [[`Top ${nounS.toLowerCase()}`, data.spotlight?.top ?? null]];
+  if (!time) quotes.push(["Most improved", data.spotlight?.most_improved ?? null]);
   section(`${CHILD_OFFICER[data.childType]} spotlight`);
   for (const [label, e] of quotes) {
     if (y > PH - M - FOOT - 30) break;
@@ -741,7 +797,8 @@ export function ReportCardModal({ data, onClose }: { data: ReportData; onClose: 
   const [rootEl, setRootEl] = useState<HTMLDivElement | null>(null);
   const [nounS, nounP] = CHILD_NOUN[data.childType];
   const officer = CHILD_OFFICER[data.childType];
-  const metricLabel = METRIC_BY[data.metric].label;
+  const time = data.timeWindow != null;
+  const metricLabel = time ? `${METRIC_BY[data.metric].label} · ${timeWindowSuffix(data.timeWindow!)}` : METRIC_BY[data.metric].label;
   const usingN = data.childrenRows.filter((c) => c.using_lifteracy).length;
 
   useEffect(() => {
@@ -796,25 +853,45 @@ export function ReportCardModal({ data, onClose }: { data: ReportData; onClose: 
             <div className="text-right text-[10px] text-zinc-500">
               {data.title}
               <br />
-              {metricLabel} · {rangeLabel(data.range)} · as of {data.asOf ?? "—"}
+              {time ? metricLabel : `${metricLabel} · ${rangeLabel(data.range)}`} · as of {data.asOf ?? "—"}
             </div>
           </div>
-          <RepKpis root={data.root} metricLabel={metricLabel} nounP={nounP} usingN={usingN} totalN={data.childrenRows.length} showUsing={data.childType !== "student"} />
+          <RepKpis
+            root={data.root}
+            metricLabel={metricLabel}
+            nounP={nounP}
+            usingN={usingN}
+            totalN={data.childrenRows.length}
+            showUsing={data.childType !== "student"}
+            timeWindow={data.timeWindow}
+          />
           <div>
             <div className="mb-1 text-sm font-semibold text-zinc-800">Trend</div>
-            <RepTrend series={data.series} label={`${metricLabel} pass rate`} />
+            {time ? <RepTrend series={data.series} metric="usage" label="Minutes per student" /> : <RepTrend series={data.series} label={`${metricLabel} pass rate`} />}
           </div>
           <div>
             <div className="mb-1 text-sm font-semibold text-zinc-800">Latest — all {nounP}</div>
-            <RepLatest childrenRows={data.childrenRows} hoverId={hover} setHoverId={setHover} selId={null} onSelect={() => {}} onPick={() => {}} label={`${metricLabel} pass rate`} />
+            <RepLatest
+              childrenRows={data.childrenRows}
+              hoverId={hover}
+              setHoverId={setHover}
+              selId={null}
+              onSelect={() => {}}
+              onPick={() => {}}
+              label={time ? "Minutes per student per day" : `${metricLabel} pass rate`}
+              time={time}
+            />
           </div>
-          <div>
-            <div className="mb-1 text-sm font-semibold text-zinc-800">Most improved</div>
-            <RepImproved mostImproved={data.mostImproved} hoverId={hover} setHoverId={setHover} selId={null} onSelect={() => {}} onPick={() => {}} />
-          </div>
+          {/* Time has no change figure: no "most improved" */}
+          {!time && (
+            <div>
+              <div className="mb-1 text-sm font-semibold text-zinc-800">Most improved</div>
+              <RepImproved mostImproved={data.mostImproved} hoverId={hover} setHoverId={setHover} selId={null} onSelect={() => {}} onPick={() => {}} />
+            </div>
+          )}
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <RepQuote kind="top" entry={data.spotlight?.top ?? null} nounS={nounS} officer={officer} />
-            <RepQuote kind="improved" entry={data.spotlight?.most_improved ?? null} nounS={nounS} officer={officer} />
+            <RepQuote kind="top" entry={data.spotlight?.top ?? null} nounS={nounS} officer={officer} time={time} />
+            {!time && <RepQuote kind="improved" entry={data.spotlight?.most_improved ?? null} nounS={nounS} officer={officer} />}
           </div>
           <div className="text-[9px] text-zinc-400">
             Generated from live Lifteracy data · {data.shareLink}

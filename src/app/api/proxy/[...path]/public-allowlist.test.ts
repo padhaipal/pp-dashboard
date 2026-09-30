@@ -14,6 +14,8 @@ describe("proxy public allowlist", () => {
     expect(isPublicAllowed("users/abc/literacy-test-scores", "GET")).toBe(true);
     expect(isPublicAllowed("users/abc/media", "GET")).toBe(true);
     expect(isPublicAllowed("media-meta-data/m1/audio", "GET")).toBe(true);
+    expect(isPublicAllowed("users/abc/usage-history", "GET")).toBe(true);
+    expect(isPublicAllowed("users/abc/usage-history", "POST")).toBe(false);
     expect(isPublicAllowed("users/abc/media", "POST")).toBe(false);
     expect(isPublicAllowed("media-meta-data/m1", "GET")).toBe(false);
     expect(isPublicAllowed("media-meta-data/m1/dashboard-transcript", "POST")).toBe(false);

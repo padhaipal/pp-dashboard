@@ -21,14 +21,22 @@ import {
   CHILD_OFFICER,
   DEFAULT_METRIC,
   DEFAULT_RANGE,
+  DEFAULT_TIME_WINDOW,
   displayName,
   EMPTY_ROOT_TEXT,
   fmtDelta,
+  fmtDuration,
   fmtMinutes,
   fmtPct,
   fmtPctInt,
+  fmtPerDay,
   geoChildrenOf,
+  isTimeMode,
   METRIC_BY,
+  timeColor,
+  timeFill,
+  timeWindowSuffix,
+  type TimeWindow,
   usageColor,
   nipColor,
   binColor,
@@ -52,7 +60,7 @@ import {
 import { BarStrip, type BarItem } from "./bar-strip";
 import { GeoMap } from "./geo-map";
 import { isLang, LANG_STORAGE_KEY, makeT, type Lang, type T } from "./i18n";
-import { AvatarImg, EditableStudentName, MvpLangToggle, MvpMetricToggle, MvpRangeBar, MvpShareBar, MvpTeacherModal, MvpTrend, type ModalSubject } from "./mvp-widgets";
+import { AvatarImg, EditableStudentName, MvpLangToggle, MvpMetricToggle, MvpRangeBar, MvpShareBar, MvpTeacherModal, MvpTimeWindowToggle, MvpTrend, type ModalSubject } from "./mvp-widgets";
 import { ReportCardModal, RepImproved, RepKpis, RepMeta, RepQuote, RepTrend, type ImprovedRow, type ReportData } from "./report-card-modal";
 
 export type TeacherDashboardProps = {
@@ -89,6 +97,8 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
   const [profile, setProfile] = useState<PublicProfile>(initialProfile);
   const [metric, setMetric] = useState<Metric>(DEFAULT_METRIC);
   const [range, setRange] = useState<Range>(DEFAULT_RANGE);
+  // The window of the Time metric (its own toggle, shown only while Time is selected).
+  const [timeWindow, setTimeWindow] = useState<TimeWindow>(DEFAULT_TIME_WINDOW);
   const [stack, setStack] = useState<GeoRef[]>(() => (initialProfile.geo_entity ? [toRef(initialProfile.geo_entity)] : []));
   const [data, setData] = useState<Loaded | null>(null);
   const [hoverId, setHoverId] = useState<string | null>(null);
@@ -124,20 +134,22 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
   }, []);
 
   const entity = stack.length ? stack[stack.length - 1] : null;
-  const key = entity ? `${entity.id}|${metric}|${range}` : "";
+  // Only the Time metric depends on the window.
+  const win = metric === "usage" ? timeWindow : undefined;
+  const key = entity ? `${entity.id}|${metric}|${range}|${win ?? ""}` : "";
 
   // ---- data: scores + spotlight for the current level ----
   useEffect(() => {
     if (!entity) return;
     const id = entity.id;
-    const k = `${id}|${metric}|${range}`;
+    const k = `${id}|${metric}|${range}|${win ?? ""}`;
     let cancelled = false;
     const getJson = async <T,>(url: string): Promise<T> => {
       const res = await fetch(url);
       if (!res.ok) throw new Error(await serverMessage(res));
       return (await res.json()) as T;
     };
-    Promise.all([getJson<ScoresResponse>(scoresUrl(id, metric, range)), getJson<SpotlightResponse>(spotlightUrl(id, metric, range)).catch(() => null)])
+    Promise.all([getJson<ScoresResponse>(scoresUrl(id, metric, range, win)), getJson<SpotlightResponse>(spotlightUrl(id, metric, range, win)).catch(() => null)])
       .then(([scores, spotlight]) => {
         if (!cancelled) setData({ key: k, scores, spotlight, error: null });
       })
@@ -147,7 +159,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
     return () => {
       cancelled = true;
     };
-  }, [entity, metric, range]);
+  }, [entity, metric, range, win]);
 
   const loaded = data && data.key === key ? data : null;
   const scores = loaded?.scores ?? null;
@@ -162,9 +174,19 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
   // mvp2's `inClass`: a drilled class (the children are students) hides Detail + Spotlight.
   const inClass = childType === "student";
   const isUsageMetric = metric === "usage";
+  // Time mode: pp-sketch answered with the window's time figures (total +
+  // minutes per day, no deltas). A pp-sketch that predates Time windows
+  // answers without them — the page then falls back to the old "5+ min
+  // yesterday" share.
+  const timeMode = isTimeMode(scores);
+  const timeSuffix = timeWindowSuffix(timeWindow, t);
   const [nounS, nounP] = childType ? CHILD_NOUN[childType] : ["Area", "areas"];
   const officer = childType ? CHILD_OFFICER[childType] : "Official";
-  const metricLabel = metric === "usage" ? `${t(METRIC_BY[metric].label)} · ${t("yesterday")}` : t(METRIC_BY[metric].label);
+  const metricLabel = timeMode
+    ? `${t(METRIC_BY[metric].label)} · ${timeSuffix}`
+    : metric === "usage"
+      ? `${t(METRIC_BY[metric].label)} · ${t("5+ min yesterday")}`
+      : t(METRIC_BY[metric].label);
 
   // ---- navigation ----
   const drill = useCallback((c: Child) => {
@@ -211,7 +233,27 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
   // minutes per student in the class view.
   const barItems: BarItem[] = useMemo(
     () =>
-      inClass
+      timeMode
+        ? // Time: bars are minutes per day (per student for an area), the
+          // hover card shows the total and the per-day average.
+          inClass
+          ? students.map((s) => ({
+              id: s.student_id,
+              name: s.name ?? UNNAMED,
+              sub: t("Student"),
+              value: s.time_per_day ?? null,
+              display: `${fmtDuration(s.time_total, t)} · ${fmtPerDay(s.time_per_day, t)}`,
+              color: timeColor(s.time_per_day),
+            }))
+          : geoChildren.map((c) => ({
+              id: c.id,
+              name: c.name,
+              sub: c.official?.name ? `${c.official.role_title ?? t(CHILD_OFFICER[c.type as keyof typeof CHILD_OFFICER] ?? "")} · ${c.official.name}` : "",
+              value: c.using_lifteracy ? (c.time_per_day ?? null) : null,
+              display: c.using_lifteracy ? `${fmtDuration(c.time_total, t)} · ${fmtPerDay(c.time_per_day, t)}` : t("Not using Lifteracy"),
+              color: timeFill(c),
+            }))
+        : inClass
         ? students.map((s) => {
             const pct = s.score == null ? null : s.score * 100;
             return {
@@ -231,9 +273,13 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
             display: c.using_lifteracy ? fmtPctInt(c.pass_rate) : t("Not using Lifteracy"),
             color: binColor(c.bin),
           })),
-    [inClass, students, geoChildren, isUsageMetric, t],
+    [inClass, students, geoChildren, isUsageMetric, timeMode, t],
   );
-  const barMax = inClass && isUsageMetric ? Math.max(30, Math.ceil(Math.max(0, ...students.map((s) => s.score ?? 0)) / 10) * 10) : 100;
+  const barMax = timeMode
+    ? Math.max(10, Math.ceil(Math.max(0, ...(inClass ? students : geoChildren).map((x) => x.time_per_day ?? 0)) / 10) * 10)
+    : inClass && isUsageMetric
+      ? Math.max(30, Math.ceil(Math.max(0, ...students.map((s) => s.score ?? 0)) / 10) * 10)
+      : 100;
 
   // Class view: rank the students by delta ourselves (the API's most_improved is for ChildRows).
   const improvedRows: ImprovedRow[] = useMemo(
@@ -255,6 +301,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
           shareLink: profile.share_link,
           metric,
           range,
+          timeWindow: timeMode ? timeWindow : undefined,
           asOf: scores.as_of,
           root: scores.root,
           series: scores.series,
@@ -325,8 +372,10 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
 
           {/* headline stats — narrower, with the shared metric tab */}
           <div className="mx-auto mt-6 max-w-5xl px-6">
-            <div className="mb-3 flex justify-center">
+            <div className="mb-3 flex flex-col items-center gap-2">
               <MvpMetricToggle metric={metric} setMetric={setMetric} t={t} />
+              {/* Time only: yesterday / last seven days / all time */}
+              {isUsageMetric && <MvpTimeWindowToggle window={timeWindow} setWindow={setTimeWindow} t={t} />}
             </div>
             {loaded?.error && <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">Could not load results — {loaded.error}</p>}
             {loading && <p className="text-center text-sm text-zinc-400">{t("Loading your dashboard…")}</p>}
@@ -343,6 +392,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                 usingN={usingN}
                 totalN={geoChildren.length}
                 showUsing={childType !== "teacher" && childType !== "student"}
+                timeWindow={timeMode ? timeWindow : undefined}
                 t={t}
               />
             )}
@@ -355,9 +405,9 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
             data-testid="map-card"
           >
             {entity.type === "school" ? (
-              scores && <TeacherCards teachers={geoChildren} metric={metric} range={range} selId={selId} onSelect={select} onDrill={drill} onClear={() => setSelId(null)} t={t} />
+              scores && <TeacherCards teachers={geoChildren} metric={metric} range={range} time={timeMode} selId={selId} onSelect={select} onDrill={drill} onClear={() => setSelId(null)} t={t} />
             ) : entity.type === "teacher" ? (
-              scores && <StudentTiles students={students} metric={metric} onOpen={openStudent} onRename={renameStudent} t={t}
+              scores && <StudentTiles students={students} metric={metric} time={timeMode} onOpen={openStudent} onRename={renameStudent} t={t}
                   hoverId={hoverId}
                   setHoverId={setHoverId}
                 />
@@ -373,6 +423,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                 onSelect={select}
                 onDrill={drill}
                 metricLabel={metricLabel}
+                time={timeMode}
                 t={t}
               />
             )}
@@ -414,7 +465,15 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                     if (c) select(c);
                   }
                 }}
-                hint={`${t(inClass ? "students" : nounP)} · ${isUsageMetric ? (inClass ? t("min yesterday") : t("5+ min yesterday")) : t(METRIC_BY[metric].short)} · ${t("click a bar to select")}`}
+                hint={`${t(inClass ? "students" : nounP)} · ${
+                  timeMode
+                    ? `${t(inClass ? "min per day" : "per student per day")} · ${timeSuffix}`
+                    : isUsageMetric
+                      ? inClass
+                        ? t("min yesterday")
+                        : t("5+ min yesterday")
+                      : t(METRIC_BY[metric].short)
+                } · ${t("click a bar to select")}`}
                 t={t}
               />
             </div>
@@ -438,7 +497,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                       onDoubleClick={() => detailChild && drill(detailChild)}
                       onClick={() => detailChild && openChild(detailChild)}
                     >
-                      <RepMeta child={detailChild} metricLabel={metricLabel} officer={officer} range={range} t={t} />
+                      <RepMeta child={detailChild} metricLabel={metricLabel} officer={officer} range={range} time={timeMode} t={t} />
                     </div>
                   </div>
                 </section>
@@ -450,8 +509,9 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                   <div className={"mb-6 " + H} style={{ color: ACCENT }}>
                     {t(nounS)} {t("Performance")}
                   </div>
-                  <div className="-mt-3 mb-5 flex justify-center">
+                  <div className="-mt-3 mb-5 flex flex-col items-center gap-2">
                     <MvpMetricToggle metric={metric} setMetric={setMetric} t={t} />
+                    {isUsageMetric && <MvpTimeWindowToggle window={timeWindow} setWindow={setTimeWindow} t={t} />}
                   </div>
                   <div className={CARD + " space-y-6"}>
                     {/* headline share of areas not on Lifteracy at all — hidden at school/class level */}
@@ -470,9 +530,9 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                       <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
                         <div className="text-base font-semibold text-zinc-800">
                           {t("Trend")}
-                          <HoverLabel child={hoverId ? geoChildren.find((c) => c.id === hoverId) ?? null : null} t={t} />
+                          <HoverLabel child={hoverId ? geoChildren.find((c) => c.id === hoverId) ?? null : null} time={timeMode} t={t} />
                         </div>
-                        <MvpRangeBar range={range} setRange={setRange} entityId={entity.id} metric={metric} t={t} />
+                        <MvpRangeBar range={range} setRange={setRange} entityId={entity.id} metric={metric} timeWindow={win} t={t} />
                       </div>
                       <RepTrend
                         series={scores.series}
@@ -494,7 +554,9 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                         t={t}
                       />
                     </div>
-                    <div className="border-t border-zinc-100 pt-5">
+                    {/* Time has no change figure, so no "most improved" */}
+                    {!isUsageMetric && (
+                    <div className="border-t border-zinc-100 pt-5" data-testid="most-improved">
                       <div className="mb-1 text-base font-semibold text-zinc-800">
                         {t("Most improved")} · {rangeSuffix(range, t)}
                         <HoverLabel child={hoverId ? geoChildren.find((c) => c.id === hoverId) ?? null : null} t={t} />
@@ -516,6 +578,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                         }}
                       />
                     </div>
+                    )}
                   </div>
                 </div>
               </section>
@@ -528,9 +591,9 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                       {t(officer)} {t("Spotlight")}
                     </div>
                     <div className={CARD}>
-                      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                        <RepQuote kind="top" entry={spotlight?.top ?? null} nounS={nounS} officer={officer} range={range} t={t} />
-                        <RepQuote kind="improved" entry={spotlight?.most_improved ?? null} nounS={nounS} officer={officer} range={range} t={t} />
+                      <div className={"grid grid-cols-1 gap-4" + (isUsageMetric ? "" : " sm:grid-cols-2")}>
+                        <RepQuote kind="top" entry={spotlight?.top ?? null} nounS={nounS} officer={officer} range={range} time={timeMode} t={t} />
+                        {!isUsageMetric && <RepQuote kind="improved" entry={spotlight?.most_improved ?? null} nounS={nounS} officer={officer} range={range} t={t} />}
                       </div>
                     </div>
                   </div>
@@ -568,12 +631,16 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
 
 // ------------------------------------------------------------------ pieces
 
-function HoverLabel({ child, t }: { child: Child | null; t: T }) {
+function HoverLabel({ child, time = false, t }: { child: Child | null; time?: boolean; t: T }) {
   if (!child) return null;
   return (
     <span className="ml-2 text-[11px] font-normal text-zinc-500">
       · {child.name}
-      {child.using_lifteracy ? ` — ${fmtPct(child.pass_rate)} (${fmtDelta(child.delta)})` : ` — ${t("not using Lifteracy")}`}
+      {child.using_lifteracy
+        ? time
+          ? ` — ${fmtDuration(child.time_total, t)} · ${fmtPerDay(child.time_per_day, t)}`
+          : ` — ${fmtPct(child.pass_rate)} (${fmtDelta(child.delta)})`
+        : ` — ${t("not using Lifteracy")}`}
     </span>
   );
 }
@@ -585,6 +652,7 @@ function TeacherCards({
   teachers,
   metric,
   range,
+  time,
   selId,
   onSelect,
   onDrill,
@@ -594,6 +662,9 @@ function TeacherCards({
   teachers: Child[];
   metric: Metric;
   range: Range;
+  // Time mode: the class's active time per student (total + minutes per
+  // day), coloured by the per-day average; no trend arrow.
+  time: boolean;
   selId: string | null;
   onSelect: (c: Child) => void;
   onDrill: (c: Child) => void;
@@ -606,7 +677,9 @@ function TeacherCards({
       <div className="mx-auto flex max-w-3xl flex-col gap-3">
         {!teachers.length && <p className="py-10 text-center text-sm text-zinc-400">{t("No teachers yet.")}</p>}
         {teachers.map((c) => {
-          const col = nipColor(c.pass_rate);
+          const col = time ? timeColor(c.time_per_day) : nipColor(c.pass_rate);
+          const big = time ? fmtDuration(c.time_total, t) : fmtPctInt(c.pass_rate);
+          const caption = time ? fmtPerDay(c.time_per_day, t) : metric === "usage" ? t("5+ min yesterday") : short;
           const on = selId === c.id;
           return (
             <div
@@ -633,20 +706,20 @@ function TeacherCards({
                 {/* phones: score + compact trend under the name so nothing is squeezed out */}
                 <div className="mt-1 flex items-center gap-2 sm:hidden">
                   <span className="text-lg font-extrabold tabular-nums" style={{ color: col }}>
-                    {fmtPctInt(c.pass_rate)}
+                    {big}
                   </span>
-                  <span className="text-[10px] leading-tight text-zinc-500">{metric === "usage" ? t("5+ min yesterday") : short}</span>
+                  <span className={time ? "text-[12px] font-semibold leading-tight text-zinc-600" : "text-[10px] leading-tight text-zinc-500"}>{caption}</span>
                 </div>
               </div>
               {/* ≥sm: score + zig-zag trend on the right */}
               <div className="hidden flex-shrink-0 items-center gap-4 sm:flex">
                 <div className="text-right">
                   <div className="text-2xl font-extrabold tabular-nums" style={{ color: col }}>
-                    {fmtPctInt(c.pass_rate)}
+                    {big}
                   </div>
-                  <div className="text-[10px] leading-tight text-zinc-500">{metric === "usage" ? t("5+ min yesterday") : short}</div>
+                  <div className={time ? "text-[12px] font-semibold leading-tight text-zinc-600" : "text-[10px] leading-tight text-zinc-500"}>{caption}</div>
                 </div>
-                <MvpTrend delta={c.delta} suffix={rangeSuffix(range, t)} />
+                {!time && <MvpTrend delta={c.delta} suffix={rangeSuffix(range, t)} />}
               </div>
             </div>
           );
@@ -661,6 +734,7 @@ function TeacherCards({
 function StudentTiles({
   students,
   metric,
+  time,
   onOpen,
   onRename,
   hoverId,
@@ -669,6 +743,9 @@ function StudentTiles({
 }: {
   students: StudentChild[];
   metric: Metric;
+  // Time mode: the student's active time in the window (total + minutes per
+  // day), coloured by the per-day average; no ▲/▼ change.
+  time: boolean;
   onOpen: (s: StudentChild) => void;
   onRename: (studentId: string, name: string) => void;
   hoverId: string | null;
@@ -683,7 +760,7 @@ function StudentTiles({
       <div className="mx-auto grid max-w-5xl gap-2.5 sm:gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))" }}>
         {students.map((s) => {
           const pct = s.score == null ? null : s.score * 100;
-          const col = isUsage ? usageColor(s.score) : pct == null ? UNCOVERED : nipColor(pct);
+          const col = time ? timeColor(s.time_per_day) : isUsage ? usageColor(s.score) : pct == null ? UNCOVERED : nipColor(pct);
           const fg = col === "#f59e0b" ? "#1c1917" : "#ffffff";
           const d = s.delta;
           return (
@@ -701,9 +778,17 @@ function StudentTiles({
               <div className="flex w-full justify-center text-[13px] font-bold sm:text-sm">
                 <EditableStudentName studentId={s.student_id} name={s.name} fallback={UNNAMED} onSaved={(name) => onRename(s.student_id, name)} t={t} />
               </div>
-              <div className="text-xl font-extrabold tabular-nums sm:text-2xl">{isUsage ? fmtMinutes(s.score) : fmtPctInt(pct)}</div>
-              <div className="text-[9px] font-semibold opacity-90">{isUsage ? t("min yesterday") : short}</div>
-              <div className="text-[11px] font-bold tabular-nums">{d == null ? "—" : `${Math.abs(d) < 0.5 ? "→" : d > 0 ? "▲" : "▼"} ${(d >= 0 ? "+" : "") + d.toFixed(1)}${isUsage ? ` ${t("min")}` : "%"}`}</div>
+              <div className="text-xl font-extrabold tabular-nums sm:text-2xl">{time ? fmtDuration(s.time_total, t) : isUsage ? fmtMinutes(s.score) : fmtPctInt(pct)}</div>
+              {time ? (
+                <div className="text-[11px] font-bold tabular-nums" data-testid="tile-per-day">
+                  {fmtPerDay(s.time_per_day, t)}
+                </div>
+              ) : (
+                <>
+                  <div className="text-[9px] font-semibold opacity-90">{isUsage ? t("min yesterday") : short}</div>
+                  <div className="text-[11px] font-bold tabular-nums">{d == null ? "—" : `${Math.abs(d) < 0.5 ? "→" : d > 0 ? "▲" : "▼"} ${(d >= 0 ? "+" : "") + d.toFixed(1)}${isUsage ? ` ${t("min")}` : "%"}`}</div>
+                </>
+              )}
             </div>
           );
         })}

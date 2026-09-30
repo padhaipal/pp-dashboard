@@ -1,9 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { TeacherDashboard } from "./teacher-dashboard";
 import { RepTrend } from "./report-card-modal";
+import { MvpMinutesChart } from "./mvp-widgets";
 import { EMPTY_ROOT_TEXT, INCOMPLETE_TOOLTIP } from "./dashboard-types";
 import { CHILD_UP, EMPTY_SCORES, PROFILE, PROFILE_SCHOOL, SCORES, SCORES_CLASS, SCORES_SCHOOL, SCORES_UP, makeFetch } from "./test-fixtures";
+
+const pressed = (name: string) => screen.getAllByRole("button", { name }).map((b) => b.getAttribute("aria-pressed"));
 
 describe("TeacherDashboard", () => {
   afterEach(() => {
@@ -392,5 +395,161 @@ describe("TeacherDashboard", () => {
     fireEvent.click(screen.getByRole("button", { name: "Zoom out" }));
     fireEvent.click(screen.getByRole("button", { name: "Zoom out" }));
     expect(scaleOf()).toBeCloseTo(1 / 1.4, 5);
+  });
+});
+
+describe("TeacherDashboard — Time metric", () => {
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
+
+  it("'Time' reveals the window toggle (default: last seven days) and shows total + minutes per day, coloured by the per-day average; no change arrows, no most improved", async () => {
+    const { fn, calls } = makeFetch({ timeById: { "g-in": "geo" } });
+    vi.stubGlobal("fetch", vi.fn(fn));
+    render(<TeacherDashboard profile={PROFILE} incompleteStates={[]} />);
+
+    // the usage metric is called "Time"; its window toggle is hidden for other metrics
+    await screen.findByTestId("root-kpis");
+    expect(screen.queryByRole("button", { name: "Daily usage (5+ min)" })).toBeNull();
+    expect(screen.queryByTestId("time-window-toggle")).toBeNull();
+    expect(screen.getByTestId("most-improved")).toBeDefined();
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Time" })[0]);
+    // both copies of the metric toggle get the window toggle, on "Last seven days"
+    await waitFor(() => expect(screen.getAllByTestId("time-window-toggle")).toHaveLength(2));
+    expect(pressed("Last seven days")).toEqual(["true", "true"]);
+    expect(pressed("Yesterday")).toEqual(["false", "false"]);
+    expect(screen.queryByRole("button", { name: /week/i })).toBeNull();
+    await waitFor(() => expect(calls).toContain("/api/proxy/geo-entities/g-in/scores?metric=usage&range=30&window=7d"));
+    expect(calls).toContain("/api/proxy/geo-entities/g-in/spotlight?metric=usage&range=30&window=7d");
+
+    // headline: total per student, minutes per day under it, both coloured by the per-day average (5.4 → green)
+    await waitFor(() => expect(screen.getByTestId("root-kpis").textContent).toContain("38 min"));
+    const kpis = screen.getByTestId("root-kpis");
+    expect(kpis.textContent).toContain("5.4 min per day");
+    expect(kpis.textContent).toContain("average time per student · last seven days");
+    expect(kpis.textContent).not.toContain("72%");
+    expect((screen.getByTestId("kpi-per-day") as HTMLElement).style.color).toBe("rgb(22, 163, 74)");
+
+    // detail card: the top state's total + per day, no trend arrow
+    const meta = screen.getByTestId("rep-meta");
+    expect(meta.textContent).toContain("49 min");
+    expect(meta.textContent).toContain("7 min per day");
+    expect(meta.textContent).toContain("Time · last seven days · per student");
+    expect(meta.querySelector('[data-testid="mvp-trend"]')).toBeNull();
+
+    // no "most improved" block, no "most improved" spotlight card; the top card carries the time
+    expect(screen.queryByTestId("most-improved")).toBeNull();
+    expect(screen.queryByTestId("spotlight-improved")).toBeNull();
+    expect(screen.getByTestId("spotlight-top").textContent).toContain("49 min · 7 min per day");
+
+    // map: areas coloured by minutes per day (7 → green, 2 → amber), legend in minutes
+    const map = screen.getByTestId("geo-map");
+    expect(map.textContent).toContain("more than 5 min per day");
+    expect(map.textContent).toContain("up to 5 min per day");
+    expect(map.textContent).not.toContain("≥80");
+
+    // bars: minutes per student per day
+    expect(screen.getByTestId("bar-strip").textContent).toContain("per student per day · last seven days");
+
+    // the CSV export follows the window
+    expect(screen.getByTestId("csv-link").getAttribute("href")).toBe("/api/proxy/geo-entities/g-in/scores.csv?metric=usage&range=30&window=7d");
+
+    // Yesterday: refetch, new figures (4 min per day → amber)
+    fireEvent.click(screen.getAllByRole("button", { name: "Yesterday" })[1]);
+    await waitFor(() => expect(calls).toContain("/api/proxy/geo-entities/g-in/scores?metric=usage&range=30&window=yesterday"));
+    await waitFor(() => expect(screen.getByTestId("root-kpis").textContent).toContain("average time per student · yesterday"));
+    expect(screen.getByTestId("root-kpis").textContent).toContain("4 min");
+    expect((screen.getByTestId("kpi-per-day") as HTMLElement).style.color).toBe("rgb(245, 158, 11)");
+    expect(pressed("Yesterday")).toEqual(["true", "true"]);
+
+    // All time: totals of 120 minutes and more are shown in hours, the average stays in minutes
+    fireEvent.click(within(screen.getAllByTestId("time-window-toggle")[0]).getByRole("button", { name: "All time" }));
+    await waitFor(() => expect(screen.getByTestId("root-kpis").textContent).toContain("2.5 hours"));
+    expect(screen.getByTestId("root-kpis").textContent).toContain("3.1 min per day");
+    expect(screen.getByTestId("rep-meta").textContent).toContain("25 hours");
+    expect(screen.getByTestId("rep-meta").textContent).toContain("31 min per day");
+
+    // leaving Time hides the window toggle and brings the pass-rate view back
+    fireEvent.click(screen.getAllByRole("button", { name: "NIPUN grade 3 proxy" })[0]);
+    await waitFor(() => expect(screen.queryByTestId("time-window-toggle")).toBeNull());
+    await waitFor(() => expect(screen.getByTestId("root-kpis").textContent).toContain("72%"));
+    expect(screen.getByTestId("most-improved")).toBeDefined();
+  });
+
+  it("class view: each student's total and minutes per day, no ▲/▼; the student pop-up's Time chart plots active minutes per day", async () => {
+    const { fn, calls } = makeFetch({ scoresById: { "g-sch": SCORES_SCHOOL, "t-1": SCORES_CLASS }, timeById: { "t-1": "class" } });
+    vi.stubGlobal("fetch", vi.fn(fn));
+    render(<TeacherDashboard profile={PROFILE_SCHOOL} incompleteStates={[]} />);
+    fireEvent.doubleClick(await screen.findByTestId("teacher-card"));
+    await screen.findAllByTestId("student-tile");
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Time" })[0]);
+    await waitFor(() => expect(screen.getAllByTestId("student-tile")[0].textContent).toContain("84 min"));
+    const tiles = screen.getAllByTestId("student-tile");
+    // 12 min per day → green; 0.4 min per day → amber
+    expect(tiles[0].textContent).toContain("12 min per day");
+    expect((tiles[0] as HTMLElement).style.background).toBe("rgb(22, 163, 74)");
+    expect(tiles[1].textContent).toContain("3 min");
+    expect(tiles[1].textContent).toContain("0.4 min per day");
+    expect((tiles[1] as HTMLElement).style.background).toBe("rgb(245, 158, 11)");
+    for (const tile of tiles) expect(tile.textContent).not.toMatch(/[▲▼→]/);
+    expect(screen.getByTestId("bar-strip").textContent).toContain("min per day · last seven days");
+    expect(screen.queryByTestId("most-improved")).toBeNull();
+
+    // all time: 119 minutes stays in minutes, 120 becomes hours
+    fireEvent.click(within(screen.getAllByTestId("time-window-toggle")[0]).getByRole("button", { name: "All time" }));
+    await waitFor(() => expect(screen.getAllByTestId("student-tile")[0].textContent).toContain("119 min"));
+    expect(screen.getAllByTestId("student-tile")[1].textContent).toContain("2 hours");
+
+    // the student's pop-up: pick Time → the daily active-minutes chart
+    fireEvent.click(screen.getAllByTestId("student-tile")[0]);
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: "Time" }));
+    await waitFor(() => expect(calls).toContain("/api/proxy/users/s-1/usage-history?range=30"));
+    const chart = await within(dialog).findByTestId("minutes-chart");
+    expect(chart.textContent).toContain("Active minutes");
+    // one bar per day that had activity (the idle day has none)
+    expect(chart.querySelectorAll('[data-testid="minutes-bar"]')).toHaveLength(2);
+    expect(chart.textContent).toContain("15 Sept");
+    // its range toggle refetches
+    fireEvent.click(within(dialog).getByRole("button", { name: "All time" }));
+    await waitFor(() => expect(calls).toContain("/api/proxy/users/s-1/usage-history?range=all"));
+  });
+
+  it("a pp-sketch without Time windows (no window echoed): falls back to the 5+ min yesterday share", async () => {
+    // no timeById → the usage request gets a plain response without time fields
+    const { fn, calls } = makeFetch();
+    vi.stubGlobal("fetch", vi.fn(fn));
+    render(<TeacherDashboard profile={PROFILE} incompleteStates={[]} />);
+    await screen.findByTestId("root-kpis");
+    fireEvent.click(screen.getAllByRole("button", { name: "Time" })[0]);
+    await waitFor(() => expect(calls).toContain("/api/proxy/geo-entities/g-in/scores?metric=usage&range=30&window=7d"));
+    await waitFor(() => expect(screen.getByTestId("root-kpis").textContent).toContain("average Time · 5+ min yesterday"));
+    expect(screen.getByTestId("root-kpis").textContent).toContain("72%");
+    expect(screen.queryByTestId("kpi-per-day")).toBeNull();
+  });
+
+  it("MvpMinutesChart: bars for the days with activity, an axis that fits the data, an empty state", () => {
+    const { container, rerender } = render(
+      <MvpMinutesChart
+        label="Active minutes"
+        points={[
+          { date: "2026-09-15", minutes: 12 },
+          { date: "2026-09-16", minutes: 0 },
+          { date: "2026-09-17", minutes: 47 },
+        ]}
+      />,
+    );
+    expect(container.querySelectorAll('[data-testid="minutes-bar"]')).toHaveLength(2);
+    // axis to the next multiple of 10 above the tallest day
+    expect(container.textContent).toContain("50");
+    expect(container.textContent).not.toContain("60");
+    expect(container.textContent).toContain("Active minutes");
+    expect(container.textContent).toContain("17 Sept");
+    rerender(<MvpMinutesChart label="Active minutes" points={[]} />);
+    expect(container.textContent).toContain("No results in this window");
+    expect(container.querySelectorAll('[data-testid="minutes-bar"]')).toHaveLength(0);
   });
 });

@@ -2,7 +2,7 @@
 // payload with two child states (09 complete, 28 incomplete) and tiny GeoJSON
 // squares standing in for the real boundary files.
 
-import type { Child, PublicProfile, ScoresResponse, SpotlightResponse, StudentChild } from "./dashboard-types";
+import type { Child, PublicProfile, ScoresResponse, SpotlightResponse, StudentChild, TimeWindow, UsageHistory } from "./dashboard-types";
 
 export const PROFILE: PublicProfile = {
   id: "u1",
@@ -223,19 +223,81 @@ export const SCORES_UP: ScoresResponse = {
   most_improved: [],
 };
 
+// ---- Time (usage with a window) ----
+// Per-window figures as pp-sketch returns them in Time mode: per student for
+// areas, the student's own for the class view; no deltas, no most improved.
+const TIME_BY_WINDOW: Record<TimeWindow, { root: [number, number, number]; up: [number, number, number]; ap: [number, number, number]; s1: [number, number, number]; s2: [number, number, number] }> = {
+  yesterday: { root: [4, 4, 1], up: [6, 6, 1], ap: [0, 0, 1], s1: [12, 12, 1], s2: [0, 0, 1] },
+  "7d": { root: [38, 5.4, 7], up: [49, 7, 7], ap: [14, 2, 7], s1: [84, 12, 7], s2: [3, 0.4, 7] },
+  all: { root: [150, 3.1, 48], up: [1500, 31.3, 48], ap: [120, 2.5, 48], s1: [119, 2.5, 48], s2: [120, 2.5, 48] },
+};
+const tf = ([time_total, time_per_day, time_days]: [number, number, number]) => ({ time_total, time_per_day, time_days });
+
+export function timeScores(window: TimeWindow): ScoresResponse {
+  const w = TIME_BY_WINDOW[window];
+  return {
+    ...SCORES,
+    metric: "usage",
+    window,
+    root: { ...SCORES.root, delta: null, ...tf(w.root) },
+    children: [
+      { ...CHILD_UP, delta: null, bin: "high", ...tf(w.up) },
+      { ...CHILD_AP, delta: null, bin: "mid", ...tf(w.ap) },
+    ],
+    most_improved: [],
+  };
+}
+
+export function timeScoresClass(window: TimeWindow): ScoresResponse {
+  const w = TIME_BY_WINDOW[window];
+  return {
+    ...SCORES_CLASS,
+    metric: "usage",
+    window,
+    root: { ...SCORES_CLASS.root, delta: null, ...tf(w.root) },
+    children: [
+      { ...STUDENTS[0], score: w.s1[0], delta: null, ...tf(w.s1) },
+      { ...STUDENTS[1], score: w.s2[0], delta: null, ...tf(w.s2) },
+    ],
+  };
+}
+
+// GET users/:id/usage-history — three days, the middle one idle.
+export const USAGE_HISTORY: UsageHistory = {
+  as_of: "2026-09-18",
+  range: 30,
+  points: [
+    { date: "2026-09-15", minutes: 12 },
+    { date: "2026-09-16", minutes: 0 },
+    { date: "2026-09-17", minutes: 7.5 },
+  ],
+};
+
 export function jsonResponse(status: number, body: unknown): Response {
   return { ok: status >= 200 && status < 300, status, json: async () => body, text: async () => JSON.stringify(body) } as unknown as Response;
 }
 
 // Routes proxy + boundary URLs to fixtures; records every URL hit. `scores`
 // answers the country root (g-in); `scoresById` answers any other entity.
-export function makeFetch(opts: { scores?: ScoresResponse; scoresById?: Record<string, ScoresResponse> } = {}) {
+// `timeById`: ids whose `metric=usage&window=…` scores requests are answered
+// in Time mode ("geo" → timeScores, "class" → timeScoresClass). Without it a
+// usage request gets the plain fixture — a pp-sketch that predates windows.
+export function makeFetch(opts: { scores?: ScoresResponse; scoresById?: Record<string, ScoresResponse>; timeById?: Record<string, "geo" | "class"> } = {}) {
   const calls: string[] = [];
   const fn = async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = typeof input === "string" ? input : input.toString();
     calls.push((init?.method ? init.method + " " : "") + url);
     const path = url.split("?")[0];
     if (path in GEO) return jsonResponse(200, GEO[path]);
+    const qs = new URLSearchParams(url.split("?")[1] ?? "");
+    const tm = path.match(/^\/api\/proxy\/geo-entities\/([^/]+)\/(scores|spotlight)$/);
+    if (tm && qs.get("metric") === "usage" && qs.get("window") && opts.timeById && tm[1] in opts.timeById) {
+      const scores = (opts.timeById[tm[1]] === "class" ? timeScoresClass : timeScores)(qs.get("window") as TimeWindow);
+      if (tm[2] === "scores") return jsonResponse(200, scores);
+      const top = (scores.children as Child[])[0];
+      return jsonResponse(200, { top: opts.timeById[tm[1]] === "class" ? null : { child: top, official: top.official }, most_improved: null });
+    }
+    if (/^\/api\/proxy\/users\/[^/]+\/usage-history$/.test(path)) return jsonResponse(200, { ...USAGE_HISTORY, range: qs.get("range") === "all" ? "all" : 30 });
     if (/^\/api\/proxy\/geo-entities\/g-in\/scores$/.test(path)) return jsonResponse(200, opts.scores ?? SCORES);
     if (/^\/api\/proxy\/geo-entities\/g-in\/spotlight$/.test(path)) return jsonResponse(200, SPOTLIGHT);
     const m = path.match(/^\/api\/proxy\/geo-entities\/([^/]+)\/scores$/);
