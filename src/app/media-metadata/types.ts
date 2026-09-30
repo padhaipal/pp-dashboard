@@ -51,6 +51,11 @@ export const NON_LESSON_STIDS: string[] = [
   ...[5, 10, 15, 20, 25, 30, 45, 60].map(
     (m) => `threshold-reached-${m}-active-minutes-today`,
   ),
+  // All-time active-hour milestones (see ACTIVE_HOUR_THRESHOLDS in pp-sketch
+  // inbound.processor.ts — keep in sync). The `_` row is the generic fallback
+  // serving every threshold; specific rows override it.
+  "_-active-hours-total",
+  ...[1, 2, 5, 10, 20, 50, 100].map((h) => `${h}-active-hours-total`),
   "evening_notification_message",
   "morning_notification_message",
   // Sentence-lesson prompts (fixed `sentence` prefix — the /coverage grid only
@@ -81,12 +86,22 @@ export const NON_LESSON_STIDS: string[] = [
 // 203 entries, generic first: the `_` row is the generic fallback that
 // serves every integer at send time (specific-beats-generic merge); 0 and
 // 200plus are the corrupt-duration sentinels. Rendered in their own
-// scrollable table (reading-speed-table.tsx), NOT in NON_LESSON_STIDS.
+// scrollable table (stid-family-table.tsx), NOT in NON_LESSON_STIDS.
 export const READING_SPEED_STIDS: string[] = [
   "_-wpm-reading-speed",
   "0-wpm-reading-speed",
   ...Array.from({ length: 200 }, (_, i) => `${i + 1}-wpm-reading-speed`),
   "200plus-wpm-reading-speed",
+];
+
+// Every day-streak stid the audio-reply path can emit — synced with
+// MAX_STREAK_DAYS in inbound.processor.ts in pp-sketch. 100 entries, generic
+// first: the `_` row serves every streak length at send time
+// (specific-beats-generic merge); streaks run 2–100 days, longer ones are
+// silent. Rendered in its own scrollable table like READING_SPEED_STIDS.
+export const DAY_STREAK_STIDS: string[] = [
+  "_-day-streak",
+  ...Array.from({ length: 99 }, (_, i) => `${i + 2}-day-streak`),
 ];
 
 // One row of the paginated comprehension-stid table (dynamic

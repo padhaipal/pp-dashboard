@@ -4,11 +4,15 @@ import { useCallback, useEffect, useState } from "react";
 import { BulkCreateForm } from "./bulk-create-form";
 import { CoverageTable } from "./coverage-table";
 import { NonLessonTable } from "./non-lesson-table";
-import { ReadingSpeedTable } from "./reading-speed-table";
+import { StidFamilyTable } from "./stid-family-table";
 import { ComprehensionTable } from "./comprehension-table";
 import { PassageSearch } from "./passage-search";
 import { PassageStats } from "./passage-stats";
-import type { CoverageResponse } from "./types";
+import {
+  DAY_STREAK_STIDS,
+  READING_SPEED_STIDS,
+  type CoverageResponse,
+} from "./types";
 
 export function CoveragePage() {
   const [data, setData] = useState<CoverageResponse | null>(null);
@@ -53,7 +57,18 @@ export function CoveragePage() {
         onCreated={() => load()}
       />
       <NonLessonTable />
-      <ReadingSpeedTable />
+      <StidFamilyTable
+        title="Reading speed"
+        hint="Generic `_` row serves every integer; specific rows override it."
+        suffix="-wpm-reading-speed"
+        stids={READING_SPEED_STIDS}
+      />
+      <StidFamilyTable
+        title="Day streak"
+        hint="Sent on the turn that takes the day to 5 active minutes, for streaks of 2–100 days. Generic `_` row serves every length; specific rows override it."
+        suffix="-day-streak"
+        stids={DAY_STREAK_STIDS}
+      />
       <CoverageTable data={data} onReload={() => load()} />
       <PassageSearch />
       <ComprehensionTable />

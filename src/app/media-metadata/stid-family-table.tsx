@@ -3,15 +3,10 @@
 import { useCallback, useEffect, useState } from "react";
 import { CoverageModal } from "./coverage-modal";
 import { MediaCounts } from "./media-counts";
-import {
-  ALL_MEDIA_TYPES,
-  READING_SPEED_STIDS,
-  type MediaType,
-  type MediaTypeCounts,
-} from "./types";
+import { ALL_MEDIA_TYPES, type MediaType, type MediaTypeCounts } from "./types";
 
 // One row of GET /media-meta-data/stid-counts — counts pre-grouped
-// server-side so 203 stids cost a single request, not one per row.
+// server-side so a whole stid family costs a single request, not one per row.
 interface StidCountRow {
   state_transition_id: string;
   media_type: MediaType;
@@ -22,9 +17,11 @@ function emptyCounts(): MediaTypeCounts {
   return { audio: 0, text: 0, video: 0, image: 0, sticker: 0, flow: 0 };
 }
 
-async function fetchAllCounts(): Promise<Record<string, MediaTypeCounts>> {
+async function fetchAllCounts(
+  suffix: string,
+): Promise<Record<string, MediaTypeCounts>> {
   const res = await fetch(
-    `/api/proxy/media-meta-data/stid-counts?suffix=${encodeURIComponent("-wpm-reading-speed")}`,
+    `/api/proxy/media-meta-data/stid-counts?suffix=${encodeURIComponent(suffix)}`,
   );
   if (!res.ok) throw new Error(`load failed (${res.status})`);
   const rows = (await res.json()) as StidCountRow[];
@@ -36,11 +33,22 @@ async function fetchAllCounts(): Promise<Record<string, MediaTypeCounts>> {
   return bySteid;
 }
 
-// All 203 reading-speed stids (generic `_`, 0, 1–200, 200plus) with live
-// media counts. Stids absent from the response render as zero-count rows —
-// unseeded is the normal state here, so the table scrolls inside a fixed
-// height instead of dominating the page.
-export function ReadingSpeedTable() {
+// A family of runtime stids sharing one suffix (reading speed: generic `_`, 0,
+// 1–200, 200plus; day streak: generic `_`, 2–100) with live media counts.
+// Stids absent from the response render as zero-count rows — unseeded is the
+// normal state here, so the table scrolls inside a fixed height instead of
+// dominating the page.
+export function StidFamilyTable({
+  title,
+  hint,
+  suffix,
+  stids,
+}: {
+  title: string;
+  hint: string;
+  suffix: string;
+  stids: string[];
+}) {
   const [counts, setCounts] = useState<Record<string, MediaTypeCounts>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -50,13 +58,13 @@ export function ReadingSpeedTable() {
     setLoading(true);
     setError(false);
     try {
-      setCounts(await fetchAllCounts());
+      setCounts(await fetchAllCounts(suffix));
     } catch {
       setError(true);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [suffix]);
 
   useEffect(() => {
     load();
@@ -65,14 +73,12 @@ export function ReadingSpeedTable() {
   return (
     <div className="mb-6">
       <h2 className="text-sm font-medium text-zinc-700 mb-1 flex items-center gap-2">
-        Reading speed
+        {title}
         {loading && (
           <span className="text-xs font-normal text-zinc-400">refreshing…</span>
         )}
       </h2>
-      <p className="text-xs text-zinc-500 mb-2">
-        Generic `_` row serves every integer; specific rows override it.
-      </p>
+      <p className="text-xs text-zinc-500 mb-2">{hint}</p>
       {error && (
         <div className="text-xs text-red-500 mb-2">! failed to load counts</div>
       )}
@@ -90,7 +96,7 @@ export function ReadingSpeedTable() {
               </tr>
             </thead>
             <tbody>
-              {READING_SPEED_STIDS.map((stid) => (
+              {stids.map((stid) => (
                 <tr
                   key={stid}
                   onClick={() => setOpenStid(stid)}
