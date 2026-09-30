@@ -132,6 +132,8 @@ const HI: Record<string, string> = {
   on: "को",
   "weeks ago": "सप्ताह पहले",
   "the student said": "छात्र ने कहा",
+  "the student was asked": "छात्र से पूछा गया",
+  "and chose": "और चुना",
   audio: "ऑडियो",
   "nothing (no recording)": "कुछ नहीं (रिकॉर्डिंग नहीं)",
   "and the correct answer was": "और सही उत्तर था",

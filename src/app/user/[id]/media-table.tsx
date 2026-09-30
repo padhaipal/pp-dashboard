@@ -2,32 +2,15 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 
-interface Transcript {
-  text: string | null;
-  source: string;
-  created_at?: string;
-}
-
-interface ScoreChange {
-  grapheme: string;
-  score: number;
-  prev_score: number | null;
-}
-
-interface MediaRow {
-  id: string;
-  created_at: string;
-  has_audio: boolean;
-  transcripts: Transcript[];
-  word: string | null;
-  starting_state: string | null;
-  answer: string | null;
-  answer_correct: boolean | null;
-  score_changes?: ScoreChange[];
-  final_state: string | null;
-  level: number | null;
-  wpm: number | null;
-}
+import {
+  kindOf,
+  onboardingSaved,
+  onboardingStateLabel,
+  onboardingUnderstood,
+  ROW_TINT,
+  type MediaRow,
+  type Transcript,
+} from "./interaction-rows";
 
 // Direction of this lesson's difficulty cap relative to the previous
 // (chronologically older) lesson. Rows render newest-first, so the previous
@@ -235,7 +218,9 @@ export function MediaTable({
     setLoading(true);
     try {
       const res = await fetch(
-        `/api/proxy/users/${userId}/media?offset=${rows.length}`
+        // onboarding=1: include the parent-onboarding voice notes. The proxy
+        // forwards the flag for staff sessions only.
+        `/api/proxy/users/${userId}/media?offset=${rows.length}&onboarding=1`
       );
       if (!res.ok) return;
       const data = await res.json();
@@ -258,6 +243,9 @@ export function MediaTable({
     // overflow-x-auto + min-w on the table: with 10 columns the browser
     // otherwise crushes/clips the trailing ones (Level was invisible on
     // laptop widths) — scroll sideways instead.
+    // One row per interaction: a voice note, a comprehension flow tap (sky
+    // tint, no audio) or a parent-onboarding voice note (amber tint — what
+    // the reply was taken to mean and what it saved).
     <div className="w-full overflow-x-auto">
       <table className="w-full min-w-[1100px] text-sm text-left">
         <thead>
@@ -275,30 +263,79 @@ export function MediaTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, i) => (
+          {rows.map((row, i) => {
+            const kind = kindOf(row);
+            const turn = kind === "onboarding" ? (row.onboarding ?? null) : null;
+            const understood = turn ? onboardingUnderstood(turn) : null;
+            const saved = turn ? onboardingSaved(turn) : [];
+            return (
             <tr
               key={row.id}
-              className="border-b border-zinc-100 hover:bg-zinc-50 align-top"
+              data-kind={kind}
+              className={`border-b border-zinc-100 hover:bg-zinc-50 align-top ${ROW_TINT[kind]}`}
             >
               <td className="py-2.5 px-4 text-zinc-600 whitespace-nowrap">
                 {formatIST(row.created_at)}
               </td>
               <td className="py-2.5 px-4">
-                {row.starting_state ? (
+                {turn ? (
+                  <span className="text-zinc-700 text-xs">
+                    {onboardingStateLabel(turn.question)}
+                  </span>
+                ) : row.starting_state ? (
                   <span className="text-zinc-700 text-xs">{row.starting_state}</span>
                 ) : (
                   <span className="text-zinc-400 italic text-xs">--</span>
                 )}
               </td>
               <td className="py-2.5 px-4">
-                {row.has_audio ? (
-                  <AudioCell mediaId={row.id} />
-                ) : (
-                  <span className="text-zinc-400 italic text-xs">
-                    No audio
+                {kind === "tap" ? (
+                  <span className="inline-block rounded bg-sky-100 px-2 py-0.5 text-xs font-medium text-sky-700">
+                    Flow tap
                   </span>
+                ) : (
+                  <div className="flex flex-col gap-1">
+                    {kind === "onboarding" && (
+                      <span className="self-start rounded bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                        Onboarding
+                      </span>
+                    )}
+                    {row.has_audio ? (
+                      <AudioCell mediaId={row.id} />
+                    ) : (
+                      <span className="text-zinc-400 italic text-xs">
+                        No audio
+                      </span>
+                    )}
+                  </div>
                 )}
               </td>
+              {kind === "tap" ? (
+                <td className="py-2.5 px-4">
+                  <div className="flex flex-col gap-1 text-sm">
+                    <div>
+                      <span className="text-xs font-medium text-zinc-400 mr-1">
+                        question:
+                      </span>
+                      <span className="text-zinc-700">
+                        {row.tap?.question ?? (
+                          <em className="text-zinc-400">unknown</em>
+                        )}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-xs font-medium text-zinc-400 mr-1">
+                        chose:
+                      </span>
+                      <span className="text-zinc-700">
+                        {row.tap?.chosen ?? (
+                          <em className="text-zinc-400">unknown</em>
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                </td>
+              ) : (
               <td className="py-2.5 px-4 relative">
                 <div className="flex flex-col gap-1">
                   {row.transcripts
@@ -341,6 +378,46 @@ export function MediaTable({
                   />
                 </div>
               </td>
+              )}
+              {turn ? (
+                // Onboarding turn: what the reply was taken to mean and what
+                // it put in the database, across the three answer columns.
+                <td className="py-2.5 px-4" colSpan={3}>
+                  <div className="flex flex-col gap-0.5 text-sm">
+                    <div>
+                      <span className="text-xs font-medium text-zinc-400 mr-1">
+                        understood:
+                      </span>
+                      {understood !== null ? (
+                        <span className="text-zinc-700">{understood}</span>
+                      ) : (
+                        <span className="text-zinc-400 italic">
+                          not interpreted
+                        </span>
+                      )}
+                    </div>
+                    <div>
+                      <span className="text-xs font-medium text-zinc-400 mr-1">
+                        saved:
+                      </span>
+                      {saved.length > 0 ? (
+                        <span className="text-zinc-700">{saved.join(" · ")}</span>
+                      ) : (
+                        <span className="text-zinc-400 italic">nothing</span>
+                      )}
+                    </div>
+                    {turn.completed && row.word && (
+                      <div>
+                        <span className="text-xs font-medium text-zinc-400 mr-1">
+                          lesson 1 started:
+                        </span>
+                        <span className="text-zinc-700">{row.word}</span>
+                      </div>
+                    )}
+                  </div>
+                </td>
+              ) : (
+              <>
               <td className="py-2.5 px-4">
                 {row.answer ? (
                   <span className="text-zinc-700">{row.answer}</span>
@@ -355,9 +432,13 @@ export function MediaTable({
                 {row.answer_correct === false && (
                   <span className="text-red-500 font-medium">Incorrect</span>
                 )}
-                {row.answer_correct === null && (
-                  <span className="text-zinc-400 italic">--</span>
-                )}
+                {row.answer_correct === null &&
+                  (kind === "tap" ? (
+                    // A tap the lesson was not waiting for: nothing recorded.
+                    <span className="text-zinc-400 italic">Not counted</span>
+                  ) : (
+                    <span className="text-zinc-400 italic">--</span>
+                  ))}
               </td>
               <td className="py-2.5 px-4">
                 {row.score_changes && row.score_changes.length > 0 ? (
@@ -389,8 +470,14 @@ export function MediaTable({
                   <span className="text-zinc-400 italic text-xs">--</span>
                 )}
               </td>
+              </>
+              )}
               <td className="py-2.5 px-4">
-                {row.final_state ? (
+                {turn ? (
+                  <span className="text-zinc-700 text-xs">
+                    {turn.next ? onboardingStateLabel(turn.next) : "--"}
+                  </span>
+                ) : row.final_state ? (
                   <span className="text-zinc-700 text-xs">{row.final_state}</span>
                 ) : (
                   <span className="text-zinc-400 italic text-xs">--</span>
@@ -421,7 +508,8 @@ export function MediaTable({
                 )}
               </td>
             </tr>
-          ))}
+            );
+          })}
           {loading && (
             <tr>
               <td colSpan={10} className="py-6 text-center text-zinc-400">

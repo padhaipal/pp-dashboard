@@ -28,6 +28,22 @@ export const PUBLIC_LETTER_BINS_RE = /^scores\/letter-bins$/;
 // it removed (route.ts).
 export const PUBLIC_MEDIA_RE = /^users\/[^/]+\/media$/;
 
+// `users/:id/media?onboarding=1` makes pp-sketch include the parent-onboarding
+// voice notes (a parent stating the child's name and age, recorded before
+// recording permission exists). Staff only: for a sessionless caller the
+// param is removed before the request is forwarded, so the public /d modal
+// can never ask for them. Returns the query string to forward ("" or "?…").
+export const STAFF_ONLY_MEDIA_PARAM = "onboarding";
+
+export function forwardedSearch(path: string, method: string, search: string, staff: boolean): string {
+  if (staff || method !== "GET" || !PUBLIC_MEDIA_RE.test(path)) return search;
+  const params = new URLSearchParams(search);
+  if (!params.has(STAFF_ONLY_MEDIA_PARAM)) return search;
+  params.delete(STAFF_ONLY_MEDIA_PARAM);
+  const rest = params.toString();
+  return rest ? `?${rest}` : "";
+}
+
 export function isPublicAllowed(path: string, method: string): boolean {
   return PUBLIC_ALLOWED.some((r) => r.pattern.test(path) && r.methods.includes(method));
 }

@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
 import { logger } from "@/lib/logger";
 import { NextRequest } from "next/server";
-import { isPublicAllowed, PUBLIC_LETTER_BINS_RE, PUBLIC_MEDIA_RE } from "./public-allowlist";
+import { forwardedSearch, isPublicAllowed, PUBLIC_LETTER_BINS_RE, PUBLIC_MEDIA_RE } from "./public-allowlist";
 
 export const runtime = "nodejs";
 
@@ -82,7 +82,9 @@ async function proxyToSketch(req: NextRequest, { params }: { params: Promise<{ p
   }
   const stripPhone = !staff && PUBLIC_MEDIA_RE.test(joined) && req.method === "GET";
   const stripBinsPhone = !staff && PUBLIC_LETTER_BINS_RE.test(joined) && req.method === "GET";
-  const qs = req.nextUrl.search;
+  // Staff-only query params (the media feed's `onboarding`) are dropped for
+  // sessionless callers.
+  const qs = forwardedSearch(joined, req.method, req.nextUrl.search, staff);
   const target = `${process.env.PP_SKETCH_INTERNAL_URL}/${path.join("/")}${qs}`;
 
   logger.info(`proxy ${req.method} ${joined}${qs}`, "ProxyRoute");
