@@ -54,7 +54,16 @@ export type PublicProfile = {
   explainer_url: string | null;
 };
 
-export type Child = GeoRef & {
+// "Time" (the usage metric with a window): active time over the chosen
+// window. A student's own figures; for an area, a teacher or a class they are
+// PER STUDENT. Absent on a pp-sketch that predates Time windows.
+export type TimeFields = {
+  time_total?: number | null; // minutes in the window
+  time_per_day?: number | null; // minutes per day — what the colour follows
+  time_days?: number; // days the figures cover
+};
+
+export type Child = GeoRef & TimeFields & {
   pass_rate: number | null;
   n: number;
   students_active: number;
@@ -66,7 +75,7 @@ export type Child = GeoRef & {
   students?: number;
 };
 
-export type StudentChild = {
+export type StudentChild = TimeFields & {
   student_id: string;
   label: string; // first name, else "Student N"
   name: string | null; // full name as stored; edited from the class view
@@ -85,6 +94,10 @@ export type SnapshotTestScore = { status: "ok" | "insufficient_data"; attempts_a
 export type LiteracyTestScores = { nipun_grade_2: SnapshotTestScore; nipun_grade_3: SnapshotTestScore; mpl_b: SnapshotTestScore };
 // No test history for "usage" (undefined → empty series).
 export const TEST_KEY_OF: Partial<Record<Metric, keyof LiteracyTestScores>> = { nipun_g2: "nipun_grade_2", nipun_g3: "nipun_grade_3", mpl_b: "mpl_b" };
+
+// GET users/:id/usage-history — a student's active minutes per day (`date`
+// is the day the minutes were spent; days without activity are 0).
+export type UsageHistory = { as_of: string | null; range: Range; points: { date: string; minutes: number }[] };
 
 // GET users/:id/media — the student's recent interactions (newest first):
 // voice notes and comprehension flow taps. pp-sketch never returns the
@@ -116,7 +129,7 @@ export type SeriesPoint = { date: string; pass_rate: number | null; n: number; m
 // Class level only: one line per student (minutes for usage, score × 100 for tests, null = gap).
 export type StudentSeries = { student_id: string; points: { date: string; value: number | null }[] };
 
-export type RootStats = {
+export type RootStats = TimeFields & {
   pass_rate: number | null;
   mean: number | null;
   sd: number | null;
@@ -130,6 +143,9 @@ export type ScoresResponse = {
   as_of: string | null;
   metric: Metric;
   range: Range;
+  // Echoed by pp-sketch when the request carried a Time window: the response
+  // then has the time_* fields and no deltas / most improved.
+  window?: TimeWindow;
   entity: GeoRef;
   root: RootStats;
   series: SeriesPoint[];
@@ -143,7 +159,7 @@ export type SpotlightEntry = { child: Child; official: Official } | null;
 export type SpotlightResponse = { top: SpotlightEntry; most_improved: SpotlightEntry };
 
 export const METRICS: { key: Metric; label: string; short: string }[] = [
-  { key: "usage", label: "Daily usage (5+ min)", short: "Usage" },
+  { key: "usage", label: "Time", short: "Time" },
   { key: "nipun_g2", label: "NIPUN grade 2 proxy", short: "NIPUN g2 proxy" },
   { key: "nipun_g3", label: "NIPUN grade 3 proxy", short: "NIPUN g3 proxy" },
   { key: "mpl_b", label: "MPL-B proxy", short: "MPL-B proxy" },
@@ -154,6 +170,19 @@ export const METRIC_BY: Record<Metric, { key: Metric; label: string; short: stri
   nipun_g3: METRICS[2],
   mpl_b: METRICS[3],
 };
+// The window of the Time metric: a second toggle shown under the metric
+// toggle while Time is selected. "7d" = the last seven days (never "week").
+export type TimeWindow = "yesterday" | "7d" | "all";
+export const TIME_WINDOWS: { key: TimeWindow; label: string; suffix: string }[] = [
+  { key: "yesterday", label: "Yesterday", suffix: "yesterday" },
+  { key: "7d", label: "Last seven days", suffix: "last seven days" },
+  { key: "all", label: "All time", suffix: "all time" },
+];
+export const DEFAULT_TIME_WINDOW: TimeWindow = "7d";
+// "yesterday" / "last seven days" / "all time" for labels and captions.
+export const timeWindowSuffix = (w: TimeWindow, t: (s: string) => string = (s) => s) => t(TIME_WINDOWS.find((x) => x.key === w)!.suffix);
+// A scores response is in Time mode when pp-sketch echoed the window.
+export const isTimeMode = (s: { metric: Metric; window?: TimeWindow } | null | undefined): boolean => !!s && s.metric === "usage" && s.window != null;
 export const RANGES: Range[] = [30, "all"];
 // "30 days" / "All time" on toggles; "last 30 days" / "all time" in suffixes.
 export const rangeLabel = (r: Range, t: (s: string) => string = (s) => s) => (r === "all" ? t("All time") : `${r} ${t("days")}`);
@@ -256,14 +285,41 @@ export const nipColor = (v: number | null): string => (v == null ? UNCOVERED : v
 export const usageColor = (minutes: number | null): string => (minutes == null || minutes <= 0 ? "#dc2626" : minutes > USAGE_PASS_MINUTES ? "#16a34a" : "#f59e0b");
 export const fmtMinutes = (minutes: number | null): string => (minutes == null ? "—" : `${Math.round(minutes)} min`);
 
+// A total of active time: whole minutes up to 119, hours (one decimal at
+// most) from 120 minutes up — "45 min", "119 min", "2 hours", "2.5 hours".
+export const TIME_HOURS_FROM_MINUTES = 120;
+export function fmtDuration(minutes: number | null | undefined, t: (s: string) => string = (s) => s): string {
+  if (minutes == null) return "—";
+  const m = Math.round(minutes);
+  if (m < TIME_HOURS_FROM_MINUTES) return `${m} ${t("min")}`;
+  return `${Number((minutes / 60).toFixed(1))} ${t("hours")}`;
+}
+// An average per day — always minutes, never hours: one decimal under 10
+// ("0.4 min per day"), whole minutes from 10 up.
+export function fmtPerDay(minutes: number | null | undefined, t: (s: string) => string = (s) => s): string {
+  if (minutes == null) return "—";
+  const v = minutes < 10 ? Number(minutes.toFixed(1)) : Math.round(minutes);
+  return `${v} ${t("min per day")}`;
+}
+// Colour for a Time figure, from the average minutes per day: green past the
+// 5-minute mark, amber for some use, red for none, grey when there is nothing
+// to average (not using Lifteracy).
+export const timeColor = (perDay: number | null | undefined): string => (perDay == null ? UNCOVERED : usageColor(perDay));
+// Map / marker / bar fill of a child in Time mode.
+export const timeFill = (c: { using_lifteracy: boolean; time_per_day?: number | null }): string => (c.using_lifteracy ? timeColor(c.time_per_day) : UNCOVERED);
+
 // ------------------------------------------------------------------ urls
 
-export const scoresUrl = (id: string, metric: Metric, range: Range) =>
-  `/api/proxy/geo-entities/${encodeURIComponent(id)}/scores?metric=${metric}&range=${range}`;
-export const csvUrl = (id: string, metric: Metric, range: Range) =>
-  `/api/proxy/geo-entities/${encodeURIComponent(id)}/scores.csv?metric=${metric}&range=${range}`;
-export const spotlightUrl = (id: string, metric: Metric, range: Range) =>
-  `/api/proxy/geo-entities/${encodeURIComponent(id)}/spotlight?metric=${metric}&range=${range}`;
+// `window` is sent only for the Time (usage) metric.
+const windowQs = (metric: Metric, window?: TimeWindow) => (metric === "usage" && window ? `&window=${window}` : "");
+export const scoresUrl = (id: string, metric: Metric, range: Range, window?: TimeWindow) =>
+  `/api/proxy/geo-entities/${encodeURIComponent(id)}/scores?metric=${metric}&range=${range}${windowQs(metric, window)}`;
+export const csvUrl = (id: string, metric: Metric, range: Range, window?: TimeWindow) =>
+  `/api/proxy/geo-entities/${encodeURIComponent(id)}/scores.csv?metric=${metric}&range=${range}${windowQs(metric, window)}`;
+export const spotlightUrl = (id: string, metric: Metric, range: Range, window?: TimeWindow) =>
+  `/api/proxy/geo-entities/${encodeURIComponent(id)}/spotlight?metric=${metric}&range=${range}${windowQs(metric, window)}`;
+// student modal "Time" chart: the student's active minutes per day
+export const usageHistoryUrl = (id: string, range: Range) => `/api/proxy/users/${encodeURIComponent(id)}/usage-history?range=${range}`;
 export const profileUrl = (id: string) => `/api/proxy/users/${encodeURIComponent(id)}/profile`;
 // student modal: per-test history, recent voice notes and one note's audio
 export const testScoresUrl = (id: string) => `/api/proxy/users/${encodeURIComponent(id)}/literacy-test-scores`;

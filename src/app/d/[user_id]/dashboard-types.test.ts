@@ -1,5 +1,31 @@
 import { describe, expect, it } from "vitest";
-import { binColor, binOf, childFill, DEFAULT_METRIC, fmtMinutes, METRIC_BY, METRICS, scoreColor, studentModalRows, TEST_KEY_OF, UNCOVERED, usageColor, type MediaRow } from "./dashboard-types";
+import {
+  binColor,
+  binOf,
+  childFill,
+  csvUrl,
+  DEFAULT_METRIC,
+  DEFAULT_TIME_WINDOW,
+  fmtDuration,
+  fmtMinutes,
+  fmtPerDay,
+  isTimeMode,
+  METRIC_BY,
+  METRICS,
+  scoreColor,
+  scoresUrl,
+  spotlightUrl,
+  studentModalRows,
+  TEST_KEY_OF,
+  TIME_WINDOWS,
+  timeColor,
+  timeFill,
+  timeWindowSuffix,
+  UNCOVERED,
+  usageColor,
+  usageHistoryUrl,
+  type MediaRow,
+} from "./dashboard-types";
 import { parseIncompleteStates } from "./incomplete-states";
 import { jitterLatLng, JITTER_MAX_M } from "./map-helpers";
 
@@ -50,7 +76,9 @@ describe("usage metric", () => {
   it("sits first in the toggle order, has no test history, and formats minutes", () => {
     expect(METRICS[0].key).toBe("usage");
     expect(METRICS.map((m) => m.key)).toEqual(["usage", "nipun_g2", "nipun_g3", "mpl_b"]);
-    expect(METRIC_BY.usage.short).toBe("Usage");
+    // the usage metric is called "Time" everywhere it is shown
+    expect(METRIC_BY.usage.label).toBe("Time");
+    expect(METRIC_BY.usage.short).toBe("Time");
     expect(DEFAULT_METRIC).toBe("nipun_g3");
     expect(TEST_KEY_OF.usage).toBeUndefined();
     expect(fmtMinutes(null)).toBe("—");
@@ -60,6 +88,75 @@ describe("usage metric", () => {
     expect(usageColor(5.1)).toBe("#16a34a");
     expect(usageColor(0)).toBe("#dc2626");
     expect(usageColor(null)).toBe("#dc2626");
+  });
+});
+
+describe("Time windows", () => {
+  it("offers yesterday / last seven days / all time, defaulting to the last seven days", () => {
+    expect(TIME_WINDOWS.map((w) => [w.key, w.label])).toEqual([
+      ["yesterday", "Yesterday"],
+      ["7d", "Last seven days"],
+      ["all", "All time"],
+    ]);
+    expect(DEFAULT_TIME_WINDOW).toBe("7d");
+    expect(timeWindowSuffix("7d")).toBe("last seven days");
+    expect(timeWindowSuffix("yesterday")).toBe("yesterday");
+    expect(timeWindowSuffix("all", (s) => s.toUpperCase())).toBe("ALL TIME");
+  });
+
+  it("totals: whole minutes up to 119, hours from 120 minutes up", () => {
+    expect(fmtDuration(null)).toBe("—");
+    expect(fmtDuration(undefined)).toBe("—");
+    expect(fmtDuration(0)).toBe("0 min");
+    expect(fmtDuration(45.4)).toBe("45 min");
+    expect(fmtDuration(119)).toBe("119 min");
+    expect(fmtDuration(119.4)).toBe("119 min");
+    expect(fmtDuration(119.6)).toBe("2 hours");
+    expect(fmtDuration(120)).toBe("2 hours");
+    expect(fmtDuration(150)).toBe("2.5 hours");
+    expect(fmtDuration(1500)).toBe("25 hours");
+    expect(fmtDuration(6000)).toBe("100 hours");
+    // units go through the translator
+    expect(fmtDuration(45, (s) => (s === "min" ? "मिनट" : s))).toBe("45 मिनट");
+    expect(fmtDuration(150, (s) => (s === "hours" ? "घंटे" : s))).toBe("2.5 घंटे");
+  });
+
+  it("averages are always minutes per day, never hours", () => {
+    expect(fmtPerDay(null)).toBe("—");
+    expect(fmtPerDay(0)).toBe("0 min per day");
+    expect(fmtPerDay(0.44)).toBe("0.4 min per day");
+    expect(fmtPerDay(5.4)).toBe("5.4 min per day");
+    expect(fmtPerDay(9.96)).toBe("10 min per day");
+    expect(fmtPerDay(12.4)).toBe("12 min per day");
+    expect(fmtPerDay(300)).toBe("300 min per day");
+  });
+
+  it("colour follows the average per day: green past 5, amber for some, red for none, grey when nothing to average", () => {
+    expect(timeColor(5.1)).toBe("#16a34a");
+    expect(timeColor(5)).toBe("#f59e0b");
+    expect(timeColor(0.1)).toBe("#f59e0b");
+    expect(timeColor(0)).toBe("#dc2626");
+    expect(timeColor(null)).toBe(UNCOVERED);
+    expect(timeColor(undefined)).toBe(UNCOVERED);
+    expect(timeFill({ using_lifteracy: true, time_per_day: 7 })).toBe("#16a34a");
+    expect(timeFill({ using_lifteracy: true, time_per_day: null })).toBe(UNCOVERED);
+    expect(timeFill({ using_lifteracy: false, time_per_day: 7 })).toBe(UNCOVERED);
+  });
+
+  it("the window is sent only with the Time metric", () => {
+    expect(scoresUrl("g1", "usage", 30, "7d")).toBe("/api/proxy/geo-entities/g1/scores?metric=usage&range=30&window=7d");
+    expect(spotlightUrl("g1", "usage", "all", "yesterday")).toBe("/api/proxy/geo-entities/g1/spotlight?metric=usage&range=all&window=yesterday");
+    expect(csvUrl("g1", "usage", 30, "all")).toBe("/api/proxy/geo-entities/g1/scores.csv?metric=usage&range=30&window=all");
+    expect(scoresUrl("g1", "nipun_g3", 30, "7d")).toBe("/api/proxy/geo-entities/g1/scores?metric=nipun_g3&range=30");
+    expect(scoresUrl("g1", "usage", 30)).toBe("/api/proxy/geo-entities/g1/scores?metric=usage&range=30");
+    expect(usageHistoryUrl("s 1", "all")).toBe("/api/proxy/users/s%201/usage-history?range=all");
+  });
+
+  it("Time mode = pp-sketch echoed the window on a usage response", () => {
+    expect(isTimeMode({ metric: "usage", window: "7d" })).toBe(true);
+    expect(isTimeMode({ metric: "usage" })).toBe(false);
+    expect(isTimeMode({ metric: "nipun_g3", window: "7d" })).toBe(false);
+    expect(isTimeMode(null)).toBe(false);
   });
 });
 
