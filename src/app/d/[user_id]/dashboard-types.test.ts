@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { binColor, binOf, childFill, DEFAULT_METRIC, fmtMinutes, METRIC_BY, METRICS, scoreColor, TEST_KEY_OF, UNCOVERED, usageColor } from "./dashboard-types";
+import { binColor, binOf, childFill, DEFAULT_METRIC, fmtMinutes, METRIC_BY, METRICS, scoreColor, studentModalRows, TEST_KEY_OF, UNCOVERED, usageColor, type MediaRow } from "./dashboard-types";
 import { parseIncompleteStates } from "./incomplete-states";
 import { jitterLatLng, JITTER_MAX_M } from "./map-helpers";
 
@@ -60,5 +60,22 @@ describe("usage metric", () => {
     expect(usageColor(5.1)).toBe("#16a34a");
     expect(usageColor(0)).toBe("#dc2626");
     expect(usageColor(null)).toBe("#dc2626");
+  });
+});
+
+describe("studentModalRows", () => {
+  const row = (over: Partial<MediaRow>): MediaRow => ({ id: "x", created_at: "2026-09-30T10:00:00Z", has_audio: true, answer: null, answer_correct: null, ...over });
+
+  it("keeps voice notes (assessed or not) and answered taps; drops onboarding rows and taps that were not awaited", () => {
+    const rows = [
+      row({ id: "legacy" }), // no kind → a voice note from an older pp-sketch
+      row({ id: "voice", kind: "voice", answer_correct: true }),
+      row({ id: "tap-right", kind: "tap", answer_correct: true }),
+      row({ id: "tap-wrong", kind: "tap", answer_correct: false }),
+      row({ id: "tap-ignored", kind: "tap", answer_correct: null }),
+      row({ id: "onboarding", kind: "onboarding" }),
+    ];
+    expect(studentModalRows(rows).map((r) => r.id)).toEqual(["legacy", "voice", "tap-right", "tap-wrong"]);
+    expect(studentModalRows([])).toEqual([]);
   });
 });

@@ -5,3 +5,4 @@
 4b.) `fmtPctInt` ("69%", mvp2's whole-number headline figures); `displayName(name, type)` title-cases UDISE UPPERCASE geo names for the location title, leaving school (and student) names untouched.
 5.) URL builders (all through `/api/proxy`): `scoresUrl`, `csvUrl` (`…/scores.csv?metric=&range=`), `spotlightUrl`, `profileUrl`. `geoChildrenOf` / `studentChildrenOf` narrow `children` by `child_type`.
 6.) Exact strings: `EMPTY_ROOT_TEXT = "No results yet — share your link to get started."`, `INACTIVE_LINK_TEXT = "This link is not active"`.
+9.) `MediaRow` (GET users/:id/media) carries `kind?: "voice" | "tap" | "onboarding"` (absent = voice, older pp-sketch) and `tap?: { question, chosen, correct }`; on a tap `answer` is the correct option's text and `answer_correct` null means the tap was not awaited. `studentModalRows(media)` = what the student modal lists and counts: everything except onboarding rows and un-awaited taps.

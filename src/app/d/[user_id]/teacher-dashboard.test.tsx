@@ -234,6 +234,14 @@ describe("TeacherDashboard", () => {
     expect(sentences).toContain("correct");
     expect(sentences).toContain("nothing (no recording)");
     expect(sentences).toContain("incorrect");
+    // a flow tap is one sentence too: the question, the option chosen, the correct one — and no audio button
+    const taps = screen.getAllByTestId("tap-sentence");
+    expect(taps.length).toBe(1);
+    expect(taps[0].textContent).toContain("the student was asked “कमल कहाँ गया?” and chose “बाज़ार” and the correct answer was “स्कूल” and so was marked as incorrect.");
+    expect(taps[0].querySelector('[data-testid="audio-button"]')).toBeNull();
+    // a tap that was not awaited and an onboarding voice note are never listed (the single audio button above is m-1's)
+    expect(sentences).not.toContain("पुराना सवाल");
+    expect(screen.getByTestId("student-sentences").children.length).toBe(3);
     // the modal opens on the letter-score chart (no range: it is per interaction), with its own picker
     expect(dialog.querySelectorAll('[aria-label="Metric"]').length).toBe(1);
     const modalButton = (name: string) => Array.from(dialog.querySelectorAll("button")).find((b) => b.textContent === name)!;

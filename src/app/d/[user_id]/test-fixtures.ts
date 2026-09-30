@@ -166,6 +166,20 @@ export const MEDIA = {
   media: [
     { id: "m-1", created_at: new Date(Date.now() - 2 * 3600_000).toISOString(), has_audio: true, answer: "घर", answer_correct: true },
     { id: "m-2", created_at: new Date(Date.now() - 26 * 3600_000).toISOString(), has_audio: false, answer: "मछली", answer_correct: false },
+    // a comprehension flow tap: no recording, the question and the option chosen
+    {
+      id: "m-3",
+      kind: "tap",
+      created_at: new Date(Date.now() - 27 * 3600_000).toISOString(),
+      has_audio: false,
+      answer: "स्कूल",
+      answer_correct: false,
+      tap: { question: "कमल कहाँ गया?", chosen: "बाज़ार", correct: "स्कूल" },
+    },
+    // a tap the lesson was not waiting for — never listed
+    { id: "m-4", kind: "tap", created_at: new Date(Date.now() - 28 * 3600_000).toISOString(), has_audio: false, answer: "नदी", answer_correct: null, tap: { question: "पुराना सवाल", chosen: "पहाड़", correct: "नदी" } },
+    // an onboarding voice note must never be listed here, even if one arrived
+    { id: "m-5", kind: "onboarding", created_at: new Date(Date.now() - 29 * 3600_000).toISOString(), has_audio: true, answer: null, answer_correct: null },
   ],
 };
 

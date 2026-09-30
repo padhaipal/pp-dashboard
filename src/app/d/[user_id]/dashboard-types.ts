@@ -86,15 +86,30 @@ export type LiteracyTestScores = { nipun_grade_2: SnapshotTestScore; nipun_grade
 // No test history for "usage" (undefined → empty series).
 export const TEST_KEY_OF: Partial<Record<Metric, keyof LiteracyTestScores>> = { nipun_g2: "nipun_grade_2", nipun_g3: "nipun_grade_3", mpl_b: "mpl_b" };
 
-// GET users/:id/media — the student's recent voice notes (newest first).
+// GET users/:id/media — the student's recent interactions (newest first):
+// voice notes and comprehension flow taps. pp-sketch never returns the
+// parent-onboarding voice notes to this public page (they need the staff-only
+// `onboarding` param, which the proxy drops for sessionless callers).
 export type MediaRow = {
   id: string;
+  // Absent on a pp-sketch that predates the field → a voice note.
+  kind?: "voice" | "tap" | "onboarding";
   created_at: string;
   has_audio: boolean;
+  // voice: the word / passage asked for; tap: the correct option's text
   answer: string | null;
+  // tap: null = the lesson was not waiting for that tap (nothing recorded)
   answer_correct: boolean | null;
+  tap?: { question: string | null; chosen: string | null; correct: string | null } | null;
 };
 export type UserMedia = { user: { name: string | null }; media: MediaRow[] };
+
+// What the student modal lists and counts as activity: voice notes and the
+// taps that answered a question. An onboarding row is dropped even if one
+// ever arrived (defence in depth — this page is public), and so is a tap
+// that was not awaited.
+export const studentModalRows = (media: MediaRow[]): MediaRow[] =>
+  media.filter((m) => m.kind !== "onboarding" && !(m.kind === "tap" && m.answer_correct === null));
 
 // mean: usage = minutes per student that day (absent = 0); tests = mean score × 100.
 export type SeriesPoint = { date: string; pass_rate: number | null; n: number; mean: number | null };

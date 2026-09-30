@@ -30,6 +30,7 @@ import {
   type ChildType,
   type LiteracyTestScores,
   type MediaRow,
+  studentModalRows,
   type Metric,
   type ModalMetric,
   type Range,
@@ -473,6 +474,9 @@ export function whenParts(iso: string, now = Date.now()): { time: string; day: s
 }
 
 const MAX_ANSWER_CHARS = 14;
+// A comprehension question / option is a sentence, not a word.
+const MAX_TAP_CHARS = 80;
+const clip = (s: string, max: number) => (s.length > max ? s.slice(0, max) + "…" : s);
 
 // "▶ audio" — plays the note through the proxy; one <audio> per button, created on first click.
 function AudioButton({ mediaId, t }: { mediaId: string; t: T }) {
@@ -507,7 +511,8 @@ function AudioButton({ mediaId, t }: { mediaId: string; t: T }) {
   );
 }
 
-// Practice activity for the last 7 IST days from the voice notes: n = notes that day.
+// Practice activity for the last 7 IST days from the interactions (voice
+// notes + answered flow taps): n = interactions that day.
 export function activitySeries(media: MediaRow[], now = Date.now()): SeriesPoint[] {
   const dayOf = (ms: number) => new Date(ms).toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
   const counts = new Map<string, number>();
@@ -642,7 +647,7 @@ export function MvpTeacherModal({
                   />{" "}
                   <span className="font-normal text-zinc-400">· {t("Student")}</span>
                 </div>
-                {st?.media && <MvpStudentActivity series={activitySeries(st.media)} />}
+                {st?.media && <MvpStudentActivity series={activitySeries(studentModalRows(st.media))} />}
               </>
             )}
           </div>
@@ -689,12 +694,24 @@ export function MvpTeacherModal({
               </div>
             )
           ) : (
-            /* every recent voice note as one friendly sentence — fixed-height scroll pane so the chart stays visible */
+            /* every recent interaction (voice note or flow tap) as one friendly sentence — fixed-height scroll pane so the chart stays visible */
             <div className="max-h-80 divide-y divide-zinc-100 overflow-y-auto px-6" data-testid="student-sentences">
-              {st?.media && st.media.length === 0 && <p className="py-3 text-sm text-zinc-400">{t("No voice notes yet.")}</p>}
-              {(st?.media ?? []).map((row) => {
+              {st?.media && studentModalRows(st.media).length === 0 && <p className="py-3 text-sm text-zinc-400">{t("No voice notes yet.")}</p>}
+              {studentModalRows(st?.media ?? []).map((row) => {
                 const w = whenParts(row.created_at);
-                const ans = row.answer ? (row.answer.length > MAX_ANSWER_CHARS ? row.answer.slice(0, MAX_ANSWER_CHARS) + "…" : row.answer) : "—";
+                if (row.kind === "tap") {
+                  // a comprehension flow answer: no recording, the question and the option chosen instead
+                  return (
+                    <div key={row.id} className="py-3 text-sm leading-relaxed text-zinc-700" data-testid="tap-sentence">
+                      {t("At")} <span className="font-semibold">{w.time}</span> {t("on")} <span className="font-semibold">{w.day}</span> {t(w.week)} {t("the student was asked")}{" "}
+                      <span className="font-semibold text-zinc-900">“{row.tap?.question ? clip(row.tap.question, MAX_TAP_CHARS) : "—"}”</span> {t("and chose")}{" "}
+                      <span className="font-semibold text-zinc-900">“{row.tap?.chosen ? clip(row.tap.chosen, MAX_TAP_CHARS) : "—"}”</span> {t("and the correct answer was")}{" "}
+                      <span className="font-semibold text-zinc-900">“{row.answer ? clip(row.answer, MAX_TAP_CHARS) : "—"}”</span> {t("and so was marked as")}{" "}
+                      {row.answer_correct ? <span className="font-semibold text-emerald-600">{t("correct")}</span> : <span className="font-semibold text-red-500">{t("incorrect")}</span>}.
+                    </div>
+                  );
+                }
+                const ans = row.answer ? clip(row.answer, MAX_ANSWER_CHARS) : "—";
                 return (
                   <div key={row.id} className="py-3 text-sm leading-relaxed text-zinc-700">
                     {t("At")} <span className="font-semibold">{w.time}</span> {t("on")} <span className="font-semibold">{w.day}</span> {t(w.week)} {t("the student said")}{" "}
