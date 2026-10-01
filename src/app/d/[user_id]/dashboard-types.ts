@@ -7,10 +7,18 @@
 // `score` is minutes (absent = 0), its `delta` is in minutes.
 export type Metric = "usage" | "nipun_g2" | "nipun_g3" | "mpl_b";
 export const USAGE_PASS_MINUTES = 5;
-// A test (NIPUN / MPL-B proxy) is passed with a score strictly above this
-// (pp-sketch TEST_PASS_THRESHOLD = 0.5). The headline "% of students
-// passing" and the dotted pass mark on the trend charts use it.
-export const TEST_PASS_PCT = 50;
+// Pass marks (a pass is a score STRICTLY above) and age bands ([min, max)
+// whole years) of the three tests, as pp-sketch decides them
+// (literacy-test-scores.ts NIPUN_PASS_THRESHOLD / MPL_B_PASS_THRESHOLD,
+// age-bands.ts METRIC_AGE_BANDS). Every scores response carries its own
+// `pass_mark` / `age_band`; these are the fallback for a pp-sketch that
+// predates them — keep in sync.
+export const PASS_MARK_PCT: Record<Exclude<Metric, "usage">, number> = { nipun_g2: 80, nipun_g3: 80, mpl_b: 50 };
+export const METRIC_AGE_BANDS: Record<Exclude<Metric, "usage">, [number, number]> = { nipun_g2: [7, 9], nipun_g3: [8, 10], mpl_b: [8, 10] };
+export const passMarkOf = (metric: Metric, fromResponse?: number | null): number | null => (metric === "usage" ? null : (fromResponse ?? PASS_MARK_PCT[metric]));
+export const ageBandOf = (metric: Metric, fromResponse?: [number, number] | null): [number, number] | null => (metric === "usage" ? null : (fromResponse ?? METRIC_AGE_BANDS[metric]));
+// "7–8" for [7, 9) — the whole ages the band covers; "8" when it is one year.
+export const ageBandLabel = ([min, max]: [number, number]): string => (max - 1 <= min ? `${min}` : `${min}–${max - 1}`);
 // 30 = last 30 days; "all" = all time (no lower bound; deltas are vs the
 // student's / entity's oldest row).
 export type Range = 30 | "all";
@@ -150,6 +158,9 @@ export type ScoresResponse = {
   // Echoed by pp-sketch when the request carried a Time window: the response
   // then has the time_* fields and no deltas / most improved.
   window?: TimeWindow;
+  // Test metrics: the age band counted and the pass mark (%) — see PASS_MARK_PCT.
+  age_band?: [number, number];
+  pass_mark?: number;
   entity: GeoRef;
   root: RootStats;
   series: SeriesPoint[];

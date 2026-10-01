@@ -44,8 +44,9 @@ describe("TeacherDashboard", () => {
 
     const kpis = await screen.findByTestId("root-kpis");
     expect(kpis.textContent).toContain("72%");
-    // the figure is the share of scored students who passed, and says so
-    expect(kpis.textContent).toContain("of students pass the NIPUN grade 3 proxy");
+    // the figure is the share of scored students (in the test's age band) who passed, and says so
+    expect(kpis.textContent).toContain("72%");
+    expect(kpis.textContent).toContain("of 8–9 year old students pass the NIPUN grade 3 proxy");
     expect(kpis.textContent).not.toContain("average NIPUN");
     expect(kpis.textContent).toContain("2 of 2");
     expect(kpis.textContent).toContain("states using Lifteracy");
@@ -283,17 +284,24 @@ describe("TeacherDashboard", () => {
     expect(container.textContent).not.toContain("18 Sept");
     // no pass mark on a minutes axis
     expect(container.querySelector('[data-testid="pass-mark"]')).toBeNull();
-    expect(container.textContent).not.toContain("50% pass mark");
+    expect(container.textContent).not.toContain("pass mark");
+    // MPL-B: a dotted 50 % pass mark (what "% of students pass" counts)
     rerender(<RepTrend series={pts} metric="mpl_b" label="MPL-B proxy" />);
-    expect(container.textContent).not.toContain("80% NIPUN target");
-    // every test gets the dotted 50 % pass mark (what "% of students pass" counts)
     expect(container.textContent).toContain("50% pass mark");
-    const mark = container.querySelector('[data-testid="pass-mark"]')!;
+    expect(container.textContent).not.toContain("NIPUN target");
+    let mark = container.querySelector('[data-testid="pass-mark"]')!;
     // desktop geometry: mT 12, ih 234 → y(50) = 129
     expect(Number(mark.getAttribute("y1"))).toBeCloseTo(129, 0);
+    // NIPUN: the pass mark is 80 (all four right) — one line, no separate target
     rerender(<RepTrend series={pts} metric="nipun_g3" label="NIPUN g3 proxy" />);
-    expect(container.textContent).toContain("80% NIPUN target");
-    expect(container.textContent).toContain("50% pass mark");
+    expect(container.textContent).toContain("80% pass mark");
+    expect(container.textContent).not.toContain("50% pass mark");
+    expect(container.textContent).not.toContain("NIPUN target");
+    mark = container.querySelector('[data-testid="pass-mark"]')!;
+    expect(Number(mark.getAttribute("y1"))).toBeCloseTo(58.8, 0);
+    // the response's own pass mark wins over the default
+    rerender(<RepTrend series={pts} metric="nipun_g2" passMark={75} label="NIPUN g2 proxy" />);
+    expect(container.textContent).toContain("75% pass mark");
   });
 
   it("trend average line plots the metric mean, not the pass rate", () => {

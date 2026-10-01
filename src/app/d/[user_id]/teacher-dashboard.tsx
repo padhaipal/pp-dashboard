@@ -32,6 +32,7 @@ import {
   fmtPerDay,
   geoChildrenOf,
   isTimeMode,
+  ageBandOf,
   METRIC_BY,
   timeColor,
   timeFill,
@@ -302,6 +303,8 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
           metric,
           range,
           timeWindow: timeMode ? timeWindow : undefined,
+          ageBand: scores.age_band ?? null,
+          passMark: scores.pass_mark ?? null,
           asOf: scores.as_of,
           root: scores.root,
           series: scores.series,
@@ -393,6 +396,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                 totalN={geoChildren.length}
                 showUsing={childType !== "teacher" && childType !== "student"}
                 timeWindow={timeMode ? timeWindow : undefined}
+                ageBand={ageBandOf(metric, scores.age_band)}
                 t={t}
               />
             )}
@@ -538,6 +542,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                         series={scores.series}
                         label={isUsageMetric ? t("Minutes per student") : t(METRIC_BY[metric].short)}
                         metric={metric}
+                        passMark={scores.pass_mark}
                         students={
                           inClass
                             ? (scores.students_series ?? []).map((ss) => ({
