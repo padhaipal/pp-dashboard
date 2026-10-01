@@ -17,8 +17,9 @@ export const PASS_MARK_PCT: Record<Exclude<Metric, "usage">, number> = { nipun_g
 export const METRIC_AGE_BANDS: Record<Exclude<Metric, "usage">, [number, number]> = { nipun_g2: [7, 9], nipun_g3: [8, 10], mpl_b: [8, 10] };
 export const passMarkOf = (metric: Metric, fromResponse?: number | null): number | null => (metric === "usage" ? null : (fromResponse ?? PASS_MARK_PCT[metric]));
 export const ageBandOf = (metric: Metric, fromResponse?: [number, number] | null): [number, number] | null => (metric === "usage" ? null : (fromResponse ?? METRIC_AGE_BANDS[metric]));
-// "7–8" for [7, 9) — the whole ages the band covers; "8" when it is one year.
-export const ageBandLabel = ([min, max]: [number, number]): string => (max - 1 <= min ? `${min}` : `${min}–${max - 1}`);
+// The age the test is described by: the band's lower bound ("8 year old
+// students" for [8, 10)) — one number, as the headline is worded.
+export const ageBandLabel = ([min]: [number, number]): string => `${min}`;
 // 30 = last 30 days; "all" = all time (no lower bound; deltas are vs the
 // student's / entity's oldest row).
 export type Range = 30 | "all";

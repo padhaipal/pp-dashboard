@@ -46,7 +46,7 @@ describe("TeacherDashboard", () => {
     expect(kpis.textContent).toContain("72%");
     // the figure is the share of scored students (in the test's age band) who passed, and says so
     expect(kpis.textContent).toContain("72%");
-    expect(kpis.textContent).toContain("of 8–9 year old students pass the NIPUN grade 3 proxy");
+    expect(kpis.textContent).toContain("of 8 year old students pass the NIPUN grade 3 proxy");
     expect(kpis.textContent).not.toContain("average NIPUN");
     expect(kpis.textContent).toContain("2 of 2");
     expect(kpis.textContent).toContain("states using Lifteracy");

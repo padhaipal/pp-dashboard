@@ -105,8 +105,9 @@ describe("pass marks and age bands", () => {
     expect(ageBandOf("nipun_g2")).toEqual([7, 9]);
     expect(ageBandOf("mpl_b", [9, 11])).toEqual([9, 11]);
     expect(ageBandOf("usage")).toBeNull();
-    expect(ageBandLabel([7, 9])).toBe("7–8");
-    expect(ageBandLabel([8, 10])).toBe("8–9");
+    // the headline names one age: the band's lower bound
+    expect(ageBandLabel([7, 9])).toBe("7");
+    expect(ageBandLabel([8, 10])).toBe("8");
     expect(ageBandLabel([8, 9])).toBe("8");
   });
 });
