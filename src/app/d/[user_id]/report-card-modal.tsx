@@ -7,6 +7,7 @@
 
 import { useEffect, useState } from "react";
 import { AvatarImg, MvpTrend } from "./mvp-widgets";
+import { useIsMobile } from "./use-is-mobile";
 import {
   ACCENT,
   binColor,
@@ -44,21 +45,8 @@ import { IconClose, IconPdf } from "./icons";
 
 const same: T = (s) => s;
 
-export function useIsMobile(bp = 640): boolean {
-  const [m, setM] = useState(false);
-  useEffect(() => {
-    if (typeof window === "undefined" || !window.matchMedia) return;
-    const q = window.matchMedia(`(max-width: ${bp - 0.02}px)`);
-    const f = () => setM(q.matches);
-    const t = setTimeout(f, 0);
-    q.addEventListener("change", f);
-    return () => {
-      clearTimeout(t);
-      q.removeEventListener("change", f);
-    };
-  }, [bp]);
-  return m;
-}
+// useIsMobile lives in use-is-mobile.ts (shared with mvp-widgets).
+export { useIsMobile } from "./use-is-mobile";
 
 const shiftDay = (iso: string, days: number) => new Date(new Date(`${iso}T00:00:00Z`).getTime() + days * 86400000).toISOString().slice(0, 10);
 const fmtDay = (iso: string) => {
@@ -104,7 +92,7 @@ export function RepKpis({
           {sub}
         </div>
       )}
-      <div className="mt-1.5 whitespace-nowrap text-sm font-medium leading-tight text-zinc-500">{label}</div>
+      <div className="mt-1.5 text-sm font-medium leading-tight text-zinc-500">{label}</div>
     </div>
   );
   return (
@@ -418,7 +406,7 @@ export function RepImproved<R extends ImprovedRow>({
   const W = mobile ? 440 : 900,
     rowH = mobile ? 30 : 19,
     mT = 6,
-    mL = mobile ? 130 : 168,
+    mL = mobile ? 190 : 210,
     mR = mobile ? 52 : 44,
     H = mT * 2 + arr.length * rowH;
   const max = Math.max(1, ...arr.map((i) => Math.abs(i.delta!))),
@@ -429,7 +417,7 @@ export function RepImproved<R extends ImprovedRow>({
         const yy = mT + i * rowH,
           bw = Math.max(2, (Math.abs(it.delta!) / max) * iw),
           hot = hoverId === it.id || selId === it.id;
-        const mx = mobile ? 16 : 30;
+        const mx = mobile ? 26 : 38;
         const nm = it.name.length > mx ? it.name.slice(0, mx - 1) + "…" : it.name;
         const pos = it.delta! >= 0;
         return (

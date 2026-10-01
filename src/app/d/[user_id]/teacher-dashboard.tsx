@@ -83,6 +83,12 @@ async function serverMessage(res: Response): Promise<string> {
   return `HTTP ${res.status}`;
 }
 
+// "{name} · {phone}" — the student's WhatsApp number follows the name
+// everywhere it is shown (and stands in for one on an unnamed student), so a
+// teacher can tell students apart. Deliberately uncensored.
+const withPhone = (name: string, phone: string | undefined) => (phone ? `${name} · ${phone}` : name);
+const studentSub = (s: StudentChild, t: T) => (s.phone ? `${t("Student")} · ${s.phone}` : t("Student"));
+
 const toRef = (c: GeoRef): GeoRef => ({ id: c.id, type: c.type, code: c.code, name: c.name, has_boundary: c.has_boundary, lat: c.lat, lng: c.lng });
 
 // mvp2's report constants: section heading, card, input.
@@ -241,7 +247,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
           ? students.map((s) => ({
               id: s.student_id,
               name: s.name ?? UNNAMED,
-              sub: t("Student"),
+              sub: studentSub(s, t),
               value: s.time_per_day ?? null,
               display: `${fmtDuration(s.time_total, t)} · ${fmtPerDay(s.time_per_day, t)}`,
               color: timeColor(s.time_per_day),
@@ -260,7 +266,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
             return {
               id: s.student_id,
               name: s.name ?? UNNAMED,
-              sub: t("Student"),
+              sub: studentSub(s, t),
               value: isUsageMetric ? s.score : pct,
               display: isUsageMetric ? fmtMinutes(s.score) : fmtPctInt(pct),
               color: isUsageMetric ? usageColor(s.score) : nipColor(pct),
@@ -290,7 +296,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
             .filter((s) => s.delta != null)
             .sort((a, b) => (b.delta ?? 0) - (a.delta ?? 0))
             .slice(0, 5)
-            .map((s) => ({ id: s.student_id, name: s.name ?? UNNAMED, delta: s.delta }))
+            .map((s) => ({ id: s.student_id, name: withPhone(s.name ?? UNNAMED, s.phone), delta: s.delta }))
         : (scores?.most_improved ?? []),
     [inClass, students, scores],
   );
@@ -322,10 +328,10 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
     <div className="min-h-screen scroll-smooth bg-zinc-50 text-zinc-900">
       {/* report header — logo + section shortcuts + language + Generate report */}
       <header className="sticky top-0 z-40 border-b border-zinc-200/70 bg-zinc-50/90 backdrop-blur">
-        <div className="relative mx-auto flex max-w-6xl items-center justify-between px-6 py-2.5">
-          <Image src="/lifteracy-logo-only.svg" alt="Lifteracy" width={160} height={64} className="h-14 w-auto shrink-0 sm:h-16" priority />
+        <div className="relative mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-2.5 sm:px-6">
+          <Image src="/lifteracy-logo-only.svg" alt="Lifteracy" width={160} height={64} className="h-10 w-auto shrink-0 sm:h-14 md:h-16" priority />
           {/* nav centred in the bar, independent of logo width */}
-          <nav className="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 items-center gap-6 text-sm font-semibold text-zinc-600 md:flex">
+          <nav className="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 items-center gap-6 text-sm font-semibold text-zinc-600 lg:flex">
             <a href="#rep-top" className="transition-colors hover:text-blue-600">
               {t("Top")}
             </a>
@@ -341,16 +347,18 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
               {t("Your Profile")}
             </a>
           </nav>
-          <div className="flex items-center gap-3">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <MvpLangToggle lang={lang} setLang={setLang} />
             <button
               type="button"
               onClick={() => setReportOpen(true)}
               disabled={!reportData}
-              className="rounded-lg px-5 py-2 text-sm font-bold text-white shadow-sm transition hover:opacity-90 disabled:opacity-40 sm:text-base"
+              className="whitespace-nowrap rounded-lg px-3 py-2 text-xs font-bold text-white shadow-sm transition hover:opacity-90 disabled:opacity-40 sm:px-5 sm:text-sm md:text-base"
               style={{ background: ACCENT }}
             >
-              ⤓ {t("Generate report")}
+              {/* phones: just "Report" */}
+              ⤓ <span className="sm:hidden">{t("Report")}</span>
+              <span className="hidden sm:inline">{t("Generate report")}</span>
             </button>
           </div>
         </div>
@@ -547,7 +555,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                           inClass
                             ? (scores.students_series ?? []).map((ss) => ({
                                 id: ss.student_id,
-                                label: students.find((s) => s.student_id === ss.student_id)?.name?.split(/\s+/)[0] ?? UNNAMED,
+                                label: ((s) => withPhone(s?.name?.split(/\s+/)[0] ?? UNNAMED, s?.phone))(students.find((s) => s.student_id === ss.student_id)),
                                 points: ss.points,
                               }))
                             : []
@@ -783,6 +791,11 @@ function StudentTiles({
               <div className="flex w-full justify-center text-[13px] font-bold sm:text-sm">
                 <EditableStudentName studentId={s.student_id} name={s.name} fallback={UNNAMED} onSaved={(name) => onRename(s.student_id, name)} t={t} />
               </div>
+              {s.phone && (
+                <div className="font-mono text-[10px] font-semibold tabular-nums opacity-90" data-testid="tile-phone">
+                  {s.phone}
+                </div>
+              )}
               <div className="text-xl font-extrabold tabular-nums sm:text-2xl">{time ? fmtDuration(s.time_total, t) : isUsage ? fmtMinutes(s.score) : fmtPctInt(pct)}</div>
               {time ? (
                 <div className="text-[11px] font-bold tabular-nums" data-testid="tile-per-day">

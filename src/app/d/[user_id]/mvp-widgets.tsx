@@ -45,6 +45,7 @@ import {
   UNNAMED,
 } from "./dashboard-types";
 import { LANGS, type Lang, type T } from "./i18n";
+import { useIsMobile } from "./use-is-mobile";
 import { IconCopy } from "./icons";
 import { ScoreChart } from "../../user/[id]/score-chart";
 
@@ -372,14 +373,17 @@ export function MvpStudentTrend({ series, label }: { series: SeriesPoint[]; labe
 // one bar per day, labelled by the day the minutes were spent. The axis grows
 // with the data (multiples of 10, at least 10). Inline styles like the trend.
 export function MvpMinutesChart({ points, label, t = same }: { points: { date: string; minutes: number | null }[]; label: string; t?: T }) {
-  const W = 860,
-    H = 220,
-    mL = 40,
+  // Phones get a narrower viewBox so the axis text stays legible.
+  const mobile = useIsMobile();
+  const W = mobile ? 440 : 860,
+    H = mobile ? 260 : 220,
+    mL = mobile ? 36 : 40,
     mR = 12,
     mT = 14,
-    mB = 30,
+    mB = mobile ? 36 : 30,
     iw = W - mL - mR,
-    ih = H - mT - mB;
+    ih = H - mT - mB,
+    fs = mobile ? 1.4 : 1;
   const n = points.length;
   const yMax = Math.max(10, Math.ceil(Math.max(0, ...points.map((p) => p.minutes ?? 0)) / 10) * 10);
   const step = yMax <= 50 ? 10 : yMax <= 100 ? 20 : Math.ceil(yMax / 50) * 10;
@@ -387,25 +391,25 @@ export function MvpMinutesChart({ points, label, t = same }: { points: { date: s
   const y = (v: number) => mT + ih - (v / yMax) * ih;
   const slot = iw / Math.max(1, n);
   const bw = Math.max(1.5, Math.min(26, slot * 0.7));
-  const every = Math.max(1, Math.ceil(n / 8));
+  const every = Math.max(1, Math.ceil(n / (mobile ? 4 : 8)));
   // Date under every `every`-th bar and under the last one; a regular tick
   // that would crowd the last label is dropped.
   const labelled = (i: number) => i === n - 1 || (i % every === 0 && n - 1 - i >= every / 2);
   return (
-    <svg viewBox={"0 0 " + W + " " + H} className="w-full" style={{ maxHeight: 240 }} data-rep-chart="minutes" data-testid="minutes-chart">
+    <svg viewBox={"0 0 " + W + " " + H} className="w-full" style={{ maxHeight: mobile ? 300 : 240 }} data-rep-chart="minutes" data-testid="minutes-chart">
       {ticks.map((g) => (
         <g key={g}>
           <line x1={mL} x2={W - mR} y1={y(g)} y2={y(g)} stroke="#f1f5f9" />
-          <text x={mL - 5} y={y(g) + 3} textAnchor="end" fontSize="9" fill="#94a3b8">
+          <text x={mL - 5} y={y(g) + 3} textAnchor="end" fontSize={9 * fs} fill="#94a3b8">
             {g}
           </text>
         </g>
       ))}
-      <text transform={`translate(12 ${mT + ih / 2}) rotate(-90)`} textAnchor="middle" fontSize="11" fontWeight="600" fill="#475569">
+      <text transform={`translate(12 ${mT + ih / 2}) rotate(-90)`} textAnchor="middle" fontSize={11 * fs} fontWeight="600" fill="#475569">
         {label}
       </text>
       {n === 0 ? (
-        <text x={W / 2} y={H / 2} textAnchor="middle" fontSize="14" fill="#94a3b8">
+        <text x={W / 2} y={H / 2} textAnchor="middle" fontSize={14 * fs} fill="#94a3b8">
           {t("No results in this window")}
         </text>
       ) : (
@@ -420,7 +424,7 @@ export function MvpMinutesChart({ points, label, t = same }: { points: { date: s
                 </rect>
               )}
               {labelled(i) && (
-                <text x={cx} y={H - 6} textAnchor="middle" fontSize="8" fill="#94a3b8">
+                <text x={cx} y={H - 6} textAnchor="middle" fontSize={8 * fs} fill="#94a3b8">
                   {fmtDay(p.date)}
                 </text>
               )}
@@ -738,8 +742,8 @@ export function MvpTeacherModal({
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-zinc-900/60 p-4" onClick={onClose} role="dialog" aria-modal="true">
       <div className="max-h-[90vh] w-full max-w-6xl overflow-y-auto rounded-2xl bg-zinc-50 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between border-b border-zinc-200 bg-white px-6 py-4">
-          <div className="flex flex-wrap items-center gap-4">
+        <div className="flex items-center justify-between gap-3 border-b border-zinc-200 bg-white px-4 py-4 sm:px-6">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-4">
             {subject.kind === "child" ? (
               <>
                 {subject.child.official && <AvatarImg seed={subject.child.official.avatar_seed} size={56} className="h-14 w-14" ring={binColor(subject.child.bin)} />}
@@ -753,21 +757,28 @@ export function MvpTeacherModal({
               </>
             ) : (
               <>
-                <div className="text-2xl font-bold text-zinc-900" data-testid="student-modal-title">
+                <div className="flex flex-wrap items-baseline gap-x-2 text-2xl font-bold text-zinc-900" data-testid="student-modal-title">
                   <EditableStudentName
                     studentId={subject.student.student_id}
                     name={subject.student.name}
                     fallback={UNNAMED}
                     onSaved={(name) => onRename?.(subject.student.student_id, name)}
                     t={t}
-                  />{" "}
-                  <span className="font-normal text-zinc-400">· {t("Student")}</span>
+                  />
+                  <span className="whitespace-nowrap font-normal text-zinc-400">
+                    · {t("Student")}
+                    {subject.student.phone && (
+                      <span className="ml-2 font-mono text-base font-semibold text-zinc-500" data-testid="student-modal-phone">
+                        {subject.student.phone}
+                      </span>
+                    )}
+                  </span>
                 </div>
                 {st?.media && <MvpStudentActivity series={activitySeries(studentModalRows(st.media))} />}
               </>
             )}
           </div>
-          <button type="button" onClick={onClose} className="rounded-md border border-zinc-300 px-3 py-1 text-sm font-semibold text-zinc-600 hover:bg-zinc-100">
+          <button type="button" onClick={onClose} className="shrink-0 whitespace-nowrap rounded-md border border-zinc-300 px-3 py-1 text-sm font-semibold text-zinc-600 hover:bg-zinc-100">
             ✕ {t("Close")}
           </button>
         </div>

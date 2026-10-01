@@ -142,6 +142,7 @@ function MetricChart({
   yLabel,
   todayIso,
   format,
+  background,
 }: {
   dates: string[];
   values: number[];
@@ -150,14 +151,18 @@ function MetricChart({
   yLabel: string;
   todayIso: string;
   format: (v: number) => string;
+  // A faint reference line drawn BEHIND the marks (e.g. the 7-day average
+  // under the raw daily bars), aligned with `values`; named in the tooltip.
+  background?: { values: number[]; label: string };
 }) {
   const [hover, setHover] = useState<number | null>(null);
 
   const plotW = W - PAD.left - PAD.right;
   const plotH = H - PAD.top - PAD.bottom;
 
-  const vMin = Math.min(0, ...values);
-  const vMax = Math.max(0, ...values);
+  const bg = background?.values ?? [];
+  const vMin = Math.min(0, ...values, ...bg);
+  const vMax = Math.max(0, ...values, ...bg);
   const ticks = niceTicks(vMin, vMax);
   const yLow = Math.min(vMin, ticks[0]);
   const yHigh = Math.max(vMax, ticks[ticks.length - 1]);
@@ -183,6 +188,10 @@ function MetricChart({
     .join(" ");
 
   const hoverV = hover !== null ? values[hover] : null;
+  const hoverBg = hover !== null && background ? background.values[hover] : null;
+  const bgPath = bg
+    .map((v, i) => `${i === 0 ? "M" : "L"}${xMid(i).toFixed(1)},${y(v).toFixed(1)}`)
+    .join(" ");
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto">
@@ -247,6 +256,19 @@ function MetricChart({
       >
         {yLabel}
       </text>
+
+      {/* faint reference line, behind the marks */}
+      {background && bg.length > 0 && (
+        <path
+          d={bgPath}
+          fill="none"
+          stroke={color}
+          strokeWidth={1.5}
+          opacity={0.3}
+          strokeLinejoin="round"
+          data-testid="chart-background"
+        />
+      )}
 
       {/* marks */}
       {view === "increment" ? (
@@ -313,7 +335,7 @@ function MetricChart({
       {hover !== null && hoverV !== null && (
         <g pointerEvents="none">
           {(() => {
-            const boxW = 92;
+            const boxW = background ? 110 : 92;
             const bx = Math.min(
               Math.max(xMid(hover) - boxW / 2, PAD.left),
               W - PAD.right - boxW,
@@ -324,7 +346,7 @@ function MetricChart({
                   x={bx}
                   y={PAD.top}
                   width={boxW}
-                  height={26}
+                  height={hoverBg !== null ? 36 : 26}
                   rx={3}
                   fill="#18181b"
                   opacity={0.92}
@@ -342,6 +364,11 @@ function MetricChart({
                 >
                   {format(hoverV)} {yLabel.toLowerCase()}
                 </text>
+                {hoverBg !== null && background && (
+                  <text x={bx + 6} y={PAD.top + 31} fontSize={8} fill="#a1a1aa">
+                    {background.label}: {format(hoverBg)}
+                  </text>
+                )}
               </>
             );
           })()}
@@ -435,18 +462,21 @@ export function MetricsCharts() {
         </div>
       </div>
 
-      {/* Three charts: DAU as a 7-day rolling-average line, plus the two
-          accumulated stocks. (The user-days "accumulated users" chart and
-          the noisy daily minutes/letters bars are gone — a running sum of
-          daily headcounts double-counts returning users.) */}
+      {/* Three charts: DAU as raw daily bars with the 7-day rolling average
+          faintly behind them, plus the two accumulated stocks. (The user-days
+          "accumulated users" chart and the noisy daily minutes/letters bars
+          are gone — a running sum of daily headcounts double-counts
+          returning users.) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {(() => {
           const [users, minutes, letters] = series;
           const charts = [
             {
               title: "Daily active users (>5 min)",
-              hint: "7-day avg, yesterday",
-              values: rolling7(users.increments),
+              hint: "yesterday",
+              values: users.increments,
+              view: "increment" as View,
+              background: { values: rolling7(users.increments), label: "7-day avg" },
               color: users.color,
               yLabel: users.yLabel,
               format: (v: number) => (Math.round(v * 10) / 10).toLocaleString(),
@@ -455,6 +485,8 @@ export function MetricsCharts() {
               title: "Minutes spent — accumulated",
               hint: "as of yesterday",
               values: minutes.accumulated,
+              view: "accumulated" as View,
+              background: undefined,
               color: minutes.color,
               yLabel: minutes.yLabel,
               format: minutes.format,
@@ -463,6 +495,8 @@ export function MetricsCharts() {
               title: "Letters learnt — accumulated",
               hint: "as of yesterday",
               values: letters.accumulated,
+              view: "accumulated" as View,
+              background: undefined,
               color: letters.color,
               yLabel: letters.yLabel,
               format: letters.format,
@@ -488,11 +522,12 @@ export function MetricsCharts() {
                 <MetricChart
                   dates={dates}
                   values={c.values.slice(from)}
-                  view="accumulated"
+                  view={c.view}
                   color={c.color}
                   yLabel={c.yLabel}
                   todayIso={todayIso}
                   format={c.format}
+                  background={c.background && { values: c.background.values.slice(from), label: c.background.label }}
                 />
               </div>
             );
