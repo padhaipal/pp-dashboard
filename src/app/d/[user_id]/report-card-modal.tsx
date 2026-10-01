@@ -35,6 +35,7 @@ import {
   type SpotlightEntry,
   type SpotlightResponse,
   type StudentChild,
+  TEST_PASS_PCT,
 } from "./dashboard-types";
 import type { T } from "./i18n";
 import { IconClose, IconPdf } from "./icons";
@@ -111,7 +112,7 @@ export function RepKpis({
             "pass",
             fmtPerDay(root.time_per_day, t),
           )
-        : card(fmtPctInt(root.pass_rate), `${t("average")} ${metricLabel}`, nipColor(root.pass_rate), "pass")}
+        : card(fmtPctInt(root.pass_rate), `${t("of students pass the")} ${metricLabel}`, nipColor(root.pass_rate), "pass")}
       {/* the share of children on Lifteracy follows the same red / amber / green rule as a score */}
       {showUsing && card(`${usingN} ${t("of")} ${totalN}`, `${t(nounP)} ${t("using Lifteracy")}`, nipColor(totalN > 0 ? (usingN / totalN) * 100 : null), "using")}
     </div>
@@ -260,6 +261,15 @@ export function RepTrend({
               </text>
             </>
           )}
+        </>
+      )}
+      {/* the pass mark of the tests (a score strictly above 50 %) — what the headline's "% passing" counts */}
+      {!isUsage && (
+        <>
+          <line x1={mL} x2={W - mR} y1={y(TEST_PASS_PCT)} y2={y(TEST_PASS_PCT)} stroke="#64748b" strokeWidth={mobile ? 1.6 : 1.1} strokeDasharray="2 4" pointerEvents="none" data-testid="pass-mark" />
+          <text x={W - mR - 3} y={y(TEST_PASS_PCT) - 4} textAnchor="end" fontSize={mobile ? 12 : 9} fill="#64748b" fontWeight="700" pointerEvents="none">
+            {t("50% pass mark")}
+          </text>
         </>
       )}
       {showTarget && (
@@ -675,7 +685,7 @@ export async function exportReportPdf(data: ReportData, root: HTMLElement | null
   const kpis: [string, string, [number, number, number]][] = [
     time
       ? [`${fmtDuration(data.root.time_total)} (${fmtPerDay(data.root.time_per_day)})`, `average time per student · ${timeWindowSuffix(data.timeWindow!)}`, rgb(timeColor(data.root.time_per_day))]
-      : [fmtPctInt(data.root.pass_rate), `average ${metricLabel}`, rgb(nipColor(data.root.pass_rate))],
+      : [fmtPctInt(data.root.pass_rate), `of students pass the ${metricLabel}`, rgb(nipColor(data.root.pass_rate))],
   ];
   if (data.childType !== "student") kpis.push([`${usingN} of ${data.childrenRows.length}`, `${nounP} using Lifteracy`, [22, 163, 74]]);
   const kw = (CW - 10 * (kpis.length - 1)) / kpis.length,

@@ -7,6 +7,10 @@
 // `score` is minutes (absent = 0), its `delta` is in minutes.
 export type Metric = "usage" | "nipun_g2" | "nipun_g3" | "mpl_b";
 export const USAGE_PASS_MINUTES = 5;
+// A test (NIPUN / MPL-B proxy) is passed with a score strictly above this
+// (pp-sketch TEST_PASS_THRESHOLD = 0.5). The headline "% of students
+// passing" and the dotted pass mark on the trend charts use it.
+export const TEST_PASS_PCT = 50;
 // 30 = last 30 days; "all" = all time (no lower bound; deltas are vs the
 // student's / entity's oldest row).
 export type Range = 30 | "all";

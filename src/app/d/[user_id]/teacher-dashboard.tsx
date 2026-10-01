@@ -509,9 +509,9 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                   <div className={"mb-6 " + H} style={{ color: ACCENT }}>
                     {t(nounS)} {t("Performance")}
                   </div>
-                  <div className="-mt-3 mb-5 flex flex-col items-center gap-2">
+                  {/* the Time window toggle lives under the title only — the trend has its own range */}
+                  <div className="-mt-3 mb-5 flex justify-center">
                     <MvpMetricToggle metric={metric} setMetric={setMetric} t={t} />
-                    {isUsageMetric && <MvpTimeWindowToggle window={timeWindow} setWindow={setTimeWindow} t={t} />}
                   </div>
                   <div className={CARD + " space-y-6"}>
                     {/* headline share of areas not on Lifteracy at all — hidden at school/class level */}

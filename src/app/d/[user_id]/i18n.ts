@@ -44,6 +44,8 @@ const HI: Record<string, string> = {
   "National Director": "राष्ट्रीय निदेशक",
   // kpis
   average: "औसत",
+  "of students pass the": "छात्र उत्तीर्ण हैं —",
+  "50% pass mark": "50% उत्तीर्ण सीमा",
   "using Lifteracy": "लिफ्टरेसी उपयोग कर रहे",
   "Not using Lifteracy": "लिफ्टरेसी उपयोग नहीं",
   "not using Lifteracy": "लिफ्टरेसी उपयोग नहीं",
