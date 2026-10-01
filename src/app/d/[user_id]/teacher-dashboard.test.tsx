@@ -192,6 +192,9 @@ describe("TeacherDashboard", () => {
     expect(screen.getByTestId("location-title").textContent).toBe("Asha  -  JHS CHINHAT  -  Uttar Pradesh  -  India");
     // full, uncensored names; a nameless student shows the label as a muted placeholder
     expect(tiles[0].textContent).toContain("Rani Devi");
+    // …and the student's number under the name, named or not
+    expect(tiles[0].querySelector('[data-testid="tile-phone"]')?.textContent).toBe("919999990011");
+    expect(tiles[1].querySelector('[data-testid="tile-phone"]')?.textContent).toBe("919999990022");
     expect(tiles[0].textContent).not.toContain("Student 1");
     expect(tiles[0].textContent).toContain("90%");
     expect(tiles[0].textContent).toContain("▲ +5.0%");
@@ -229,6 +232,7 @@ describe("TeacherDashboard", () => {
     const dialog = await screen.findByRole("dialog");
     expect(screen.getByTestId("student-modal-title").textContent).toContain("Rani Devi");
     expect(screen.getByTestId("student-modal-title").textContent).toContain("· Student");
+    expect(screen.getByTestId("student-modal-phone").textContent).toBe("919999990011");
     // the name is editable in the modal header too
     expect(screen.getByTestId("student-modal-title").querySelector('[data-testid="student-name"]')).not.toBeNull();
     await waitFor(() => expect(screen.getAllByTestId("audio-button").length).toBe(1));

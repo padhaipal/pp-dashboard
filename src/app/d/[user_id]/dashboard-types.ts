@@ -91,6 +91,9 @@ export type Child = GeoRef & TimeFields & {
 export type StudentChild = TimeFields & {
   student_id: string;
   label: string; // first name, else "Student N"
+  // the student's WhatsApp number, shown beside the name everywhere (absent
+  // on a pp-sketch that predates it)
+  phone?: string;
   name: string | null; // full name as stored; edited from the class view
   score: number | null; // 0-1
   passed: boolean | null;

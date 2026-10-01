@@ -128,8 +128,8 @@ export const SCORES_SCHOOL: ScoresResponse = {
 
 // …and a teacher's children (scores?id=<teacher user id>) are their students.
 export const STUDENTS: StudentChild[] = [
-  { student_id: "s-1", label: "Rani", name: "Rani Devi", score: 0.9, passed: true, attempts: 22, in_band: true, active: true, last_active_at: "2026-09-17T10:00:00Z", delta: 5.0 },
-  { student_id: "s-2", label: "Student 2", name: null, score: null, passed: null, attempts: 3, in_band: false, active: false, last_active_at: null, delta: null },
+  { student_id: "s-1", label: "Rani", phone: "919999990011", name: "Rani Devi", score: 0.9, passed: true, attempts: 22, in_band: true, active: true, last_active_at: "2026-09-17T10:00:00Z", delta: 5.0 },
+  { student_id: "s-2", label: "Student 2", phone: "919999990022", name: null, score: null, passed: null, attempts: 3, in_band: false, active: false, last_active_at: null, delta: null },
 ];
 
 export const SCORES_CLASS: ScoresResponse = {

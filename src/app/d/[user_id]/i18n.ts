@@ -18,6 +18,7 @@ const HI: Record<string, string> = {
   Detail: "विवरण",
   "Your Profile": "आपकी प्रोफ़ाइल",
   "Generate report": "रिपोर्ट बनाएँ",
+  Report: "रिपोर्ट",
   "Up a level": "एक स्तर ऊपर",
   "Go up a level": "एक स्तर ऊपर जाएँ",
   // nouns
