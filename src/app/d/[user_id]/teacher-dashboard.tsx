@@ -32,6 +32,7 @@ import {
   fmtPerDay,
   geoChildrenOf,
   isTimeMode,
+  ageBandOf,
   METRIC_BY,
   timeColor,
   timeFill,
@@ -302,6 +303,8 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
           metric,
           range,
           timeWindow: timeMode ? timeWindow : undefined,
+          ageBand: scores.age_band ?? null,
+          passMark: scores.pass_mark ?? null,
           asOf: scores.as_of,
           root: scores.root,
           series: scores.series,
@@ -393,6 +396,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                 totalN={geoChildren.length}
                 showUsing={childType !== "teacher" && childType !== "student"}
                 timeWindow={timeMode ? timeWindow : undefined}
+                ageBand={ageBandOf(metric, scores.age_band)}
                 t={t}
               />
             )}
@@ -509,9 +513,9 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                   <div className={"mb-6 " + H} style={{ color: ACCENT }}>
                     {t(nounS)} {t("Performance")}
                   </div>
-                  <div className="-mt-3 mb-5 flex flex-col items-center gap-2">
+                  {/* the Time window toggle lives under the title only — the trend has its own range */}
+                  <div className="-mt-3 mb-5 flex justify-center">
                     <MvpMetricToggle metric={metric} setMetric={setMetric} t={t} />
-                    {isUsageMetric && <MvpTimeWindowToggle window={timeWindow} setWindow={setTimeWindow} t={t} />}
                   </div>
                   <div className={CARD + " space-y-6"}>
                     {/* headline share of areas not on Lifteracy at all — hidden at school/class level */}
@@ -538,6 +542,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                         series={scores.series}
                         label={isUsageMetric ? t("Minutes per student") : t(METRIC_BY[metric].short)}
                         metric={metric}
+                        passMark={scores.pass_mark}
                         students={
                           inClass
                             ? (scores.students_series ?? []).map((ss) => ({

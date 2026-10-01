@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  ageBandLabel,
+  ageBandOf,
   binColor,
   binOf,
   childFill,
@@ -11,6 +13,7 @@ import {
   fmtPerDay,
   isTimeMode,
   METRIC_BY,
+  passMarkOf,
   METRICS,
   scoreColor,
   scoresUrl,
@@ -88,6 +91,23 @@ describe("usage metric", () => {
     expect(usageColor(5.1)).toBe("#16a34a");
     expect(usageColor(0)).toBe("#dc2626");
     expect(usageColor(null)).toBe("#dc2626");
+  });
+});
+
+describe("pass marks and age bands", () => {
+  it("NIPUN passes above 80, MPL-B above 50; bands are the whole ages covered; the response's values win", () => {
+    expect(passMarkOf("nipun_g2")).toBe(80);
+    expect(passMarkOf("nipun_g3")).toBe(80);
+    expect(passMarkOf("mpl_b")).toBe(50);
+    expect(passMarkOf("usage")).toBeNull();
+    expect(passMarkOf("mpl_b", 60)).toBe(60);
+    expect(passMarkOf("mpl_b", null)).toBe(50);
+    expect(ageBandOf("nipun_g2")).toEqual([7, 9]);
+    expect(ageBandOf("mpl_b", [9, 11])).toEqual([9, 11]);
+    expect(ageBandOf("usage")).toBeNull();
+    expect(ageBandLabel([7, 9])).toBe("7–8");
+    expect(ageBandLabel([8, 10])).toBe("8–9");
+    expect(ageBandLabel([8, 9])).toBe("8");
   });
 });
 

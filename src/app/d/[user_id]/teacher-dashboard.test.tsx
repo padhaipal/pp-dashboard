@@ -44,7 +44,10 @@ describe("TeacherDashboard", () => {
 
     const kpis = await screen.findByTestId("root-kpis");
     expect(kpis.textContent).toContain("72%");
-    expect(kpis.textContent).toContain("average NIPUN grade 3 proxy");
+    // the figure is the share of scored students (in the test's age band) who passed, and says so
+    expect(kpis.textContent).toContain("72%");
+    expect(kpis.textContent).toContain("of 8–9 year old students pass the NIPUN grade 3 proxy");
+    expect(kpis.textContent).not.toContain("average NIPUN");
     expect(kpis.textContent).toContain("2 of 2");
     expect(kpis.textContent).toContain("states using Lifteracy");
     // 2 of 2 = 100 % → green; the figure carries the colour inline (0 of N would be red)
@@ -279,10 +282,26 @@ describe("TeacherDashboard", () => {
     expect(container.textContent).toContain("16 Sept");
     expect(container.textContent).toContain("17 Sept");
     expect(container.textContent).not.toContain("18 Sept");
+    // no pass mark on a minutes axis
+    expect(container.querySelector('[data-testid="pass-mark"]')).toBeNull();
+    expect(container.textContent).not.toContain("pass mark");
+    // MPL-B: a dotted 50 % pass mark (what "% of students pass" counts)
     rerender(<RepTrend series={pts} metric="mpl_b" label="MPL-B proxy" />);
-    expect(container.textContent).not.toContain("80% NIPUN target");
+    expect(container.textContent).toContain("50% pass mark");
+    expect(container.textContent).not.toContain("NIPUN target");
+    let mark = container.querySelector('[data-testid="pass-mark"]')!;
+    // desktop geometry: mT 12, ih 234 → y(50) = 129
+    expect(Number(mark.getAttribute("y1"))).toBeCloseTo(129, 0);
+    // NIPUN: the pass mark is 80 (all four right) — one line, no separate target
     rerender(<RepTrend series={pts} metric="nipun_g3" label="NIPUN g3 proxy" />);
-    expect(container.textContent).toContain("80% NIPUN target");
+    expect(container.textContent).toContain("80% pass mark");
+    expect(container.textContent).not.toContain("50% pass mark");
+    expect(container.textContent).not.toContain("NIPUN target");
+    mark = container.querySelector('[data-testid="pass-mark"]')!;
+    expect(Number(mark.getAttribute("y1"))).toBeCloseTo(58.8, 0);
+    // the response's own pass mark wins over the default
+    rerender(<RepTrend series={pts} metric="nipun_g2" passMark={75} label="NIPUN g2 proxy" />);
+    expect(container.textContent).toContain("75% pass mark");
   });
 
   it("trend average line plots the metric mean, not the pass rate", () => {
@@ -416,10 +435,11 @@ describe("TeacherDashboard — Time metric", () => {
     expect(screen.getByTestId("most-improved")).toBeDefined();
 
     fireEvent.click(screen.getAllByRole("button", { name: "Time" })[0]);
-    // both copies of the metric toggle get the window toggle, on "Last seven days"
-    await waitFor(() => expect(screen.getAllByTestId("time-window-toggle")).toHaveLength(2));
-    expect(pressed("Last seven days")).toEqual(["true", "true"]);
-    expect(pressed("Yesterday")).toEqual(["false", "false"]);
+    // ONE window toggle, under the title (the Performance card keeps only the trend's own range), on "Last seven days"
+    await waitFor(() => expect(screen.getAllByTestId("time-window-toggle")).toHaveLength(1));
+    expect(pressed("Last seven days")).toEqual(["true"]);
+    expect(pressed("Yesterday")).toEqual(["false"]);
+    expect(document.querySelector('#rep-perf [data-testid="time-window-toggle"]')).toBeNull();
     expect(screen.queryByRole("button", { name: /week/i })).toBeNull();
     await waitFor(() => expect(calls).toContain("/api/proxy/geo-entities/g-in/scores?metric=usage&range=30&window=7d"));
     expect(calls).toContain("/api/proxy/geo-entities/g-in/spotlight?metric=usage&range=30&window=7d");
@@ -457,12 +477,12 @@ describe("TeacherDashboard — Time metric", () => {
     expect(screen.getByTestId("csv-link").getAttribute("href")).toBe("/api/proxy/geo-entities/g-in/scores.csv?metric=usage&range=30&window=7d");
 
     // Yesterday: refetch, new figures (4 min per day → amber)
-    fireEvent.click(screen.getAllByRole("button", { name: "Yesterday" })[1]);
+    fireEvent.click(screen.getByRole("button", { name: "Yesterday" }));
     await waitFor(() => expect(calls).toContain("/api/proxy/geo-entities/g-in/scores?metric=usage&range=30&window=yesterday"));
     await waitFor(() => expect(screen.getByTestId("root-kpis").textContent).toContain("average time per student · yesterday"));
     expect(screen.getByTestId("root-kpis").textContent).toContain("4 min");
     expect((screen.getByTestId("kpi-per-day") as HTMLElement).style.color).toBe("rgb(245, 158, 11)");
-    expect(pressed("Yesterday")).toEqual(["true", "true"]);
+    expect(pressed("Yesterday")).toEqual(["true"]);
 
     // All time: totals of 120 minutes and more are shown in hours, the average stays in minutes
     fireEvent.click(within(screen.getAllByTestId("time-window-toggle")[0]).getByRole("button", { name: "All time" }));
@@ -526,7 +546,7 @@ describe("TeacherDashboard — Time metric", () => {
     await screen.findByTestId("root-kpis");
     fireEvent.click(screen.getAllByRole("button", { name: "Time" })[0]);
     await waitFor(() => expect(calls).toContain("/api/proxy/geo-entities/g-in/scores?metric=usage&range=30&window=7d"));
-    await waitFor(() => expect(screen.getByTestId("root-kpis").textContent).toContain("average Time · 5+ min yesterday"));
+    await waitFor(() => expect(screen.getByTestId("root-kpis").textContent).toContain("of students pass the Time · 5+ min yesterday"));
     expect(screen.getByTestId("root-kpis").textContent).toContain("72%");
     expect(screen.queryByTestId("kpi-per-day")).toBeNull();
   });

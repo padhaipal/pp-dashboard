@@ -35,6 +35,9 @@ import {
   type SpotlightEntry,
   type SpotlightResponse,
   type StudentChild,
+  ageBandLabel,
+  ageBandOf,
+  passMarkOf,
 } from "./dashboard-types";
 import type { T } from "./i18n";
 import { IconClose, IconPdf } from "./icons";
@@ -75,6 +78,7 @@ export function RepKpis({
   totalN,
   showUsing = true,
   timeWindow,
+  ageBand,
   t = same,
 }: {
   root: RootStats;
@@ -83,6 +87,8 @@ export function RepKpis({
   usingN: number;
   totalN: number;
   showUsing?: boolean;
+  // Test metrics: the ages the pass rate counts ("7–8 year old students").
+  ageBand?: [number, number] | null;
   // Time mode: the headline is the active time per student over this window
   // (total + minutes per day, coloured by the per-day average), not a pass rate.
   timeWindow?: TimeWindow;
@@ -111,7 +117,12 @@ export function RepKpis({
             "pass",
             fmtPerDay(root.time_per_day, t),
           )
-        : card(fmtPctInt(root.pass_rate), `${t("average")} ${metricLabel}`, nipColor(root.pass_rate), "pass")}
+        : card(
+            fmtPctInt(root.pass_rate),
+            ageBand ? `${t("of")} ${ageBandLabel(ageBand)} ${t("year old students pass the")} ${metricLabel}` : `${t("of students pass the")} ${metricLabel}`,
+            nipColor(root.pass_rate),
+            "pass",
+          )}
       {/* the share of children on Lifteracy follows the same red / amber / green rule as a score */}
       {showUsing && card(`${usingN} ${t("of")} ${totalN}`, `${t(nounP)} ${t("using Lifteracy")}`, nipColor(totalN > 0 ? (usingN / totalN) * 100 : null), "using")}
     </div>
@@ -136,11 +147,14 @@ export function RepTrend({
   setHoverId,
   pinId = null,
   setPinId,
+  passMark,
   t = same,
 }: {
   series: SeriesPoint[];
   label?: string;
   metric?: Metric;
+  // The test's pass mark in % (from the scores response); default per metric.
+  passMark?: number | null;
   students?: TrendStudent[];
   hoverId?: string | null;
   setHoverId?: (id: string | null) => void;
@@ -150,7 +164,8 @@ export function RepTrend({
 }) {
   const mobile = useIsMobile();
   const isUsage = metric === "usage";
-  const showTarget = metric === "nipun_g2" || metric === "nipun_g3";
+  // One dotted line per test: NIPUN at 80 (all four right), MPL-B at 50.
+  const mark = passMarkOf(metric, passMark);
   const yLabel = label ?? t("Oral Literacy NIPUN Proxy percentage pass rate");
   const W = mobile ? 440 : 900,
     H = mobile ? 300 : 280,
@@ -262,11 +277,12 @@ export function RepTrend({
           )}
         </>
       )}
-      {showTarget && (
+      {/* the test's pass mark (a score strictly above it) — what the headline's "% passing" counts */}
+      {!isUsage && mark !== null && (
         <>
-          <line x1={mL} x2={W - mR} y1={y(80)} y2={y(80)} stroke="#ef4444" strokeWidth={mobile ? 2 : 1.3} strokeDasharray="5 3" pointerEvents="none" />
-          <text x={mL + 3} y={y(80) - 4} fontSize={mobile ? 12 : 9} fill="#ef4444" fontWeight="700" pointerEvents="none">
-            {t("80% NIPUN target")}
+          <line x1={mL} x2={W - mR} y1={y(mark)} y2={y(mark)} stroke="#64748b" strokeWidth={mobile ? 1.6 : 1.1} strokeDasharray="2 4" pointerEvents="none" data-testid="pass-mark" data-mark={mark} />
+          <text x={W - mR - 3} y={y(mark) - 4} textAnchor="end" fontSize={mobile ? 12 : 9} fill="#64748b" fontWeight="700" pointerEvents="none">
+            {mark}% {t("pass mark")}
           </text>
         </>
       )}
@@ -590,6 +606,9 @@ export type ReportData = {
   range: Range;
   // Set when the dashboard is showing Time figures for this window.
   timeWindow?: TimeWindow;
+  // Test metrics: from the scores response (age_band / pass_mark).
+  ageBand?: [number, number] | null;
+  passMark?: number | null;
   asOf: string | null;
   root: RootStats;
   series: SeriesPoint[];
@@ -675,7 +694,7 @@ export async function exportReportPdf(data: ReportData, root: HTMLElement | null
   const kpis: [string, string, [number, number, number]][] = [
     time
       ? [`${fmtDuration(data.root.time_total)} (${fmtPerDay(data.root.time_per_day)})`, `average time per student · ${timeWindowSuffix(data.timeWindow!)}`, rgb(timeColor(data.root.time_per_day))]
-      : [fmtPctInt(data.root.pass_rate), `average ${metricLabel}`, rgb(nipColor(data.root.pass_rate))],
+      : [fmtPctInt(data.root.pass_rate), `of ${ageBandLabel(ageBandOf(data.metric, data.ageBand) ?? [0, 1])} year old students pass the ${metricLabel}`, rgb(nipColor(data.root.pass_rate))],
   ];
   if (data.childType !== "student") kpis.push([`${usingN} of ${data.childrenRows.length}`, `${nounP} using Lifteracy`, [22, 163, 74]]);
   const kw = (CW - 10 * (kpis.length - 1)) / kpis.length,
@@ -864,10 +883,11 @@ export function ReportCardModal({ data, onClose }: { data: ReportData; onClose: 
             totalN={data.childrenRows.length}
             showUsing={data.childType !== "student"}
             timeWindow={data.timeWindow}
+            ageBand={time ? undefined : ageBandOf(data.metric, data.ageBand)}
           />
           <div>
             <div className="mb-1 text-sm font-semibold text-zinc-800">Trend</div>
-            {time ? <RepTrend series={data.series} metric="usage" label="Minutes per student" /> : <RepTrend series={data.series} label={`${metricLabel} pass rate`} />}
+            {time ? <RepTrend series={data.series} metric="usage" label="Minutes per student" /> : <RepTrend series={data.series} metric={data.metric} passMark={data.passMark} label={`${metricLabel} pass rate`} />}
           </div>
           <div>
             <div className="mb-1 text-sm font-semibold text-zinc-800">Latest — all {nounP}</div>

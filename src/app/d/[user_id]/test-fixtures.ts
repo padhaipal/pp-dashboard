@@ -54,6 +54,8 @@ export const SCORES: ScoresResponse = {
   as_of: "2026-09-10",
   metric: "nipun_g3",
   range: 30,
+  age_band: [8, 10],
+  pass_mark: 80,
   entity: PROFILE.geo_entity!,
   root: { pass_rate: 72.0, mean: 0.7, sd: 0.1, n: 41, students_active: 160, students_unbanded: 3, delta: 1.5 },
   series: [
