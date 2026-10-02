@@ -4,6 +4,7 @@ import Link from "next/link";
 import { SignOutButton } from "./sign-out-button";
 import { UserTable } from "./user-table";
 import { MetricsCharts } from "./metrics-charts";
+import { DownloadInteractions } from "./download-interactions";
 
 export default async function DashboardPage() {
   const session = await auth();
@@ -44,11 +45,10 @@ export default async function DashboardPage() {
           </div>
         </div>
         <MetricsCharts />
-        {/* Download-all interactions UI intentionally unmounted (2026-09) —
-            the component (./download-interactions) and the pp-sketch
-            /users/interactions.csv endpoint both remain; re-add by
-            restoring the import and:
-            {session.user.role === "dev" && <DownloadInteractions />} */}
+        {/* Dev-only: the proxy forwards /users/interactions.csv for the dev
+            role alone (not in the admin allowlist), so this gate and the
+            proxy agree. */}
+        {session.user.role === "dev" && <DownloadInteractions />}
         <div className="bg-white rounded-lg border border-zinc-200 shadow-sm overflow-hidden">
           <UserTable />
         </div>
