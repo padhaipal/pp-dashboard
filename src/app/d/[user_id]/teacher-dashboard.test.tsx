@@ -7,6 +7,11 @@ import { EMPTY_ROOT_TEXT, INCOMPLETE_TOOLTIP } from "./dashboard-types";
 import { CHILD_UP, EMPTY_SCORES, MEDIA_MASKED, PROFILE, PROFILE_SCHOOL, SCORES, SCORES_CLASS, SCORES_CLASS_MASKED, SCORES_SCHOOL, SCORES_UP, makeFetch } from "./test-fixtures";
 
 const pressed = (name: string) => screen.getAllByRole("button", { name }).map((b) => b.getAttribute("aria-pressed"));
+// The page opens on Time; tests about the test-score metrics pick one first.
+const pickNipunG3 = async () => {
+  fireEvent.click((await screen.findAllByRole("button", { name: "NIPUN grade 3 proxy" }))[0]);
+  await waitFor(() => expect(screen.getByTestId("rep-meta").textContent).toContain("Latest NIPUN grade 3 proxy"));
+};
 
 describe("TeacherDashboard", () => {
   afterEach(() => {
@@ -41,6 +46,7 @@ describe("TeacherDashboard", () => {
     const { fn } = makeFetch();
     vi.stubGlobal("fetch", vi.fn(fn));
     render(<TeacherDashboard profile={PROFILE} incompleteStates={[]} />);
+    await pickNipunG3();
 
     const kpis = await screen.findByTestId("root-kpis");
     expect(kpis.textContent).toContain("72%");
@@ -124,8 +130,9 @@ describe("TeacherDashboard", () => {
     vi.stubGlobal("fetch", vi.fn(fn));
     render(<TeacherDashboard profile={PROFILE} incompleteStates={[]} />);
 
+    // opens on Time, so the link carries the window
     const link = await screen.findByTestId("csv-link");
-    expect(link.getAttribute("href")).toBe("/api/proxy/geo-entities/g-in/scores.csv?metric=nipun_g3&range=30&viewer=u1");
+    expect(link.getAttribute("href")).toBe("/api/proxy/geo-entities/g-in/scores.csv?metric=usage&range=30&window=7d&viewer=u1");
 
     // the metric toggle is rendered twice (under the title and under Performance), like mvp2
     const toggles = screen.getAllByRole("button", { name: "MPL-B proxy" });
@@ -191,6 +198,7 @@ describe("TeacherDashboard", () => {
     const { fn, calls } = makeFetch({ scoresById: { "g-sch": SCORES_SCHOOL, "t-1": SCORES_CLASS } });
     vi.stubGlobal("fetch", vi.fn(fn));
     render(<TeacherDashboard profile={PROFILE_SCHOOL} incompleteStates={[]} />);
+    await pickNipunG3();
 
     // school level: one card per teacher, mvp2 nouns
     const cards = await screen.findAllByTestId("teacher-card");
@@ -482,11 +490,15 @@ describe("TeacherDashboard — Time metric", () => {
     vi.stubGlobal("fetch", vi.fn(fn));
     render(<TeacherDashboard profile={PROFILE} incompleteStates={[]} />);
 
-    // the usage metric is called "Time"; its window toggle is hidden for other metrics
+    // the usage metric is called "Time", and it is what the page opens on (fresh load / refresh)
     await screen.findByTestId("root-kpis");
     expect(screen.queryByRole("button", { name: "Daily usage (5+ min)" })).toBeNull();
-    expect(screen.queryByTestId("time-window-toggle")).toBeNull();
-    expect(screen.getByTestId("most-improved")).toBeDefined();
+    expect(pressed("Time")).toEqual(["true", "true"]);
+    expect(screen.getAllByTestId("time-window-toggle")).toHaveLength(1);
+    // its window toggle is hidden for other metrics
+    fireEvent.click(screen.getAllByRole("button", { name: "NIPUN grade 3 proxy" })[0]);
+    await waitFor(() => expect(screen.queryByTestId("time-window-toggle")).toBeNull());
+    await waitFor(() => expect(screen.getByTestId("most-improved")).toBeDefined());
 
     fireEvent.click(screen.getAllByRole("button", { name: "Time" })[0]);
     // ONE window toggle, under the title (the Performance card keeps only the trend's own range), on "Last seven days"

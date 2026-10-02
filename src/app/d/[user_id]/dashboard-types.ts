@@ -234,7 +234,8 @@ export const MODAL_METRICS: { key: ModalMetric; label: string }[] = [{ key: "let
 // Shown wherever a student has no name yet (the API's "Student N" label is
 // never displayed): tiles, modal title, most-improved rows, trend lines.
 export const UNNAMED = "~";
-export const DEFAULT_METRIC: Metric = "nipun_g3";
+// Time is what the page opens on (fresh load / refresh / navigation).
+export const DEFAULT_METRIC: Metric = "usage";
 export const DEFAULT_RANGE: Range = 30;
 
 export const CHILD_NOUN: Record<ChildType, [string, string]> = {
