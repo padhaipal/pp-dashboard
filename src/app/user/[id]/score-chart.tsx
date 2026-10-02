@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { useViewerId } from "../../d/[user_id]/viewer-context";
+import { withViewer } from "../../d/[user_id]/viewer-url";
 
 interface ScorePoint {
   score: number;
@@ -47,12 +49,15 @@ export function ScoreChart({ userId, t = (s) => s }: { userId: string; t?: (s: s
   const [loading, setLoading] = useState(true);
   const [hoveredLetter, setHoveredLetter] = useState<string | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+  // On the public /d page the viewer rides along (ViewerProvider); on the
+  // staff page there is none and the URLs are unchanged.
+  const viewerId = useViewerId();
 
   useEffect(() => {
     (async () => {
       const [scoresRes, learntRes] = await Promise.all([
-        fetch(`/api/proxy/users/${userId}/scores`),
-        fetch(`/api/proxy/scores/letter-bins?users=${userId}`),
+        fetch(withViewer(`/api/proxy/users/${userId}/scores`, viewerId)),
+        fetch(withViewer(`/api/proxy/scores/letter-bins?users=${userId}`, viewerId)),
       ]);
       if (!scoresRes.ok) {
         setLoading(false);
@@ -124,7 +129,7 @@ export function ScoreChart({ userId, t = (s) => s }: { userId: string; t?: (s: s
       setSeries(result);
       setLoading(false);
     })();
-  }, [userId]);
+  }, [userId, viewerId]);
 
   if (loading) {
     return (

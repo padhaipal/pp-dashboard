@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import { ppSketchFetch } from "@/lib/pp-sketch";
 
 export const runtime = "nodejs";
 
@@ -26,7 +27,6 @@ async function proxyToSketch(
   }
 
   const qs = req.nextUrl.search;
-  const target = `${process.env.PP_SKETCH_INTERNAL_URL}/quiz/${joined}${qs}`;
 
   const init: RequestInit = {
     method: req.method,
@@ -36,7 +36,7 @@ async function proxyToSketch(
     init.body = await req.arrayBuffer();
   }
 
-  const res = await fetch(target, init);
+  const res = await ppSketchFetch(`quiz/${joined}${qs}`, init);
   const body = await res.arrayBuffer();
   const headers = new Headers();
   const ct = res.headers.get("Content-Type");

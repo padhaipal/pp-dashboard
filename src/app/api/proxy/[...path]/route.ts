@@ -1,7 +1,9 @@
 import { auth } from "@/auth";
 import { logger } from "@/lib/logger";
+import { ppSketchFetch } from "@/lib/pp-sketch";
 import { NextRequest } from "next/server";
-import { forwardedSearch, isPublicAllowed, PUBLIC_LETTER_BINS_RE, PUBLIC_MEDIA_RE } from "./public-allowlist";
+import { forwardedSearch, isPublicAllowed } from "./public-allowlist";
+import { proxyRequestHeaders, viewerForward } from "./proxy-viewer";
 
 export const runtime = "nodejs";
 
@@ -41,27 +43,23 @@ const ADMIN_ALLOWED: { pattern: RegExp; methods: string[] }[] = [
   { pattern: /^users\/[^/]+$/, methods: ["GET"] },
 ];
 
+// Response headers that reach the browser.
+const FORWARDED_RESPONSE_HEADERS = ["Content-Type", "Content-Disposition", "Cache-Control", "Content-Range", "Accept-Ranges"];
+
 function isAdminAllowed(path: string, method: string): boolean {
   return ADMIN_ALLOWED.some((r) => r.pattern.test(path) && r.methods.includes(method));
 }
 
-function buildProxyRequestHeaders(req: NextRequest): Headers {
-  const headers = new Headers(req.headers);
-
-  // Let fetch recalculate hop-by-hop and body-specific headers.
-  headers.delete("host");
-  headers.delete("connection");
-  headers.delete("content-length");
-
-  return headers;
-}
+const isStaff = (role: string | undefined) => role === "dev" || role === "admin";
 
 async function proxyToSketch(req: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
   const { path } = await params;
   const joined = path.join("/");
 
-  // Public teacher-dashboard endpoints (/d/[user_id]) need no session.
-  let staff = false;
+  // Public teacher-dashboard endpoints (/d/[user_id]) need no session; for
+  // them a staff session, when there is one, still counts (the admin
+  // /user/:id page reuses the same reads).
+  let staff: boolean;
   if (!isPublicAllowed(joined, req.method)) {
     const session = await auth();
     if (!session || !session.user) {
@@ -72,51 +70,32 @@ async function proxyToSketch(req: NextRequest, { params }: { params: Promise<{ p
       return new Response("Unauthorized", { status: 401 });
     }
     staff = true;
-  } else if ((PUBLIC_MEDIA_RE.test(joined) || PUBLIC_LETTER_BINS_RE.test(joined)) && req.method === "GET") {
-    // The media and letter-bins payloads carry the student's phone: only a
-    // staff session (the admin /user/:id page) may see it; the public /d
-    // modal gets it stripped.
+  } else {
     const session = await auth().catch(() => null);
-    const role = session?.user?.role;
-    staff = role === "dev" || role === "admin";
+    staff = isStaff(session?.user?.role);
   }
-  const stripPhone = !staff && PUBLIC_MEDIA_RE.test(joined) && req.method === "GET";
-  const stripBinsPhone = !staff && PUBLIC_LETTER_BINS_RE.test(joined) && req.method === "GET";
+
+  const viewer = viewerForward(req.nextUrl.search, staff);
   // Staff-only query params (the media feed's `onboarding`) are dropped for
   // sessionless callers.
-  const qs = forwardedSearch(joined, req.method, req.nextUrl.search, staff);
-  const target = `${process.env.PP_SKETCH_INTERNAL_URL}/${path.join("/")}${qs}`;
+  const qs = forwardedSearch(joined, req.method, viewer.search, staff);
 
   logger.info(`proxy ${req.method} ${joined}${qs}`, "ProxyRoute");
 
   const init: RequestInit = {
     method: req.method,
-    headers: buildProxyRequestHeaders(req),
+    headers: proxyRequestHeaders(req.headers, viewer.headers),
   };
   if (req.method !== "GET" && req.method !== "HEAD") {
     init.body = await req.arrayBuffer();
   }
 
-  const res = await fetch(target, init);
+  const res = await ppSketchFetch(`${joined}${qs}`, init);
 
   const responseHeaders = new Headers();
-  const contentType = res.headers.get("Content-Type");
-  const contentDisposition = res.headers.get("Content-Disposition");
-  const cacheControl = res.headers.get("Cache-Control");
-
-  if (contentType) responseHeaders.set("Content-Type", contentType);
-  if (contentDisposition) responseHeaders.set("Content-Disposition", contentDisposition);
-  if (cacheControl) responseHeaders.set("Cache-Control", cacheControl);
-
-  if (stripPhone && res.ok) {
-    const body = (await res.json()) as { user?: { phone?: string } };
-    if (body && body.user) delete body.user.phone;
-    return Response.json(body, { status: res.status, headers: responseHeaders });
-  }
-  if (stripBinsPhone && res.ok) {
-    const body = (await res.json()) as { userPhone?: string }[];
-    if (Array.isArray(body)) for (const row of body) delete row.userPhone;
-    return Response.json(body, { status: res.status, headers: responseHeaders });
+  for (const name of FORWARDED_RESPONSE_HEADERS) {
+    const value = res.headers.get(name);
+    if (value) responseHeaders.set(name, value);
   }
 
   return new Response(res.body, {

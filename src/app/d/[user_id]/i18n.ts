@@ -11,6 +11,12 @@ export const LANGS: [Lang, string][] = [
 export const LANG_STORAGE_KEY = "lifteracy-dashboard-lang";
 
 const HI: Record<string, string> = {
+  // masked recordings (masked-audio.tsx)
+  "Recording not available": "रिकॉर्डिंग उपलब्ध नहीं",
+  "Only the student's own teacher can play this recording": "यह रिकॉर्डिंग केवल छात्र के अपने शिक्षक ही सुन सकते हैं",
+  "This recording is private": "यह रिकॉर्डिंग निजी है",
+  "Only the student's own teacher can listen to their voice notes. Here is an example of what a child's response sounds like.":
+    "छात्र के वॉइस नोट केवल उनके अपने शिक्षक सुन सकते हैं। यहाँ एक उदाहरण है कि किसी बच्चे का जवाब कैसा सुनाई देता है।",
   // nav / header
   Top: "ऊपर",
   Performance: "प्रदर्शन",

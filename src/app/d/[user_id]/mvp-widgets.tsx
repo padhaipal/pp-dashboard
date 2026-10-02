@@ -43,7 +43,12 @@ import {
   type StudentChild,
   type UserMedia,
   UNNAMED,
+  isPiiFull,
+  type PiiVisibility,
 } from "./dashboard-types";
+import { useViewerId } from "./viewer-context";
+import { withViewer } from "./viewer-url";
+import { MaskedAudio, SampleAudioModal } from "./masked-audio";
 import { LANGS, type Lang, type T } from "./i18n";
 import { useIsMobile } from "./use-is-mobile";
 import { IconCopy } from "./icons";
@@ -187,6 +192,7 @@ export function MvpRangeBar({
   timeWindow?: TimeWindow;
   t?: T;
 }) {
+  const viewerId = useViewerId();
   return (
     <div className="flex flex-wrap items-center gap-2">
       <div className="inline-flex overflow-hidden rounded-lg border border-zinc-300 bg-white text-xs font-semibold shadow-sm" role="group" aria-label="Range">
@@ -204,7 +210,7 @@ export function MvpRangeBar({
       </div>
       {entityId && (
         <a
-          href={csvUrl(entityId, metric, range, timeWindow)}
+          href={withViewer(csvUrl(entityId, metric, range, timeWindow), viewerId)}
           target="_blank"
           rel="noreferrer"
           data-testid="csv-link"
@@ -489,6 +495,7 @@ export function EditableStudentName({
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const viewerId = useViewerId();
   const start = (e: React.MouseEvent) => {
     e.stopPropagation();
     setDraft(name ?? "");
@@ -503,7 +510,7 @@ export function EditableStudentName({
     }
     setBusy(true);
     try {
-      const res = await fetch(profileUrl(studentId), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: value }) });
+      const res = await fetch(withViewer(profileUrl(studentId), viewerId), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: value }) });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const body = (await res.json()) as { name?: string };
       onSaved(body.name ?? value);
@@ -579,6 +586,7 @@ const clip = (s: string, max: number) => (s.length > max ? s.slice(0, max) + "�
 function AudioButton({ mediaId, t }: { mediaId: string; t: T }) {
   const ref = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
+  const viewerId = useViewerId();
   useEffect(
     () => () => {
       ref.current?.pause();
@@ -587,7 +595,7 @@ function AudioButton({ mediaId, t }: { mediaId: string; t: T }) {
   );
   const toggle = () => {
     if (!ref.current) {
-      const a = new Audio(audioUrl(mediaId));
+      const a = new Audio(withViewer(audioUrl(mediaId), viewerId));
       a.onended = () => setPlaying(false);
       a.onpause = () => setPlaying(false);
       a.onplay = () => setPlaying(true);
@@ -663,7 +671,12 @@ export function MvpTeacherModal({
   // The dashboard metric the trend uses when the letter chart is showing.
   const testMetric: Metric = mMetric === "letters" ? metric : mMetric;
   const [data, setData] = useState<{ key: string; scores: ScoresResponse | null; error: string | null } | null>(null);
-  const [student, setStudent] = useState<{ id: string; tests: LiteracyTestScores | null; media: MediaRow[] | null; error: string | null } | null>(null);
+  // `pii` = whether this viewer may play the recordings (pp-sketch, per
+  // users/:id/media); masked until the feed says otherwise.
+  const [student, setStudent] = useState<{ id: string; tests: LiteracyTestScores | null; media: MediaRow[] | null; pii: PiiVisibility; error: string | null } | null>(null);
+  // A masked recording was pressed → the sample-clip explainer.
+  const [sampleOpen, setSampleOpen] = useState(false);
+  const viewerId = useViewerId();
   // Student + Time: the student's active minutes per day for the chosen range.
   const [usage, setUsage] = useState<{ key: string; history: UsageHistory | null; error: string | null } | null>(null);
   const childId = subject.kind === "child" ? subject.child.id : null;
@@ -673,7 +686,7 @@ export function MvpTeacherModal({
   useEffect(() => {
     if (!childId) return;
     let cancelled = false;
-    fetch(scoresUrl(childId, testMetric, mRange))
+    fetch(withViewer(scoresUrl(childId, testMetric, mRange), viewerId))
       .then(async (res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return (await res.json()) as ScoresResponse;
@@ -687,7 +700,7 @@ export function MvpTeacherModal({
     return () => {
       cancelled = true;
     };
-  }, [childId, testMetric, mRange]);
+  }, [childId, testMetric, mRange, viewerId]);
 
   useEffect(() => {
     if (!studentId) return;
@@ -697,20 +710,20 @@ export function MvpTeacherModal({
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return (await res.json()) as J;
     };
-    Promise.all([getJson<LiteracyTestScores>(testScoresUrl(studentId)).catch(() => null), getJson<UserMedia>(mediaUrl(studentId)).catch(() => null)]).then(([tests, media]) => {
+    Promise.all([getJson<LiteracyTestScores>(withViewer(testScoresUrl(studentId), viewerId)).catch(() => null), getJson<UserMedia>(withViewer(mediaUrl(studentId), viewerId)).catch(() => null)]).then(([tests, media]) => {
       if (cancelled) return;
-      setStudent({ id: studentId, tests, media: media ? media.media : null, error: !tests && !media ? "Could not load this student" : null });
+      setStudent({ id: studentId, tests, media: media ? media.media : null, pii: media?.user.pii ?? "masked", error: !tests && !media ? "Could not load this student" : null });
     });
     return () => {
       cancelled = true;
     };
-  }, [studentId]);
+  }, [studentId, viewerId]);
 
   const usageKey = studentId && mMetric === "usage" ? `${studentId}|${mRange}` : null;
   useEffect(() => {
     if (!studentId || !usageKey) return;
     let cancelled = false;
-    fetch(usageHistoryUrl(studentId, mRange))
+    fetch(withViewer(usageHistoryUrl(studentId, mRange), viewerId))
       .then(async (res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return (await res.json()) as UsageHistory;
@@ -724,7 +737,7 @@ export function MvpTeacherModal({
     return () => {
       cancelled = true;
     };
-  }, [studentId, usageKey, mRange]);
+  }, [studentId, usageKey, mRange, viewerId]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -752,19 +765,31 @@ export function MvpTeacherModal({
                     {subject.child.name} <span className="font-normal text-zinc-400">· {subject.child.official?.role_title ?? t(CHILD_OFFICER[subject.childType])}</span>
                   </div>
                   {subject.child.official?.name && subject.child.type !== "teacher" && <div className="text-sm text-zinc-500">{subject.child.official.name}</div>}
+                  {/* the official's number: in full only for the viewer directly above them, masked otherwise */}
+                  {subject.child.official?.phone && (
+                    <div className="font-mono text-sm text-zinc-500" data-testid="official-phone">
+                      {subject.child.official.phone}
+                    </div>
+                  )}
                 </div>
                 {scores && <MvpStudentActivity series={scores.series} />}
               </>
             ) : (
               <>
                 <div className="flex flex-wrap items-baseline gap-x-2 text-2xl font-bold text-zinc-900" data-testid="student-modal-title">
-                  <EditableStudentName
-                    studentId={subject.student.student_id}
-                    name={subject.student.name}
-                    fallback={UNNAMED}
-                    onSaved={(name) => onRename?.(subject.student.student_id, name)}
-                    t={t}
-                  />
+                  {isPiiFull(subject.student.pii) ? (
+                    <EditableStudentName
+                      studentId={subject.student.student_id}
+                      name={subject.student.name}
+                      fallback={UNNAMED}
+                      onSaved={(name) => onRename?.(subject.student.student_id, name)}
+                      t={t}
+                    />
+                  ) : (
+                    <span className={subject.student.name ? "" : "italic opacity-70"} data-testid="student-name-masked">
+                      {subject.student.name ?? UNNAMED}
+                    </span>
+                  )}
                   <span className="whitespace-nowrap font-normal text-zinc-400">
                     · {t("Student")}
                     {subject.student.phone && (
@@ -782,6 +807,7 @@ export function MvpTeacherModal({
             ✕ {t("Close")}
           </button>
         </div>
+        {sampleOpen && <SampleAudioModal onClose={() => setSampleOpen(false)} t={t} />}
 
         <div className="bg-white">
           {/* chart with its own picker: letter scores (students, default) or a metric + range */}
@@ -855,7 +881,16 @@ export function MvpTeacherModal({
                 return (
                   <div key={row.id} className="py-3 text-sm leading-relaxed text-zinc-700">
                     {t("At")} <span className="font-semibold">{w.time}</span> {t("on")} <span className="font-semibold">{w.day}</span> {t(w.week)} {t("the student said")}{" "}
-                    {row.has_audio ? <AudioButton mediaId={row.id} t={t} /> : <span className="italic text-zinc-400">{t("nothing (no recording)")}</span>} {t("and the correct answer was")}{" "}
+                    {row.has_audio ? (
+                      isPiiFull(st?.pii) ? (
+                        <AudioButton mediaId={row.id} t={t} />
+                      ) : (
+                        <MaskedAudio mediaId={row.id} durationMs={row.duration_ms} onRequest={() => setSampleOpen(true)} t={t} />
+                      )
+                    ) : (
+                      <span className="italic text-zinc-400">{t("nothing (no recording)")}</span>
+                    )}{" "}
+                    {t("and the correct answer was")}{" "}
                     <span className="font-semibold text-zinc-900">{ans}</span> {t("and so was marked as")}{" "}
                     {row.answer_correct === true && <span className="font-semibold text-emerald-600">{t("correct")}</span>}
                     {row.answer_correct === false && <span className="font-semibold text-red-500">{t("incorrect")}</span>}

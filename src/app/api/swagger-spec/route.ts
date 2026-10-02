@@ -1,4 +1,5 @@
 import { auth } from "@/auth";
+import { ppSketchFetch } from "@/lib/pp-sketch";
 
 export async function GET() {
   const session = await auth();
@@ -6,7 +7,7 @@ export async function GET() {
     return new Response("Unauthorized", { status: 401 });
   }
 
-  const res = await fetch(`${process.env.PP_SKETCH_INTERNAL_URL}/api-json`);
+  const res = await ppSketchFetch("api-json");
   const spec = await res.json();
 
   // Point Swagger "Try it out" at our proxy instead of pp-sketch directly

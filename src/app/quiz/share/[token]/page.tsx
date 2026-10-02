@@ -1,3 +1,4 @@
+import { ppSketchFetch } from "@/lib/pp-sketch";
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
@@ -17,12 +18,8 @@ interface ShareData {
 }
 
 async function fetchShare(token: string): Promise<ShareData | null> {
-  const baseUrl = process.env.PP_SKETCH_INTERNAL_URL;
-  if (!baseUrl) {
-    throw new Error("PP_SKETCH_INTERNAL_URL is not set");
-  }
-  const res = await fetch(
-    `${baseUrl}/quiz/share/${encodeURIComponent(token)}`,
+  const res = await ppSketchFetch(
+    `quiz/share/${encodeURIComponent(token)}`,
     { cache: "no-store" },
   );
   if (res.status === 404) return null;

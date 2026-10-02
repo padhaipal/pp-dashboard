@@ -1,3 +1,4 @@
+import { ppSketchFetch } from "@/lib/pp-sketch";
 import { ImageResponse } from "next/og";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -18,12 +19,15 @@ interface ShareData {
 }
 
 async function fetchShare(token: string): Promise<ShareData | null> {
-  const baseUrl = process.env.PP_SKETCH_INTERNAL_URL;
-  if (!baseUrl) return null;
-  const res = await fetch(
-    `${baseUrl}/quiz/share/${encodeURIComponent(token)}`,
-    { cache: "no-store" },
-  );
+  let res: Response;
+  try {
+    res = await ppSketchFetch(
+      `quiz/share/${encodeURIComponent(token)}`,
+      { cache: "no-store" },
+    );
+  } catch {
+    return null;
+  }
   if (!res.ok) return null;
   return res.json();
 }
