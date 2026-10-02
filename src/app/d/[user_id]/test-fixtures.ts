@@ -111,7 +111,8 @@ export const TEACHER: Child = {
   using_lifteracy: true,
   delta: 2.0,
   bin: "mid",
-  official: { name: "Asha", role_title: "Teacher", avatar_seed: "asha", spotlight_message: null },
+  // phone masked: the link holder (Tom, a fellow teacher) is not directly above Asha
+  official: { id: "t-1", name: "Asha", role_title: "Teacher", avatar_seed: "asha", spotlight_message: null, phone: "9...2", pii: "masked" },
 };
 
 export const SCORES_SCHOOL: ScoresResponse = {
@@ -128,8 +129,8 @@ export const SCORES_SCHOOL: ScoresResponse = {
 
 // …and a teacher's children (scores?id=<teacher user id>) are their students.
 export const STUDENTS: StudentChild[] = [
-  { student_id: "s-1", label: "Rani", phone: "919999990011", name: "Rani Devi", score: 0.9, passed: true, attempts: 22, in_band: true, active: true, last_active_at: "2026-09-17T10:00:00Z", delta: 5.0 },
-  { student_id: "s-2", label: "Student 2", phone: "919999990022", name: null, score: null, passed: null, attempts: 3, in_band: false, active: false, last_active_at: null, delta: null },
+  { student_id: "s-1", label: "Rani", phone: "919999990011", name: "Rani Devi", pii: "full", score: 0.9, passed: true, attempts: 22, in_band: true, active: true, last_active_at: "2026-09-17T10:00:00Z", delta: 5.0 },
+  { student_id: "s-2", label: "Student 2", phone: "919999990022", name: null, pii: "full", score: null, passed: null, attempts: 3, in_band: false, active: false, last_active_at: null, delta: null },
 ];
 
 export const SCORES_CLASS: ScoresResponse = {
@@ -164,9 +165,9 @@ export const TEST_SCORES = {
 };
 
 export const MEDIA = {
-  user: { name: "Rani Devi" },
+  user: { name: "Rani Devi", pii: "full" as const },
   media: [
-    { id: "m-1", created_at: new Date(Date.now() - 2 * 3600_000).toISOString(), has_audio: true, answer: "घर", answer_correct: true },
+    { id: "m-1", created_at: new Date(Date.now() - 2 * 3600_000).toISOString(), has_audio: true, duration_ms: 7400, answer: "घर", answer_correct: true },
     { id: "m-2", created_at: new Date(Date.now() - 26 * 3600_000).toISOString(), has_audio: false, answer: "मछली", answer_correct: false },
     // a comprehension flow tap: no recording, the question and the option chosen
     {
@@ -284,7 +285,8 @@ export function jsonResponse(status: number, body: unknown): Response {
 // `timeById`: ids whose `metric=usage&window=…` scores requests are answered
 // in Time mode ("geo" → timeScores, "class" → timeScoresClass). Without it a
 // usage request gets the plain fixture — a pp-sketch that predates windows.
-export function makeFetch(opts: { scores?: ScoresResponse; scoresById?: Record<string, ScoresResponse>; timeById?: Record<string, "geo" | "class"> } = {}) {
+// `media`: the users/:id/media answer (default MEDIA — the viewer is the students' teacher).
+export function makeFetch(opts: { scores?: ScoresResponse; scoresById?: Record<string, ScoresResponse>; timeById?: Record<string, "geo" | "class">; media?: unknown } = {}) {
   const calls: string[] = [];
   const fn = async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = typeof input === "string" ? input : input.toString();
@@ -307,7 +309,7 @@ export function makeFetch(opts: { scores?: ScoresResponse; scoresById?: Record<s
     if (/^\/api\/proxy\/geo-entities\/[^/]+\/spotlight$/.test(path)) return jsonResponse(200, { top: null, most_improved: null });
     // student modal
     if (/^\/api\/proxy\/users\/[^/]+\/literacy-test-scores$/.test(path)) return jsonResponse(200, TEST_SCORES);
-    if (/^\/api\/proxy\/users\/[^/]+\/media$/.test(path)) return jsonResponse(200, MEDIA);
+    if (/^\/api\/proxy\/users\/[^/]+\/media$/.test(path)) return jsonResponse(200, opts.media ?? MEDIA);
     // letter-score chart (default modal view): no rows → "No scores recorded"
     if (/^\/api\/proxy\/users\/[^/]+\/scores$/.test(path)) return jsonResponse(200, []);
     if (/^\/api\/proxy\/scores\/letter-bins$/.test(path)) return jsonResponse(200, []);
@@ -321,3 +323,16 @@ export function makeFetch(opts: { scores?: ScoresResponse; scoresById?: Record<s
   };
   return { fn, calls };
 }
+
+// The same class and feed as a viewer who is NOT the students' teacher sees
+// them (pp-sketch masks per viewer): names / phones first…last, no editing,
+// recordings not playable.
+export const STUDENTS_MASKED: StudentChild[] = STUDENTS.map((st) => ({
+  ...st,
+  pii: "masked",
+  label: st.name ? "R...i" : st.label,
+  name: st.name ? "R...i" : null,
+  phone: st.phone ? `${st.phone[0]}...${st.phone[st.phone.length - 1]}` : st.phone,
+}));
+export const SCORES_CLASS_MASKED: ScoresResponse = { ...SCORES_CLASS, children: STUDENTS_MASKED };
+export const MEDIA_MASKED = { ...MEDIA, user: { name: "R...i", pii: "masked" as const } };

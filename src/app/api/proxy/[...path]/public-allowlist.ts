@@ -1,5 +1,7 @@
 // Paths the proxy forwards WITHOUT a session (the public teacher dashboard
-// at /d/[user_id]). Checked before auth() in route.ts.
+// at /d/[user_id]). Checked before auth() in route.ts. Personal data in
+// these responses (names, phones, recordings) is masked by pp-sketch per
+// viewer — the proxy only says who is looking (proxy-viewer.ts).
 //
 // NEVER add `^users/[^/]+$` here — the staff detail endpoint returns staff_notes.
 
@@ -8,27 +10,21 @@ export const PUBLIC_ALLOWED: { pattern: RegExp; methods: string[] }[] = [
   { pattern: /^users\/[^/]+\/profile$/, methods: ["PATCH"] },
   { pattern: /^geo-entities\/[^/]+\/scores(\.csv)?$/, methods: ["GET"] },
   { pattern: /^geo-entities\/[^/]+\/spotlight$/, methods: ["GET"] },
-  // Student modal on /d: score history, recent voice notes (phone stripped
-  // by route.ts for sessionless callers) and one note's audio bytes.
+  // Student modal on /d: score history, recent voice notes and one note's
+  // audio bytes (403 from pp-sketch unless the viewer may hear it).
   { pattern: /^users\/[^/]+\/literacy-test-scores$/, methods: ["GET"] },
   // Student modal "Time" chart: the student's active minutes per day.
   { pattern: /^users\/[^/]+\/usage-history$/, methods: ["GET"] },
   { pattern: /^users\/[^/]+\/media$/, methods: ["GET"] },
   { pattern: /^media-meta-data\/[^/]+\/audio$/, methods: ["GET"] },
   // Student modal letter-score chart: every score row (letters only, no
-  // PII) and the learnt bins (phone stripped by route.ts for sessionless
-  // callers).
+  // PII) and the learnt bins.
   { pattern: /^users\/[^/]+\/scores$/, methods: ["GET"] },
   { pattern: /^scores\/letter-bins$/, methods: ["GET"] },
 ];
 
-// Letter-bins rows carry `userPhone`; sessionless callers get it removed
-// (route.ts).
-export const PUBLIC_LETTER_BINS_RE = /^scores\/letter-bins$/;
-
-// Public media responses carry the student's phone; sessionless callers get
-// it removed (route.ts).
-export const PUBLIC_MEDIA_RE = /^users\/[^/]+\/media$/;
+// The media feed; its `onboarding` param is staff-only (below).
+const PUBLIC_MEDIA_RE = /^users\/[^/]+\/media$/;
 
 // `users/:id/media?onboarding=1` makes pp-sketch include the parent-onboarding
 // voice notes (a parent stating the child's name and age, recorded before

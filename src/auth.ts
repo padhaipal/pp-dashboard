@@ -1,5 +1,6 @@
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
+import { ppSketchFetch } from "@/lib/pp-sketch";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
@@ -9,9 +10,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        const url = `${process.env.PP_SKETCH_INTERNAL_URL}/users/login`;
         try {
-          const res = await fetch(url, {
+          const res = await ppSketchFetch("users/login", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({

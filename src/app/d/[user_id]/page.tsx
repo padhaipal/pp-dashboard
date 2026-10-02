@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { INACTIVE_LINK_TEXT, type PublicProfile } from "./dashboard-types";
 import { readIncompleteStates } from "./incomplete-states";
 import { TeacherDashboard } from "./teacher-dashboard";
+import { ppSketchFetch } from "@/lib/pp-sketch";
 
 // Public, unauthenticated dashboard for a Lifteracy user (teacher / official).
 // No NextAuth: the link itself is the credential, so keep robots out.
@@ -10,10 +11,9 @@ export const dynamic = "force-dynamic";
 
 export default async function PublicDashboardPage({ params }: { params: Promise<{ user_id: string }> }) {
   const { user_id } = await params;
-  const base = process.env.PP_SKETCH_INTERNAL_URL ?? "";
   let res: Response;
   try {
-    res = await fetch(`${base}/users/${encodeURIComponent(user_id)}/public`, { cache: "no-store" });
+    res = await ppSketchFetch(`users/${encodeURIComponent(user_id)}/public`, { cache: "no-store" });
   } catch {
     return <Message text="The dashboard is temporarily unavailable. Please try again shortly." />;
   }

@@ -4,7 +4,7 @@ import { TeacherDashboard } from "./teacher-dashboard";
 import { RepTrend } from "./report-card-modal";
 import { MvpMinutesChart } from "./mvp-widgets";
 import { EMPTY_ROOT_TEXT, INCOMPLETE_TOOLTIP } from "./dashboard-types";
-import { CHILD_UP, EMPTY_SCORES, PROFILE, PROFILE_SCHOOL, SCORES, SCORES_CLASS, SCORES_SCHOOL, SCORES_UP, makeFetch } from "./test-fixtures";
+import { CHILD_UP, EMPTY_SCORES, MEDIA_MASKED, PROFILE, PROFILE_SCHOOL, SCORES, SCORES_CLASS, SCORES_CLASS_MASKED, SCORES_SCHOOL, SCORES_UP, makeFetch } from "./test-fixtures";
 
 const pressed = (name: string) => screen.getAllByRole("button", { name }).map((b) => b.getAttribute("aria-pressed"));
 
@@ -125,7 +125,7 @@ describe("TeacherDashboard", () => {
     render(<TeacherDashboard profile={PROFILE} incompleteStates={[]} />);
 
     const link = await screen.findByTestId("csv-link");
-    expect(link.getAttribute("href")).toBe("/api/proxy/geo-entities/g-in/scores.csv?metric=nipun_g3&range=30");
+    expect(link.getAttribute("href")).toBe("/api/proxy/geo-entities/g-in/scores.csv?metric=nipun_g3&range=30&viewer=u1");
 
     // the metric toggle is rendered twice (under the title and under Performance), like mvp2
     const toggles = screen.getAllByRole("button", { name: "MPL-B proxy" });
@@ -133,8 +133,58 @@ describe("TeacherDashboard", () => {
     fireEvent.click(toggles[1]);
     // a metric change refetches; the Performance card (and its range bar) comes back with the new data
     fireEvent.click(await screen.findByRole("button", { name: "All time" }));
-    await waitFor(() => expect(screen.getByTestId("csv-link").getAttribute("href")).toBe("/api/proxy/geo-entities/g-in/scores.csv?metric=mpl_b&range=all"));
+    await waitFor(() => expect(screen.getByTestId("csv-link").getAttribute("href")).toBe("/api/proxy/geo-entities/g-in/scores.csv?metric=mpl_b&range=all&viewer=u1"));
     expect(screen.getAllByRole("button", { name: "MPL-B proxy" })[0].getAttribute("aria-pressed")).toBe("true");
+  });
+
+  it("a viewer who is not the students' teacher (e.g. the block official): masked names and phones, no renaming, recordings locked behind a sample clip; a peer teacher's phone is masked too", async () => {
+    const { fn, calls } = makeFetch({ scoresById: { "g-sch": SCORES_SCHOOL, "t-1": SCORES_CLASS_MASKED }, media: MEDIA_MASKED });
+    vi.stubGlobal("fetch", vi.fn(fn));
+    render(<TeacherDashboard profile={PROFILE_SCHOOL} incompleteStates={[]} />);
+
+    // every proxy call says who is looking
+    const cards = await screen.findAllByTestId("teacher-card");
+    expect(calls.filter((u) => u.startsWith("/api/proxy/")).every((u) => u.includes("viewer=u-sch"))).toBe(true);
+
+    // the teacher's own modal (opened from the Detail card) shows her (masked) number
+    fireEvent.click(screen.getByTestId("rep-meta"));
+    const teacherDialog = await screen.findByRole("dialog");
+    expect(within(teacherDialog).getByTestId("official-phone").textContent).toBe("9...2");
+    fireEvent.click(within(teacherDialog).getByRole("button", { name: /Close/ }));
+
+    fireEvent.dblClick(cards[0]);
+    const tiles = await screen.findAllByTestId("student-tile");
+    expect(tiles.length).toBe(2);
+    // masked as pp-sketch sent them; the names are plain text, never a Rename control
+    expect(tiles[0].textContent).toContain("R...i");
+    expect(tiles[0].textContent).not.toContain("Rani Devi");
+    expect(tiles[0].querySelector('[data-testid="tile-phone"]')?.textContent).toBe("9...1");
+    expect(tiles[1].querySelector('[data-testid="tile-phone"]')?.textContent).toBe("9...2");
+    expect(tiles[0].querySelector('[data-testid="student-name-masked"]')).not.toBeNull();
+    expect(screen.queryAllByTestId("student-name")).toHaveLength(0);
+    expect(screen.queryByText("Rename")).toBeNull();
+    expect(tiles[1].textContent).toContain("~");
+
+    // the student modal: masked title, no editing, the recording is a locked waveform with its length
+    fireEvent.click(tiles[0]);
+    const dialog = await screen.findByRole("dialog");
+    expect(screen.getByTestId("student-modal-title").textContent).toContain("R...i");
+    expect(screen.getByTestId("student-modal-title").querySelector('[data-testid="student-name"]')).toBeNull();
+    expect(screen.getByTestId("student-modal-phone").textContent).toBe("9...1");
+    const locked = await within(dialog).findByTestId("masked-audio");
+    expect(within(dialog).queryByTestId("audio-button")).toBeNull();
+    expect(within(locked).getByTestId("masked-audio-duration").textContent).toBe("0:07");
+    expect(locked.querySelectorAll("rect").length).toBe(28);
+    expect(calls.some((u) => u.includes("/media-meta-data/m-1/audio"))).toBe(false);
+
+    // pressing it explains and offers the stand-in clip, never the real audio
+    fireEvent.click(locked);
+    const sample = await screen.findByTestId("sample-audio-modal");
+    expect(sample.textContent).toContain("This recording is private");
+    expect((within(sample).getByTestId("sample-audio") as HTMLAudioElement).getAttribute("src")).toBe("/sample-child-response.wav");
+    fireEvent.click(within(sample).getByRole("button", { name: /Close/ }));
+    expect(screen.queryByTestId("sample-audio-modal")).toBeNull();
+    expect(calls.some((u) => u.includes("/media-meta-data/m-1/audio"))).toBe(false);
   });
 
   it("school → teacher cards; double-click → the class (student tiles, 'Student Performance' only); tile → the student modal", async () => {
@@ -217,7 +267,7 @@ describe("TeacherDashboard", () => {
     fireEvent.change(input, { target: { value: "Mohan Kumar" } });
     fireEvent.keyDown(input, { key: "Enter" });
     await waitFor(() => expect(tiles[1].textContent).toContain("Mohan Kumar"));
-    expect(calls).toContain("PATCH /api/proxy/users/s-2/profile");
+    expect(calls).toContain("PATCH /api/proxy/users/s-2/profile?viewer=u-sch");
     expect(screen.queryByRole("dialog")).toBeNull(); // renaming never opens the modal
     // class view: Performance only — no Detail, no Spotlight (section or nav link)
     expect(screen.getByText("Student Performance", { selector: "div" })).toBeDefined();
@@ -445,8 +495,8 @@ describe("TeacherDashboard — Time metric", () => {
     expect(pressed("Yesterday")).toEqual(["false"]);
     expect(document.querySelector('#rep-perf [data-testid="time-window-toggle"]')).toBeNull();
     expect(screen.queryByRole("button", { name: /week/i })).toBeNull();
-    await waitFor(() => expect(calls).toContain("/api/proxy/geo-entities/g-in/scores?metric=usage&range=30&window=7d"));
-    expect(calls).toContain("/api/proxy/geo-entities/g-in/spotlight?metric=usage&range=30&window=7d");
+    await waitFor(() => expect(calls).toContain("/api/proxy/geo-entities/g-in/scores?metric=usage&range=30&window=7d&viewer=u1"));
+    expect(calls).toContain("/api/proxy/geo-entities/g-in/spotlight?metric=usage&range=30&window=7d&viewer=u1");
 
     // headline: total per student, minutes per day under it, both coloured by the per-day average (5.4 → green)
     await waitFor(() => expect(screen.getByTestId("root-kpis").textContent).toContain("38 min"));
@@ -478,11 +528,11 @@ describe("TeacherDashboard — Time metric", () => {
     expect(screen.getByTestId("bar-strip").textContent).toContain("per student per day · last seven days");
 
     // the CSV export follows the window
-    expect(screen.getByTestId("csv-link").getAttribute("href")).toBe("/api/proxy/geo-entities/g-in/scores.csv?metric=usage&range=30&window=7d");
+    expect(screen.getByTestId("csv-link").getAttribute("href")).toBe("/api/proxy/geo-entities/g-in/scores.csv?metric=usage&range=30&window=7d&viewer=u1");
 
     // Yesterday: refetch, new figures (4 min per day → amber)
     fireEvent.click(screen.getByRole("button", { name: "Yesterday" }));
-    await waitFor(() => expect(calls).toContain("/api/proxy/geo-entities/g-in/scores?metric=usage&range=30&window=yesterday"));
+    await waitFor(() => expect(calls).toContain("/api/proxy/geo-entities/g-in/scores?metric=usage&range=30&window=yesterday&viewer=u1"));
     await waitFor(() => expect(screen.getByTestId("root-kpis").textContent).toContain("average time per student · yesterday"));
     expect(screen.getByTestId("root-kpis").textContent).toContain("4 min");
     expect((screen.getByTestId("kpi-per-day") as HTMLElement).style.color).toBe("rgb(245, 158, 11)");
@@ -531,7 +581,7 @@ describe("TeacherDashboard — Time metric", () => {
     fireEvent.click(screen.getAllByTestId("student-tile")[0]);
     const dialog = await screen.findByRole("dialog");
     fireEvent.click(within(dialog).getByRole("button", { name: "Time" }));
-    await waitFor(() => expect(calls).toContain("/api/proxy/users/s-1/usage-history?range=30"));
+    await waitFor(() => expect(calls).toContain("/api/proxy/users/s-1/usage-history?range=30&viewer=u-sch"));
     const chart = await within(dialog).findByTestId("minutes-chart");
     expect(chart.textContent).toContain("Active minutes");
     // one bar per day that had activity (the idle day has none)
@@ -539,7 +589,7 @@ describe("TeacherDashboard — Time metric", () => {
     expect(chart.textContent).toContain("15 Sept");
     // its range toggle refetches
     fireEvent.click(within(dialog).getByRole("button", { name: "All time" }));
-    await waitFor(() => expect(calls).toContain("/api/proxy/users/s-1/usage-history?range=all"));
+    await waitFor(() => expect(calls).toContain("/api/proxy/users/s-1/usage-history?range=all&viewer=u-sch"));
   });
 
   it("a pp-sketch without Time windows (no window echoed): falls back to the 5+ min yesterday share", async () => {
@@ -549,7 +599,7 @@ describe("TeacherDashboard — Time metric", () => {
     render(<TeacherDashboard profile={PROFILE} incompleteStates={[]} />);
     await screen.findByTestId("root-kpis");
     fireEvent.click(screen.getAllByRole("button", { name: "Time" })[0]);
-    await waitFor(() => expect(calls).toContain("/api/proxy/geo-entities/g-in/scores?metric=usage&range=30&window=7d"));
+    await waitFor(() => expect(calls).toContain("/api/proxy/geo-entities/g-in/scores?metric=usage&range=30&window=7d&viewer=u1"));
     await waitFor(() => expect(screen.getByTestId("root-kpis").textContent).toContain("of students pass the Time · 5+ min yesterday"));
     expect(screen.getByTestId("root-kpis").textContent).toContain("72%");
     expect(screen.queryByTestId("kpi-per-day")).toBeNull();

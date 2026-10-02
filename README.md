@@ -9,6 +9,7 @@ Admin/dev dashboard for PadhaiPal. Next.js 16, Tailwind, NextAuth.
 | `NEXTAUTH_SECRET` | Random secret for JWT signing |
 | `NEXTAUTH_URL` | Public URL (`https://dashboard.padhaipal.com`) |
 | `PP_SKETCH_INTERNAL_URL` | pp-sketch internal URL via Railway private networking |
+| `PP_SKETCH_API_KEY` | The dashboard's badge for pp-sketch (its `DASHBOARD_API_KEY`), sent as `x-api-key` on every server-side call. pp-sketch rejects everything without it. |
 | `NEXT_PUBLIC_CARTO_KEY` | CARTO Basemaps API key (free, carto.com/basemaps/apikey) for the /d map's street underlay; without it CARTO watermarks the tiles "API KEY REQUIRED". Build-time (`NEXT_PUBLIC_`), so redeploy after setting it. |
 
 ## Deploy (Railway)

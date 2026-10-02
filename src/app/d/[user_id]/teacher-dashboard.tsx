@@ -11,6 +11,10 @@
 // are hidden (mvp2's `inClass`). All numbers come from pp-sketch via
 // /api/proxy (public allowlist, no session). The only deliberate departure
 // from mvp2 is the plant avatar.
+//
+// Who is looking: the link's user id rides on every proxy call as `?viewer=`
+// (viewer-url.ts / ViewerProvider) and pp-sketch masks names, phones and
+// recordings the viewer is not directly above. Rows say so in `pii`.
 
 import Image from "next/image";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -57,7 +61,10 @@ import {
   type SpotlightResponse,
   type StudentChild,
   UNNAMED,
+  isPiiFull,
 } from "./dashboard-types";
+import { withViewer } from "./viewer-url";
+import { ViewerProvider } from "./viewer-context";
 import { BarStrip, type BarItem } from "./bar-strip";
 import { GeoMap } from "./geo-map";
 import { isLang, LANG_STORAGE_KEY, makeT, type Lang, type T } from "./i18n";
@@ -156,7 +163,8 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
       if (!res.ok) throw new Error(await serverMessage(res));
       return (await res.json()) as T;
     };
-    Promise.all([getJson<ScoresResponse>(scoresUrl(id, metric, range, win)), getJson<SpotlightResponse>(spotlightUrl(id, metric, range, win)).catch(() => null)])
+    const viewer = profile.id;
+    Promise.all([getJson<ScoresResponse>(withViewer(scoresUrl(id, metric, range, win), viewer)), getJson<SpotlightResponse>(withViewer(spotlightUrl(id, metric, range, win), viewer)).catch(() => null)])
       .then(([scores, spotlight]) => {
         if (!cancelled) setData({ key: k, scores, spotlight, error: null });
       })
@@ -166,7 +174,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
     return () => {
       cancelled = true;
     };
-  }, [entity, metric, range, win]);
+  }, [entity, metric, range, win, profile.id]);
 
   const loaded = data && data.key === key ? data : null;
   const scores = loaded?.scores ?? null;
@@ -325,320 +333,322 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
   const closeReport = useCallback(() => setReportOpen(false), []);
 
   return (
-    <div className="min-h-screen scroll-smooth bg-zinc-50 text-zinc-900">
-      {/* report header — logo + section shortcuts + language + Generate report */}
-      <header className="sticky top-0 z-40 border-b border-zinc-200/70 bg-zinc-50/90 backdrop-blur">
-        <div className="relative mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-2.5 sm:px-6">
-          <Image src="/lifteracy-logo-only.svg" alt="Lifteracy" width={160} height={64} className="h-10 w-auto shrink-0 sm:h-14 md:h-16" priority />
-          {/* nav centred in the bar, independent of logo width */}
-          <nav className="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 items-center gap-6 text-sm font-semibold text-zinc-600 lg:flex">
-            <a href="#rep-top" className="transition-colors hover:text-blue-600">
-              {t("Top")}
-            </a>
-            <a href="#rep-perf" className="transition-colors hover:text-blue-600">
-              {t(nounS)} {t("Performance")}
-            </a>
-            {!inClass && (
-              <a href="#rep-spotlight" className="transition-colors hover:text-blue-600">
-                {t(officer)} {t("Spotlight")}
+    <ViewerProvider id={profile.id}>
+      <div className="min-h-screen scroll-smooth bg-zinc-50 text-zinc-900">
+        {/* report header — logo + section shortcuts + language + Generate report */}
+        <header className="sticky top-0 z-40 border-b border-zinc-200/70 bg-zinc-50/90 backdrop-blur">
+          <div className="relative mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-2.5 sm:px-6">
+            <Image src="/lifteracy-logo-only.svg" alt="Lifteracy" width={160} height={64} className="h-10 w-auto shrink-0 sm:h-14 md:h-16" priority />
+            {/* nav centred in the bar, independent of logo width */}
+            <nav className="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 items-center gap-6 text-sm font-semibold text-zinc-600 lg:flex">
+              <a href="#rep-top" className="transition-colors hover:text-blue-600">
+                {t("Top")}
               </a>
-            )}
-            <a href="#rep-profile" className="transition-colors hover:text-blue-600">
-              {t("Your Profile")}
-            </a>
-          </nav>
-          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
-            <MvpLangToggle lang={lang} setLang={setLang} />
-            <button
-              type="button"
-              onClick={() => setReportOpen(true)}
-              disabled={!reportData}
-              className="whitespace-nowrap rounded-lg px-3 py-2 text-xs font-bold text-white shadow-sm transition hover:opacity-90 disabled:opacity-40 sm:px-5 sm:text-sm md:text-base"
-              style={{ background: ACCENT }}
-            >
-              {/* phones: just "Report" */}
-              ⤓ <span className="sm:hidden">{t("Report")}</span>
-              <span className="hidden sm:inline">{t("Generate report")}</span>
-            </button>
-          </div>
-        </div>
-      </header>
-      <div id="rep-top" />
-
-      {!entity ? (
-        <div className="mx-auto max-w-6xl px-6 py-10 text-center text-sm text-zinc-500">{t("This user is not linked to a location yet.")}</div>
-      ) : (
-        <>
-          {/* large location title */}
-          <div className="mx-auto max-w-6xl px-6 pt-8">
-            <h1 className="text-center text-3xl font-extrabold tracking-tight sm:text-4xl" data-testid="location-title">
-              {titleSegments.map((s, i) => (
-                <span key={i} className={i === 0 ? "text-zinc-900" : "font-semibold text-zinc-400"}>
-                  {i > 0 ? "  -  " : ""}
-                  {s}
-                </span>
-              ))}
-            </h1>
-          </div>
-
-          {/* headline stats — narrower, with the shared metric tab */}
-          <div className="mx-auto mt-6 max-w-5xl px-6">
-            <div className="mb-3 flex flex-col items-center gap-2">
-              <MvpMetricToggle metric={metric} setMetric={setMetric} t={t} />
-              {/* Time only: yesterday / last seven days / all time */}
-              {isUsageMetric && <MvpTimeWindowToggle window={timeWindow} setWindow={setTimeWindow} t={t} />}
+              <a href="#rep-perf" className="transition-colors hover:text-blue-600">
+                {t(nounS)} {t("Performance")}
+              </a>
+              {!inClass && (
+                <a href="#rep-spotlight" className="transition-colors hover:text-blue-600">
+                  {t(officer)} {t("Spotlight")}
+                </a>
+              )}
+              <a href="#rep-profile" className="transition-colors hover:text-blue-600">
+                {t("Your Profile")}
+              </a>
+            </nav>
+            <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+              <MvpLangToggle lang={lang} setLang={setLang} />
+              <button
+                type="button"
+                onClick={() => setReportOpen(true)}
+                disabled={!reportData}
+                className="whitespace-nowrap rounded-lg px-3 py-2 text-xs font-bold text-white shadow-sm transition hover:opacity-90 disabled:opacity-40 sm:px-5 sm:text-sm md:text-base"
+                style={{ background: ACCENT }}
+              >
+                {/* phones: just "Report" */}
+                ⤓ <span className="sm:hidden">{t("Report")}</span>
+                <span className="hidden sm:inline">{t("Generate report")}</span>
+              </button>
             </div>
-            {loaded?.error && <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">Could not load results — {loaded.error}</p>}
-            {loading && <p className="text-center text-sm text-zinc-400">{t("Loading your dashboard…")}</p>}
-            {scores && emptyRoot && (
-              <div className="rounded-2xl border border-dashed border-zinc-300 bg-white px-4 py-10 text-center text-lg font-semibold text-zinc-600" data-testid="empty-root">
-                {t(EMPTY_ROOT_TEXT)}
-              </div>
-            )}
-            {scores && !emptyRoot && (
-              <RepKpis
-                root={scores.root}
-                metricLabel={metricLabel}
-                nounP={nounP}
-                usingN={usingN}
-                totalN={geoChildren.length}
-                showUsing={childType !== "teacher" && childType !== "student"}
-                timeWindow={timeMode ? timeWindow : undefined}
-                ageBand={ageBandOf(metric, scores.age_band)}
-                t={t}
-              />
-            )}
           </div>
+        </header>
+        <div id="rep-top" />
 
-          {/* map card: the map (geo levels), teacher cards (school) or student tiles (class), + the up-a-level button */}
-          <div
-            className="relative mx-auto mt-6 h-[460px] shrink-0 overflow-hidden rounded-t-2xl border border-zinc-200 bg-[#eaf0f6] shadow-sm"
-            style={{ width: "min(calc(100% - 3rem), 69rem)" }}
-            data-testid="map-card"
-          >
-            {entity.type === "school" ? (
-              scores && <TeacherCards teachers={geoChildren} metric={metric} range={range} time={timeMode} selId={selId} onSelect={select} onDrill={drill} onClear={() => setSelId(null)} t={t} />
-            ) : entity.type === "teacher" ? (
-              scores && <StudentTiles students={students} metric={metric} time={timeMode} onOpen={openStudent} onRename={renameStudent} t={t}
+        {!entity ? (
+          <div className="mx-auto max-w-6xl px-6 py-10 text-center text-sm text-zinc-500">{t("This user is not linked to a location yet.")}</div>
+        ) : (
+          <>
+            {/* large location title */}
+            <div className="mx-auto max-w-6xl px-6 pt-8">
+              <h1 className="text-center text-3xl font-extrabold tracking-tight sm:text-4xl" data-testid="location-title">
+                {titleSegments.map((s, i) => (
+                  <span key={i} className={i === 0 ? "text-zinc-900" : "font-semibold text-zinc-400"}>
+                    {i > 0 ? "  -  " : ""}
+                    {s}
+                  </span>
+                ))}
+              </h1>
+            </div>
+
+            {/* headline stats — narrower, with the shared metric tab */}
+            <div className="mx-auto mt-6 max-w-5xl px-6">
+              <div className="mb-3 flex flex-col items-center gap-2">
+                <MvpMetricToggle metric={metric} setMetric={setMetric} t={t} />
+                {/* Time only: yesterday / last seven days / all time */}
+                {isUsageMetric && <MvpTimeWindowToggle window={timeWindow} setWindow={setTimeWindow} t={t} />}
+              </div>
+              {loaded?.error && <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">Could not load results — {loaded.error}</p>}
+              {loading && <p className="text-center text-sm text-zinc-400">{t("Loading your dashboard…")}</p>}
+              {scores && emptyRoot && (
+                <div className="rounded-2xl border border-dashed border-zinc-300 bg-white px-4 py-10 text-center text-lg font-semibold text-zinc-600" data-testid="empty-root">
+                  {t(EMPTY_ROOT_TEXT)}
+                </div>
+              )}
+              {scores && !emptyRoot && (
+                <RepKpis
+                  root={scores.root}
+                  metricLabel={metricLabel}
+                  nounP={nounP}
+                  usingN={usingN}
+                  totalN={geoChildren.length}
+                  showUsing={childType !== "teacher" && childType !== "student"}
+                  timeWindow={timeMode ? timeWindow : undefined}
+                  ageBand={ageBandOf(metric, scores.age_band)}
+                  t={t}
+                />
+              )}
+            </div>
+
+            {/* map card: the map (geo levels), teacher cards (school) or student tiles (class), + the up-a-level button */}
+            <div
+              className="relative mx-auto mt-6 h-[460px] shrink-0 overflow-hidden rounded-t-2xl border border-zinc-200 bg-[#eaf0f6] shadow-sm"
+              style={{ width: "min(calc(100% - 3rem), 69rem)" }}
+              data-testid="map-card"
+            >
+              {entity.type === "school" ? (
+                scores && <TeacherCards teachers={geoChildren} metric={metric} range={range} time={timeMode} selId={selId} onSelect={select} onDrill={drill} onClear={() => setSelId(null)} t={t} />
+              ) : entity.type === "teacher" ? (
+                scores && <StudentTiles students={students} metric={metric} time={timeMode} onOpen={openStudent} onRename={renameStudent} t={t}
+                    hoverId={hoverId}
+                    setHoverId={setHoverId}
+                  />
+              ) : (
+                <GeoMap
+                  entity={entity}
+                  childType={(childType && childType !== "student" && childType !== "teacher" ? childType : nextChildType(entity.type)) as Exclude<ChildType, "student" | "teacher">}
+                  childrenRows={geoChildren}
+                  incompleteStates={incomplete}
                   hoverId={hoverId}
                   setHoverId={setHoverId}
+                  selectedId={selId}
+                  onSelect={select}
+                  onDrill={drill}
+                  metricLabel={metricLabel}
+                  time={timeMode}
+                  t={t}
                 />
-            ) : (
-              <GeoMap
-                entity={entity}
-                childType={(childType && childType !== "student" && childType !== "teacher" ? childType : nextChildType(entity.type)) as Exclude<ChildType, "student" | "teacher">}
-                childrenRows={geoChildren}
-                incompleteStates={incomplete}
-                hoverId={hoverId}
-                setHoverId={setHoverId}
-                selectedId={selId}
-                onSelect={select}
-                onDrill={drill}
-                metricLabel={metricLabel}
-                time={timeMode}
-                t={t}
-              />
-            )}
-            {/* bottom-right: up-a-level button */}
-            <div className="pointer-events-none absolute bottom-4 right-4 z-30 flex items-end gap-2">
-              <div className="pointer-events-auto overflow-hidden rounded-lg border border-zinc-300 bg-white shadow-md">
-                <button
-                  type="button"
-                  onClick={up}
-                  title={t("Go up a level")}
-                  aria-label={t("Up a level")}
-                  disabled={!canUp}
-                  className={"flex h-9 w-9 items-center justify-center " + (canUp ? "text-zinc-700 hover:bg-zinc-100" : "cursor-default text-zinc-300")}
-                >
-                  <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <path d="M12 16V5" />
-                    <path d="M7 10l5-5 5 5" />
-                    <path d="M5 20h14" />
-                  </svg>
-                </button>
+              )}
+              {/* bottom-right: up-a-level button */}
+              <div className="pointer-events-none absolute bottom-4 right-4 z-30 flex items-end gap-2">
+                <div className="pointer-events-auto overflow-hidden rounded-lg border border-zinc-300 bg-white shadow-md">
+                  <button
+                    type="button"
+                    onClick={up}
+                    title={t("Go up a level")}
+                    aria-label={t("Up a level")}
+                    disabled={!canUp}
+                    className={"flex h-9 w-9 items-center justify-center " + (canUp ? "text-zinc-700 hover:bg-zinc-100" : "cursor-default text-zinc-300")}
+                  >
+                    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M12 16V5" />
+                      <path d="M7 10l5-5 5 5" />
+                      <path d="M5 20h14" />
+                    </svg>
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
 
-          {scores && !emptyRoot && barItems.length > 0 && (
-            <div className="mx-auto shrink-0" style={{ width: "min(calc(100% - 3rem), 69rem)" }} data-testid="bar-strip-wrap">
-              <BarStrip
-                items={barItems}
-                max={barMax}
-                hoverId={hoverId}
-                setHoverId={setHoverId}
-                selId={selId}
-                onClick={(b) => {
-                  if (inClass) {
-                    const st = students.find((x) => x.student_id === b.id);
-                    if (st) openStudent(st);
-                  } else {
-                    const c = geoChildren.find((x) => x.id === b.id);
-                    if (c) select(c);
-                  }
-                }}
-                hint={`${t(inClass ? "students" : nounP)} · ${
-                  timeMode
-                    ? `${t(inClass ? "min per day" : "per student per day")} · ${timeSuffix}`
-                    : isUsageMetric
-                      ? inClass
-                        ? t("min yesterday")
-                        : t("5+ min yesterday")
-                      : t(METRIC_BY[metric].short)
-                } · ${t("click a bar to select")}`}
-                t={t}
-              />
-            </div>
-          )}
+            {scores && !emptyRoot && barItems.length > 0 && (
+              <div className="mx-auto shrink-0" style={{ width: "min(calc(100% - 3rem), 69rem)" }} data-testid="bar-strip-wrap">
+                <BarStrip
+                  items={barItems}
+                  max={barMax}
+                  hoverId={hoverId}
+                  setHoverId={setHoverId}
+                  selId={selId}
+                  onClick={(b) => {
+                    if (inClass) {
+                      const st = students.find((x) => x.student_id === b.id);
+                      if (st) openStudent(st);
+                    } else {
+                      const c = geoChildren.find((x) => x.id === b.id);
+                      if (c) select(c);
+                    }
+                  }}
+                  hint={`${t(inClass ? "students" : nounP)} · ${
+                    timeMode
+                      ? `${t(inClass ? "min per day" : "per student per day")} · ${timeSuffix}`
+                      : isUsageMetric
+                        ? inClass
+                          ? t("min yesterday")
+                          : t("5+ min yesterday")
+                        : t(METRIC_BY[metric].short)
+                  } · ${t("click a bar to select")}`}
+                  t={t}
+                />
+              </div>
+            )}
 
-          {/* teachers only: the referral link parents use to enrol under this teacher, right below the map card */}
-          {profile.geo_entity?.type === "school" && <MvpShareBar shareLink={profile.share_link} t={t} />}
+            {/* teachers only: the referral link parents use to enrol under this teacher, right below the map card */}
+            {profile.geo_entity?.type === "school" && <MvpShareBar shareLink={profile.share_link} t={t} />}
 
-          {scores && !emptyRoot && childType && (
-            <>
-              {/* metadata card — between the map and the trend graph; hidden in the class view */}
-              {!inClass && (
-                <section className="py-10">
+            {scores && !emptyRoot && childType && (
+              <>
+                {/* metadata card — between the map and the trend graph; hidden in the class view */}
+                {!inClass && (
+                  <section className="py-10">
+                    <div className="mx-auto max-w-6xl px-6">
+                      <div className={"mb-6 " + H} style={{ color: ACCENT }}>
+                        {t(nounS)} {t("Detail")}
+                      </div>
+                      <div
+                        className={CARD + " cursor-pointer"}
+                        title={`Click for details · double-click to open this ${nounS.toLowerCase()}`}
+                        onDoubleClick={() => detailChild && drill(detailChild)}
+                        onClick={() => detailChild && openChild(detailChild)}
+                      >
+                        <RepMeta child={detailChild} metricLabel={metricLabel} officer={officer} range={range} time={timeMode} t={t} />
+                      </div>
+                    </div>
+                  </section>
+                )}
+
+                {/* Performance — trend + most improved */}
+                <section id="rep-perf" className="scroll-mt-16 bg-blue-50 py-10">
                   <div className="mx-auto max-w-6xl px-6">
                     <div className={"mb-6 " + H} style={{ color: ACCENT }}>
-                      {t(nounS)} {t("Detail")}
+                      {t(nounS)} {t("Performance")}
                     </div>
-                    <div
-                      className={CARD + " cursor-pointer"}
-                      title={`Click for details · double-click to open this ${nounS.toLowerCase()}`}
-                      onDoubleClick={() => detailChild && drill(detailChild)}
-                      onClick={() => detailChild && openChild(detailChild)}
-                    >
-                      <RepMeta child={detailChild} metricLabel={metricLabel} officer={officer} range={range} time={timeMode} t={t} />
+                    {/* the Time window toggle lives under the title only — the trend has its own range */}
+                    <div className="-mt-3 mb-5 flex justify-center">
+                      <MvpMetricToggle metric={metric} setMetric={setMetric} t={t} />
                     </div>
-                  </div>
-                </section>
-              )}
-
-              {/* Performance — trend + most improved */}
-              <section id="rep-perf" className="scroll-mt-16 bg-blue-50 py-10">
-                <div className="mx-auto max-w-6xl px-6">
-                  <div className={"mb-6 " + H} style={{ color: ACCENT }}>
-                    {t(nounS)} {t("Performance")}
-                  </div>
-                  {/* the Time window toggle lives under the title only — the trend has its own range */}
-                  <div className="-mt-3 mb-5 flex justify-center">
-                    <MvpMetricToggle metric={metric} setMetric={setMetric} t={t} />
-                  </div>
-                  <div className={CARD + " space-y-6"}>
-                    {/* headline share of areas not on Lifteracy at all — hidden at school/class level */}
-                    {childType !== "teacher" && !inClass && (
-                      <div className="text-center text-base font-medium text-zinc-700">
-                        <span className="text-xl font-extrabold tabular-nums text-red-600">
-                          {Math.round(((geoChildren.length - usingN) / Math.max(1, geoChildren.length)) * 100)}%
-                        </span>{" "}
-                        {t("of")} {t(nounP)} {t("in")} {t(displayName(entity.name, entity.type))} {t("are not using Lifteracy at all")}
-                        <span className="ml-1 text-zinc-400">
-                          ({geoChildren.length - usingN} {t("of")} {geoChildren.length})
-                        </span>
-                      </div>
-                    )}
-                    <div>
-                      <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
-                        <div className="text-base font-semibold text-zinc-800">
-                          {t("Trend")}
-                          <HoverLabel child={hoverId ? geoChildren.find((c) => c.id === hoverId) ?? null : null} time={timeMode} t={t} />
+                    <div className={CARD + " space-y-6"}>
+                      {/* headline share of areas not on Lifteracy at all — hidden at school/class level */}
+                      {childType !== "teacher" && !inClass && (
+                        <div className="text-center text-base font-medium text-zinc-700">
+                          <span className="text-xl font-extrabold tabular-nums text-red-600">
+                            {Math.round(((geoChildren.length - usingN) / Math.max(1, geoChildren.length)) * 100)}%
+                          </span>{" "}
+                          {t("of")} {t(nounP)} {t("in")} {t(displayName(entity.name, entity.type))} {t("are not using Lifteracy at all")}
+                          <span className="ml-1 text-zinc-400">
+                            ({geoChildren.length - usingN} {t("of")} {geoChildren.length})
+                          </span>
                         </div>
-                        <MvpRangeBar range={range} setRange={setRange} entityId={entity.id} metric={metric} timeWindow={win} t={t} />
-                      </div>
-                      <RepTrend
-                        series={scores.series}
-                        label={isUsageMetric ? t("Minutes per student") : t(METRIC_BY[metric].short)}
-                        metric={metric}
-                        passMark={scores.pass_mark}
-                        students={
-                          inClass
-                            ? (scores.students_series ?? []).map((ss) => ({
-                                id: ss.student_id,
-                                label: ((s) => withPhone(s?.name?.split(/\s+/)[0] ?? UNNAMED, s?.phone))(students.find((s) => s.student_id === ss.student_id)),
-                                points: ss.points,
-                              }))
-                            : []
-                        }
-                        hoverId={hoverId}
-                        setHoverId={setHoverId}
-                        pinId={pinId}
-                        setPinId={setPinId}
-                        t={t}
-                      />
-                    </div>
-                    {/* Time has no change figure, so no "most improved" */}
-                    {!isUsageMetric && (
-                    <div className="border-t border-zinc-100 pt-5" data-testid="most-improved">
-                      <div className="mb-1 text-base font-semibold text-zinc-800">
-                        {t("Most improved")} · {rangeSuffix(range, t)}
-                        <HoverLabel child={hoverId ? geoChildren.find((c) => c.id === hoverId) ?? null : null} t={t} />
-                      </div>
-                      <RepImproved
-                        mostImproved={improvedRows}
-                        hoverId={hoverId}
-                        setHoverId={setHoverId}
-                        selId={selId}
-                        onSelect={select}
-                        onPick={(r) => {
-                          if (inClass) {
-                            const s = students.find((x) => x.student_id === r.id);
-                            if (s) openStudent(s);
-                          } else {
-                            const c = geoChildren.find((x) => x.id === r.id);
-                            if (c) drill(c);
+                      )}
+                      <div>
+                        <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                          <div className="text-base font-semibold text-zinc-800">
+                            {t("Trend")}
+                            <HoverLabel child={hoverId ? geoChildren.find((c) => c.id === hoverId) ?? null : null} time={timeMode} t={t} />
+                          </div>
+                          <MvpRangeBar range={range} setRange={setRange} entityId={entity.id} metric={metric} timeWindow={win} t={t} />
+                        </div>
+                        <RepTrend
+                          series={scores.series}
+                          label={isUsageMetric ? t("Minutes per student") : t(METRIC_BY[metric].short)}
+                          metric={metric}
+                          passMark={scores.pass_mark}
+                          students={
+                            inClass
+                              ? (scores.students_series ?? []).map((ss) => ({
+                                  id: ss.student_id,
+                                  label: ((s) => withPhone(s?.name?.split(/\s+/)[0] ?? UNNAMED, s?.phone))(students.find((s) => s.student_id === ss.student_id)),
+                                  points: ss.points,
+                                }))
+                              : []
                           }
-                        }}
-                      />
-                    </div>
-                    )}
-                  </div>
-                </div>
-              </section>
-
-              {/* Spotlight — two testimonials inside a card; hidden in the class view */}
-              {!inClass && (
-                <section id="rep-spotlight" className="scroll-mt-16 py-10">
-                  <div className="mx-auto max-w-6xl px-6">
-                    <div className={"mb-6 " + H} style={{ color: ACCENT }}>
-                      {t(officer)} {t("Spotlight")}
-                    </div>
-                    <div className={CARD}>
-                      <div className={"grid grid-cols-1 gap-4" + (isUsageMetric ? "" : " sm:grid-cols-2")}>
-                        <RepQuote kind="top" entry={spotlight?.top ?? null} nounS={nounS} officer={officer} range={range} time={timeMode} t={t} />
-                        {!isUsageMetric && <RepQuote kind="improved" entry={spotlight?.most_improved ?? null} nounS={nounS} officer={officer} range={range} t={t} />}
+                          hoverId={hoverId}
+                          setHoverId={setHoverId}
+                          pinId={pinId}
+                          setPinId={setPinId}
+                          t={t}
+                        />
                       </div>
+                      {/* Time has no change figure, so no "most improved" */}
+                      {!isUsageMetric && (
+                      <div className="border-t border-zinc-100 pt-5" data-testid="most-improved">
+                        <div className="mb-1 text-base font-semibold text-zinc-800">
+                          {t("Most improved")} · {rangeSuffix(range, t)}
+                          <HoverLabel child={hoverId ? geoChildren.find((c) => c.id === hoverId) ?? null : null} t={t} />
+                        </div>
+                        <RepImproved
+                          mostImproved={improvedRows}
+                          hoverId={hoverId}
+                          setHoverId={setHoverId}
+                          selId={selId}
+                          onSelect={select}
+                          onPick={(r) => {
+                            if (inClass) {
+                              const s = students.find((x) => x.student_id === r.id);
+                              if (s) openStudent(s);
+                            } else {
+                              const c = geoChildren.find((x) => x.id === r.id);
+                              if (c) drill(c);
+                            }
+                          }}
+                        />
+                      </div>
+                      )}
                     </div>
                   </div>
                 </section>
-              )}
-            </>
-          )}
-        </>
-      )}
 
-      {/* Personal details / profile settings */}
-      <section id="rep-profile" className={"scroll-mt-16 py-10" + (inClass ? "" : " bg-blue-50")}>
-        <div className="mx-auto max-w-6xl px-6">
-          <div className={"mb-6 " + H} style={{ color: ACCENT }}>
-            {t("Your Profile")}
+                {/* Spotlight — two testimonials inside a card; hidden in the class view */}
+                {!inClass && (
+                  <section id="rep-spotlight" className="scroll-mt-16 py-10">
+                    <div className="mx-auto max-w-6xl px-6">
+                      <div className={"mb-6 " + H} style={{ color: ACCENT }}>
+                        {t(officer)} {t("Spotlight")}
+                      </div>
+                      <div className={CARD}>
+                        <div className={"grid grid-cols-1 gap-4" + (isUsageMetric ? "" : " sm:grid-cols-2")}>
+                          <RepQuote kind="top" entry={spotlight?.top ?? null} nounS={nounS} officer={officer} range={range} time={timeMode} t={t} />
+                          {!isUsageMetric && <RepQuote kind="improved" entry={spotlight?.most_improved ?? null} nounS={nounS} officer={officer} range={range} t={t} />}
+                        </div>
+                      </div>
+                    </div>
+                  </section>
+                )}
+              </>
+            )}
+          </>
+        )}
+
+        {/* Personal details / profile settings */}
+        <section id="rep-profile" className={"scroll-mt-16 py-10" + (inClass ? "" : " bg-blue-50")}>
+          <div className="mx-auto max-w-6xl px-6">
+            <div className={"mb-6 " + H} style={{ color: ACCENT }}>
+              {t("Your Profile")}
+            </div>
+            <div className={CARD}>
+              <ProfileEditor profile={profile} onSaved={setProfile} t={t} />
+            </div>
           </div>
-          <div className={CARD}>
-            <ProfileEditor profile={profile} onSaved={setProfile} t={t} />
+        </section>
+
+        {/* shared footer */}
+        <section className="pb-10">
+          <div className="mx-auto max-w-6xl px-6">
+            <SiteFooter t={t} />
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* shared footer */}
-      <section className="pb-10">
-        <div className="mx-auto max-w-6xl px-6">
-          <SiteFooter t={t} />
-        </div>
-      </section>
-
-      {modal && <MvpTeacherModal subject={modal} metric={metric} onClose={closeModal} onRename={renameStudent} t={t} />}
-      {reportOpen && reportData && <ReportCardModal data={reportData} onClose={closeReport} />}
-    </div>
+        {modal && <MvpTeacherModal subject={modal} metric={metric} onClose={closeModal} onRename={renameStudent} t={t} />}
+        {reportOpen && reportData && <ReportCardModal data={reportData} onClose={closeReport} />}
+      </div>
+    </ViewerProvider>
   );
 }
 
@@ -789,7 +799,14 @@ function StudentTiles({
               data-hot={hoverId === s.student_id ? "1" : undefined}
             >
               <div className="flex w-full justify-center text-[13px] font-bold sm:text-sm">
-                <EditableStudentName studentId={s.student_id} name={s.name} fallback={UNNAMED} onSaved={(name) => onRename(s.student_id, name)} t={t} />
+                {/* only the student's own teacher (pii full) may rename; everyone else sees the masked name */}
+                {isPiiFull(s.pii) ? (
+                  <EditableStudentName studentId={s.student_id} name={s.name} fallback={UNNAMED} onSaved={(name) => onRename(s.student_id, name)} t={t} />
+                ) : (
+                  <span className={"truncate " + (s.name ? "" : "italic opacity-70")} data-testid="student-name-masked">
+                    {s.name ?? UNNAMED}
+                  </span>
+                )}
               </div>
               {s.phone && (
                 <div className="font-mono text-[10px] font-semibold tabular-nums opacity-90" data-testid="tile-phone">
@@ -831,7 +848,7 @@ function ProfileEditor({ profile, onSaved, t }: { profile: PublicProfile; onSave
     setBusy(true);
     setStatus(null);
     try {
-      const res = await fetch(profileUrl(profile.id), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+      const res = await fetch(withViewer(profileUrl(profile.id), profile.id), { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       if (!res.ok) {
         setStatus({ ok: false, text: `Not saved — ${await serverMessage(res)}` });
         return false;

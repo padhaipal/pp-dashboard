@@ -46,11 +46,23 @@ export const isPrivateSchool = (g: GeoRef) => g.type === "school" && g.managemen
 
 export type Ancestor ={ id: string; type: GeoType; code: string; name: string };
 
+// Whether a person's name / phone / recordings came back as stored ("full")
+// or masked to first…last ("masked") — pp-sketch decides per viewer: in full
+// only for the account directly above them (a student's own teacher, a
+// teacher's block official). Absent on a pp-sketch that predates masking →
+// treat as masked.
+export type PiiVisibility = "full" | "masked";
+export const isPiiFull = (pii: PiiVisibility | undefined): boolean => pii === "full";
+
 export type Official = {
+  id?: string;
   name: string | null;
   role_title: string | null;
   avatar_seed: string | null;
   spotlight_message: string | null;
+  // the official's WhatsApp number — masked unless the viewer is directly above them
+  phone?: string | null;
+  pii?: PiiVisibility;
 } | null;
 
 export type PublicProfile = {
@@ -92,9 +104,12 @@ export type StudentChild = TimeFields & {
   student_id: string;
   label: string; // first name, else "Student N"
   // the student's WhatsApp number, shown beside the name everywhere (absent
-  // on a pp-sketch that predates it)
+  // on a pp-sketch that predates it); masked unless the viewer is the
+  // student's own teacher
   phone?: string;
   name: string | null; // full name as stored; edited from the class view
+  // "full" → label / name / phone as stored and the name may be edited
+  pii?: PiiVisibility;
   score: number | null; // 0-1
   passed: boolean | null;
   attempts: number;
@@ -125,13 +140,18 @@ export type MediaRow = {
   kind?: "voice" | "tap" | "onboarding";
   created_at: string;
   has_audio: boolean;
+  // voice-note length (ms), shown in place of the player when the viewer
+  // may not hear the recording
+  duration_ms?: number | null;
   // voice: the word / passage asked for; tap: the correct option's text
   answer: string | null;
   // tap: null = the lesson was not waiting for that tap (nothing recorded)
   answer_correct: boolean | null;
   tap?: { question: string | null; chosen: string | null; correct: string | null } | null;
 };
-export type UserMedia = { user: { name: string | null }; media: MediaRow[] };
+// `user.pii` says whether the recordings may be played by this viewer
+// (GET media-meta-data/:id/audio answers 403 otherwise).
+export type UserMedia = { user: { name: string | null; pii?: PiiVisibility }; media: MediaRow[] };
 
 // What the student modal lists and counts as activity: voice notes and the
 // taps that answered a question. An onboarding row is dropped even if one
