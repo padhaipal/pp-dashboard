@@ -18,13 +18,20 @@ export interface ViewerForward {
   search: string;
 }
 
-export function viewerForward(search: string, staff: boolean): ViewerForward {
+// A request that names a viewer (`?viewer=`) is a /d page speaking for its
+// link holder: it is answered as that person even when the browser also has
+// a dev/admin session, so staff see exactly what the teacher or official
+// sees. Without the param (the staff /user/[id] page) the session decides.
+export const actsAsStaff = (search: string, sessionStaff: boolean): boolean =>
+  sessionStaff && !new URLSearchParams(search).has(VIEWER_PARAM);
+
+export function viewerForward(search: string, sessionStaff: boolean): ViewerForward {
   const params = new URLSearchParams(search);
   const viewer = params.get(VIEWER_PARAM);
   params.delete(VIEWER_PARAM);
   const rest = params.toString();
   const headers: Record<string, string> = {};
-  if (staff) headers[VIEWER_STAFF_HEADER] = "1";
+  if (actsAsStaff(search, sessionStaff)) headers[VIEWER_STAFF_HEADER] = "1";
   else if (viewer && UUID_RE.test(viewer)) headers[VIEWER_ID_HEADER] = viewer.toLowerCase();
   return { headers, search: rest ? `?${rest}` : "" };
 }
