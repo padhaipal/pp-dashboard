@@ -82,7 +82,7 @@ describe("usage metric", () => {
     // the usage metric is called "Time" everywhere it is shown
     expect(METRIC_BY.usage.label).toBe("Time");
     expect(METRIC_BY.usage.short).toBe("Time");
-    expect(DEFAULT_METRIC).toBe("nipun_g3");
+    expect(DEFAULT_METRIC).toBe("usage");
     expect(TEST_KEY_OF.usage).toBeUndefined();
     expect(fmtMinutes(null)).toBe("—");
     expect(fmtMinutes(7.4)).toBe("7 min");
