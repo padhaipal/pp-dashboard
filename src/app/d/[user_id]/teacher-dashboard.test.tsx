@@ -132,7 +132,7 @@ describe("TeacherDashboard", () => {
 
     // opens on Time, so the link carries the window
     const link = await screen.findByTestId("csv-link");
-    expect(link.getAttribute("href")).toBe("/api/proxy/geo-entities/g-in/scores.csv?metric=usage&range=30&window=7d&viewer=u1");
+    expect(link.getAttribute("href")).toBe("/api/proxy/geo-entities/g-in/scores.csv?metric=usage&range=30&window=all&viewer=u1");
 
     // the metric toggle is rendered twice (under the title and under Performance), like mvp2
     const toggles = screen.getAllByRole("button", { name: "MPL-B proxy" });
@@ -485,7 +485,7 @@ describe("TeacherDashboard — Time metric", () => {
     vi.unstubAllGlobals();
   });
 
-  it("'Time' reveals the window toggle (default: last seven days) and shows total + minutes per day, coloured by the per-day average; no change arrows, no most improved", async () => {
+  it("'Time' reveals the window toggle (default: all time) and shows total + minutes per day, coloured by the per-day average; no change arrows, no most improved", async () => {
     const { fn, calls } = makeFetch({ timeById: { "g-in": "geo" } });
     vi.stubGlobal("fetch", vi.fn(fn));
     render(<TeacherDashboard profile={PROFILE} incompleteStates={[]} />);
@@ -501,10 +501,19 @@ describe("TeacherDashboard — Time metric", () => {
     await waitFor(() => expect(screen.getByTestId("most-improved")).toBeDefined());
 
     fireEvent.click(screen.getAllByRole("button", { name: "Time" })[0]);
-    // ONE window toggle, under the title (the Performance card keeps only the trend's own range), on "Last seven days"
+    // ONE window toggle, under the title (the Performance card keeps only the trend's own range), on "All time"
     await waitFor(() => expect(screen.getAllByTestId("time-window-toggle")).toHaveLength(1));
-    expect(pressed("Last seven days")).toEqual(["true"]);
+    expect(within(screen.getByTestId("time-window-toggle")).getByRole("button", { name: "All time" }).getAttribute("aria-pressed")).toBe("true");
+    expect(pressed("Last seven days")).toEqual(["false"]);
     expect(pressed("Yesterday")).toEqual(["false"]);
+    await waitFor(() => expect(calls).toContain("/api/proxy/geo-entities/g-in/scores?metric=usage&range=30&window=all&viewer=u1"));
+    await waitFor(() => expect(screen.getByTestId("root-kpis").textContent).toContain("2.5 hours"));
+
+    // Last seven days: refetch — the previous figures stay on screen meanwhile (no blank / loading line)
+    fireEvent.click(screen.getByRole("button", { name: "Last seven days" }));
+    expect(pressed("Last seven days")).toEqual(["true"]);
+    expect(screen.getByTestId("root-kpis").textContent).toContain("2.5 hours");
+    expect(screen.queryByText("Loading your dashboard…")).toBeNull();
     expect(document.querySelector('#rep-perf [data-testid="time-window-toggle"]')).toBeNull();
     expect(screen.queryByRole("button", { name: /week/i })).toBeNull();
     await waitFor(() => expect(calls).toContain("/api/proxy/geo-entities/g-in/scores?metric=usage&range=30&window=7d&viewer=u1"));
@@ -572,6 +581,7 @@ describe("TeacherDashboard — Time metric", () => {
     await screen.findAllByTestId("student-tile");
 
     fireEvent.click(screen.getAllByRole("button", { name: "Time" })[0]);
+    fireEvent.click(screen.getByRole("button", { name: "Last seven days" }));
     await waitFor(() => expect(screen.getAllByTestId("student-tile")[0].textContent).toContain("84 min"));
     const tiles = screen.getAllByTestId("student-tile");
     // 12 min per day → green; 0.4 min per day → amber
@@ -611,7 +621,7 @@ describe("TeacherDashboard — Time metric", () => {
     render(<TeacherDashboard profile={PROFILE} incompleteStates={[]} />);
     await screen.findByTestId("root-kpis");
     fireEvent.click(screen.getAllByRole("button", { name: "Time" })[0]);
-    await waitFor(() => expect(calls).toContain("/api/proxy/geo-entities/g-in/scores?metric=usage&range=30&window=7d&viewer=u1"));
+    await waitFor(() => expect(calls).toContain("/api/proxy/geo-entities/g-in/scores?metric=usage&range=30&window=all&viewer=u1"));
     await waitFor(() => expect(screen.getByTestId("root-kpis").textContent).toContain("of students pass the Time · 5+ min yesterday"));
     expect(screen.getByTestId("root-kpis").textContent).toContain("72%");
     expect(screen.queryByTestId("kpi-per-day")).toBeNull();

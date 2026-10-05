@@ -443,6 +443,16 @@ export function MvpMinutesChart({ points, label, t = same }: { points: { date: s
   );
 }
 
+// Stands in for a modal chart while its data loads, at the chart's own size —
+// a one-line "Loading…" made the modal collapse and spring back.
+function ChartLoading({ t = same }: { t?: T }) {
+  return (
+    <div className="flex w-full items-center justify-center text-sm text-zinc-400" style={{ aspectRatio: "860 / 220", maxHeight: 240 }} data-testid="chart-loading">
+      {t("Loading…")}
+    </div>
+  );
+}
+
 // 7-day activity mini-chart from the tail of the series — green bars sized by
 // the day's n (attempts), pink stubs on days with none.
 export function MvpStudentActivity({ series }: { series: SeriesPoint[] }) {
@@ -670,7 +680,8 @@ export function MvpTeacherModal({
   const [mRange, setMRange] = useState<Range>(DEFAULT_RANGE);
   // The dashboard metric the trend uses when the letter chart is showing.
   const testMetric: Metric = mMetric === "letters" ? metric : mMetric;
-  const [data, setData] = useState<{ key: string; scores: ScoresResponse | null; error: string | null } | null>(null);
+  // `metric` = the metric this answer was fetched for (drawn as such while the next one loads).
+  const [data, setData] = useState<{ key: string; childId: string; metric: Metric; scores: ScoresResponse | null; error: string | null } | null>(null);
   // `pii` = whether this viewer may play the recordings (pp-sketch, per
   // users/:id/media); masked until the feed says otherwise.
   const [student, setStudent] = useState<{ id: string; tests: LiteracyTestScores | null; media: MediaRow[] | null; pii: PiiVisibility; error: string | null } | null>(null);
@@ -692,10 +703,10 @@ export function MvpTeacherModal({
         return (await res.json()) as ScoresResponse;
       })
       .then((scores) => {
-        if (!cancelled) setData({ key: `${childId}|${testMetric}|${mRange}`, scores, error: null });
+        if (!cancelled) setData({ key: `${childId}|${testMetric}|${mRange}`, childId, metric: testMetric, scores, error: null });
       })
       .catch((err: Error) => {
-        if (!cancelled) setData({ key: `${childId}|${testMetric}|${mRange}`, scores: null, error: err.message });
+        if (!cancelled) setData({ key: `${childId}|${testMetric}|${mRange}`, childId, metric: testMetric, scores: null, error: err.message });
       });
     return () => {
       cancelled = true;
@@ -719,7 +730,9 @@ export function MvpTeacherModal({
     };
   }, [studentId, viewerId]);
 
-  const usageKey = studentId && mMetric === "usage" ? `${studentId}|${mRange}` : null;
+  // Fetched as soon as the student modal opens (not on the first click on
+  // Time), so picking Time draws the chart straight away.
+  const usageKey = studentId ? `${studentId}|${mRange}` : null;
   useEffect(() => {
     if (!studentId || !usageKey) return;
     let cancelled = false;
@@ -747,9 +760,13 @@ export function MvpTeacherModal({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const usageNow = usage && usage.key === usageKey ? usage : null;
-  const scores = data && data.key === key ? data.scores : null;
-  const error = data && data.key === key ? data.error : null;
+  // While a newly picked metric / range loads, the previous chart stays up
+  // (no collapse to a loading line and back).
+  const usageNow = usage && usage.key === usageKey ? usage : usage?.history && studentId && usage.key.startsWith(`${studentId}|`) ? usage : null;
+  const dataNow = data && data.key === key ? data : data?.scores && data.childId === childId ? data : null;
+  const scores = dataNow?.scores ?? null;
+  const error = dataNow?.error ?? null;
+  const shownMetric = dataNow?.metric ?? testMetric;
   const st = student && student.id === studentId ? student : null;
 
   return (
@@ -811,7 +828,7 @@ export function MvpTeacherModal({
 
         <div className="bg-white">
           {/* chart with its own picker: letter scores (students, default) or a metric + range */}
-          <div className="border-b border-zinc-100 px-6 py-5">
+          <div className="border-b border-zinc-100 px-3 py-5 sm:px-6">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <div className="flex flex-wrap items-center gap-2">
                 {subject.kind === "student" ? (
@@ -826,29 +843,35 @@ export function MvpTeacherModal({
             {subject.kind === "child" ? (
               <>
                 {error && <p className="text-sm text-red-600">{error}</p>}
-                {!scores && !error && <p className="text-sm text-zinc-400">{t("Loading…")}</p>}
+                {!scores && !error && <ChartLoading t={t} />}
                 {/* Time: minutes per student per day (a row dated D holds the day before) */}
                 {scores &&
-                  (testMetric === "usage" ? (
+                  (shownMetric === "usage" ? (
                     <MvpMinutesChart points={scores.series.map((p) => ({ date: shiftDay(p.date, -1), minutes: p.mean }))} label={t("Active minutes per student")} t={t} />
                   ) : (
-                    <MvpStudentTrend series={scores.series} label={`${METRIC_BY[testMetric].label}`} />
+                    <MvpStudentTrend series={scores.series} label={`${METRIC_BY[shownMetric].label}`} />
                   ))}
-              </>
-            ) : mMetric === "letters" ? (
-              <ScoreChart userId={subject.student.student_id} t={t} />
-            ) : mMetric === "usage" ? (
-              /* Time: the student's active minutes each day */
-              <>
-                {usageNow?.error && <p className="text-sm text-red-600">{usageNow.error}</p>}
-                {!usageNow && <p className="text-sm text-zinc-400">{t("Loading…")}</p>}
-                {usageNow?.history && <MvpMinutesChart points={usageNow.history.points} label={t("Active minutes")} t={t} />}
               </>
             ) : (
               <>
-                {st?.error && <p className="text-sm text-red-600">{st.error}</p>}
-                {!st && <p className="text-sm text-zinc-400">{t("Loading…")}</p>}
-                {st && <MvpStudentTrend series={historySeries(st.tests, mMetric, mRange)} label={METRIC_BY[mMetric].label} />}
+                {/* the letter chart stays mounted (hidden) behind the other charts, so coming back to it never reloads */}
+                <div className={mMetric === "letters" ? "" : "hidden"} data-testid="letter-chart-pane">
+                  <ScoreChart userId={subject.student.student_id} t={t} />
+                </div>
+                {mMetric === "usage" ? (
+                  /* Time: the student's active minutes each day */
+                  <>
+                    {usageNow?.error && <p className="text-sm text-red-600">{usageNow.error}</p>}
+                    {!usageNow && <ChartLoading t={t} />}
+                    {usageNow?.history && <MvpMinutesChart points={usageNow.history.points} label={t("Active minutes")} t={t} />}
+                  </>
+                ) : mMetric !== "letters" ? (
+                  <>
+                    {st?.error && <p className="text-sm text-red-600">{st.error}</p>}
+                    {!st && <ChartLoading t={t} />}
+                    {st && <MvpStudentTrend series={historySeries(st.tests, mMetric, mRange)} label={METRIC_BY[mMetric].label} />}
+                  </>
+                ) : null}
               </>
             )}
           </div>

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useViewerId } from "../../d/[user_id]/viewer-context";
 import { withViewer } from "../../d/[user_id]/viewer-url";
+import { useIsMobile } from "../../d/[user_id]/use-is-mobile";
 
 interface ScorePoint {
   score: number;
@@ -40,15 +41,36 @@ const COLORS = [
   "#d946ef", "#eab308", "#64748b", "#fb923c", "#2dd4bf",
 ];
 
-const PADDING = { top: 20, right: 20, bottom: 30, left: 50 };
+// Letters not learnt yet are drawn at half saturation, so the learnt ones
+// (full colour + ★) stand out.
+export function desaturate(hex: string, keep = 0.5): string {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  const d = max - min;
+  if (d === 0) return hex;
+  const sat = (d / (1 - Math.abs(2 * l - 1))) * keep;
+  const h = max === r ? ((g - b) / d + 6) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  const c = (1 - Math.abs(2 * l - 1)) * sat;
+  const x = c * (1 - Math.abs((h % 2) - 1));
+  const m = l - c / 2;
+  const rgb = h < 1 ? [c, x, 0] : h < 2 ? [x, c, 0] : h < 3 ? [0, c, x] : h < 4 ? [0, x, c] : h < 5 ? [x, 0, c] : [c, 0, x];
+  return "#" + rgb.map((v) => Math.round((v + m) * 255).toString(16).padStart(2, "0")).join("");
+}
 
 // `t` translates the few captions (the public /d student modal passes its
 // dictionary; the admin /user/[id] page leaves them in English).
 export function ScoreChart({ userId, t = (s) => s }: { userId: string; t?: (s: string) => string }) {
   const [series, setSeries] = useState<LetterSeries[]>([]);
   const [loading, setLoading] = useState(true);
-  const [hoveredLetter, setHoveredLetter] = useState<string | null>(null);
+  const [hovered, setHovered] = useState<string | null>(null);
+  // Tapping / clicking a letter keeps it highlighted (touch has no hover).
+  const [pinned, setPinned] = useState<string | null>(null);
+  const hoveredLetter = hovered ?? pinned;
   const svgRef = useRef<SVGSVGElement>(null);
+  // Phones get a narrower viewBox so the lines and axis text stay legible.
+  const mobile = useIsMobile();
   // On the public /d page the viewer rides along (ViewerProvider); on the
   // staff page there is none and the URLs are unchanged.
   const viewerId = useViewerId();
@@ -117,14 +139,18 @@ export function ScoreChart({ userId, t = (s) => s }: { userId: string; t?: (s: s
       const letterIds = Array.from(grouped.keys());
       const result: LetterSeries[] = letterIds
         .filter((lid) => grouped.get(lid)!.points.length >= 1)
-        .map((lid, i) => ({
-          letter_id: lid,
-          grapheme: grouped.get(lid)!.grapheme,
-          points: grouped.get(lid)!.points,
-          initialScore: grouped.get(lid)!.seedScore,
-          color: COLORS[i % COLORS.length],
-          learnt: learntSet.has(grouped.get(lid)!.grapheme),
-        }));
+        .map((lid, i) => {
+          const learnt = learntSet.has(grouped.get(lid)!.grapheme);
+          const base = COLORS[i % COLORS.length];
+          return {
+            letter_id: lid,
+            grapheme: grouped.get(lid)!.grapheme,
+            points: grouped.get(lid)!.points,
+            initialScore: grouped.get(lid)!.seedScore,
+            color: learnt ? base : desaturate(base),
+            learnt,
+          };
+        });
 
       setSeries(result);
       setLoading(false);
@@ -133,7 +159,7 @@ export function ScoreChart({ userId, t = (s) => s }: { userId: string; t?: (s: s
 
   if (loading) {
     return (
-      <div className="bg-white rounded-lg border border-zinc-200 shadow-sm p-6 mb-6">
+      <div className="bg-white rounded-lg border border-zinc-200 shadow-sm p-6 mb-6 flex items-center justify-center min-h-[340px]">
         <p className="text-zinc-400 text-sm text-center">{t("Loading scores...")}</p>
       </div>
     );
@@ -157,8 +183,11 @@ export function ScoreChart({ userId, t = (s) => s }: { userId: string; t?: (s: s
     ...series.flatMap((s) => s.points.map((p) => p.x)),
   );
 
-  const W = 900;
-  const H = 300;
+  const W = mobile ? 440 : 900;
+  const H = mobile ? 330 : 300;
+  const PADDING = mobile ? { top: 20, right: 16, bottom: 16, left: 34 } : { top: 20, right: 20, bottom: 30, left: 50 };
+  // viewBox units per screen px are larger on a phone: scale the type up.
+  const fs = mobile ? 1.3 : 1;
   const plotW = W - PADDING.left - PADDING.right;
   const plotH = H - PADDING.top - PADDING.bottom;
 
@@ -181,6 +210,15 @@ export function ScoreChart({ userId, t = (s) => s }: { userId: string; t?: (s: s
     return parts.join(" ");
   };
 
+  // Hover highlights with a mouse; a click / tap pins (and unpins) the letter.
+  const hoverProps = (id: string) => ({
+    onPointerEnter: (e: React.PointerEvent) => {
+      if (e.pointerType === "mouse") setHovered(id);
+    },
+    onPointerLeave: () => setHovered(null),
+    onClick: () => setPinned((cur) => (cur === id ? null : id)),
+  });
+
   // Y-axis ticks (always include 0)
   const yTicks: number[] = [];
   const tickStep = Math.ceil(sRange / 5) || 1;
@@ -193,20 +231,21 @@ export function ScoreChart({ userId, t = (s) => s }: { userId: string; t?: (s: s
   }
 
   return (
-    <div className="bg-white rounded-lg border border-zinc-200 shadow-sm p-4 mb-6">
-      <div className="flex items-center justify-between mb-3">
+    <div className="bg-white rounded-lg border border-zinc-200 shadow-sm p-3 sm:p-4 mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 mb-3">
         <h2 className="text-sm font-medium text-zinc-500">{t("Letter Scores Over Time")}</h2>
         <div className="flex items-center gap-1.5 text-xs text-zinc-500">
           <span className="text-amber-400 text-sm leading-none">★</span>
           <span>{t("Letter learnt")}</span>
         </div>
       </div>
-      <div className="flex gap-4">
+      <div>
         <svg
           ref={svgRef}
           viewBox={`0 0 ${W} ${H}`}
           className="w-full h-auto"
-          style={{ maxHeight: 300 }}
+          style={{ maxHeight: mobile ? 360 : 300 }}
+          data-testid="letter-chart"
         >
           {/* Y-axis grid + labels */}
           {yTicks.map((v) => (
@@ -224,7 +263,7 @@ export function ScoreChart({ userId, t = (s) => s }: { userId: string; t?: (s: s
                 y={y(v) + 4}
                 textAnchor="end"
                 className={v === 0 ? "fill-zinc-600" : "fill-zinc-400"}
-                fontSize={10}
+                fontSize={10 * fs}
                 fontWeight={v === 0 ? 600 : 400}
               >
                 {v}
@@ -239,14 +278,13 @@ export function ScoreChart({ userId, t = (s) => s }: { userId: string; t?: (s: s
               d={toPath(s.points)}
               fill="none"
               stroke={s.color}
-              strokeWidth={hoveredLetter === s.letter_id ? 3 : 1.5}
+              strokeWidth={hoveredLetter === s.letter_id ? 3 : mobile ? 1.2 : 1.5}
               opacity={
                 hoveredLetter === null || hoveredLetter === s.letter_id
                   ? 1
                   : 0.15
               }
-              onMouseEnter={() => setHoveredLetter(s.letter_id)}
-              onMouseLeave={() => setHoveredLetter(null)}
+              {...hoverProps(s.letter_id)}
               style={{ cursor: "pointer" }}
             />
           ))}
@@ -258,15 +296,14 @@ export function ScoreChart({ userId, t = (s) => s }: { userId: string; t?: (s: s
                 key={`dot-${s.letter_id}-${pi}`}
                 cx={xByX(p.x)}
                 cy={y(p.score)}
-                r={hoveredLetter === s.letter_id ? 4 : 2.5}
+                r={hoveredLetter === s.letter_id ? 4 : mobile ? 1.8 : 2.5}
                 fill={s.color}
                 opacity={
                   hoveredLetter === null || hoveredLetter === s.letter_id
                     ? 1
                     : 0.15
                 }
-                onMouseEnter={() => setHoveredLetter(s.letter_id)}
-                onMouseLeave={() => setHoveredLetter(null)}
+                {...hoverProps(s.letter_id)}
                 style={{ cursor: "pointer" }}
               />
             ))
@@ -282,15 +319,14 @@ export function ScoreChart({ userId, t = (s) => s }: { userId: string; t?: (s: s
                 x={xByX(last.x)}
                 y={y(last.score) - 6}
                 textAnchor="middle"
-                fontSize={12}
+                fontSize={12 * fs}
                 fill={s.color}
                 opacity={
                   hoveredLetter === null || hoveredLetter === s.letter_id
                     ? 1
                     : 0.15
                 }
-                onMouseEnter={() => setHoveredLetter(s.letter_id)}
-                onMouseLeave={() => setHoveredLetter(null)}
+                {...hoverProps(s.letter_id)}
                 style={{ cursor: "pointer" }}
               >
                 ★
@@ -306,8 +342,7 @@ export function ScoreChart({ userId, t = (s) => s }: { userId: string; t?: (s: s
               fill="none"
               stroke="transparent"
               strokeWidth={12}
-              onMouseEnter={() => setHoveredLetter(s.letter_id)}
-              onMouseLeave={() => setHoveredLetter(null)}
+              {...hoverProps(s.letter_id)}
               style={{ cursor: "pointer" }}
             />
           ))}
@@ -318,13 +353,20 @@ export function ScoreChart({ userId, t = (s) => s }: { userId: string; t?: (s: s
               const s = series.find((s) => s.letter_id === hoveredLetter);
               if (!s) return null;
               const last = s.points[s.points.length - 1];
+              // near the right edge the label goes to the left of the point
+              const flip = xByX(last.x) > W - 40 * fs;
               return (
                 <text
-                  x={xByX(last.x) + 6}
-                  y={y(last.score) + 4}
-                  fontSize={14}
+                  x={xByX(last.x) + (flip ? -8 : 6)}
+                  y={y(last.score) + (flip ? -8 * fs : 4)}
+                  textAnchor={flip ? "end" : "start"}
+                  fontSize={14 * fs}
                   fontWeight="bold"
                   fill={s.color}
+                  stroke="#ffffff"
+                  strokeWidth={3}
+                  paintOrder="stroke"
+                  pointerEvents="none"
                 >
                   {s.grapheme}
                 </text>
@@ -332,17 +374,13 @@ export function ScoreChart({ userId, t = (s) => s }: { userId: string; t?: (s: s
             })()}
         </svg>
 
-        {/* Legend */}
-        <div
-          className="flex flex-col flex-wrap gap-x-3 gap-y-1 pt-1 content-start"
-          style={{ maxHeight: 300 }}
-        >
+        {/* Legend — under the chart, wrapping across its width */}
+        <div className="flex flex-wrap gap-x-1 gap-y-1 pt-3 sm:gap-x-2" data-testid="letter-legend">
           {series.map((s) => (
             <div
               key={s.letter_id}
-              className="flex items-center gap-1.5 cursor-pointer text-xs"
-              onMouseEnter={() => setHoveredLetter(s.letter_id)}
-              onMouseLeave={() => setHoveredLetter(null)}
+              className={"flex items-center gap-1.5 cursor-pointer rounded px-1.5 py-1 text-sm sm:py-0.5 sm:text-xs" + (pinned === s.letter_id ? " bg-zinc-100 ring-1 ring-zinc-300" : "")}
+              {...hoverProps(s.letter_id)}
               style={{
                 opacity:
                   hoveredLetter === null || hoveredLetter === s.letter_id
