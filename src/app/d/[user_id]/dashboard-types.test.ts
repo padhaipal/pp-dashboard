@@ -113,13 +113,13 @@ describe("pass marks and age bands", () => {
 });
 
 describe("Time windows", () => {
-  it("offers yesterday / last seven days / all time, defaulting to the last seven days", () => {
+  it("offers yesterday / last seven days / all time, defaulting to all time", () => {
     expect(TIME_WINDOWS.map((w) => [w.key, w.label])).toEqual([
       ["yesterday", "Yesterday"],
       ["7d", "Last seven days"],
       ["all", "All time"],
     ]);
-    expect(DEFAULT_TIME_WINDOW).toBe("7d");
+    expect(DEFAULT_TIME_WINDOW).toBe("all");
     expect(timeWindowSuffix("7d")).toBe("last seven days");
     expect(timeWindowSuffix("yesterday")).toBe("yesterday");
     expect(timeWindowSuffix("all", (s) => s.toUpperCase())).toBe("ALL TIME");

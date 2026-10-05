@@ -76,7 +76,9 @@ export type TeacherDashboardProps = {
   incompleteStates: string[];
 };
 
-type Loaded = { key: string; scores: ScoresResponse | null; spotlight: SpotlightResponse | null; error: string | null };
+// `entityId` / `metric` / `range` / `timeWindow` = what this answer was fetched
+// for: while the next selection loads, the page keeps showing it as it was.
+type Loaded = { key: string; entityId: string; metric: Metric; range: Range; timeWindow: TimeWindow; scores: ScoresResponse | null; spotlight: SpotlightResponse | null; error: string | null };
 
 // Nest error body: { statusCode, message: string | string[], error }.
 async function serverMessage(res: Response): Promise<string> {
@@ -109,10 +111,12 @@ const nextChildType = (t: GeoRef["type"]): ChildType =>
 
 export function TeacherDashboard({ profile: initialProfile, incompleteStates }: TeacherDashboardProps) {
   const [profile, setProfile] = useState<PublicProfile>(initialProfile);
-  const [metric, setMetric] = useState<Metric>(DEFAULT_METRIC);
-  const [range, setRange] = useState<Range>(DEFAULT_RANGE);
+  // What the toggles are on. The page body renders `metric` / `range` /
+  // `timeWindow` below — the same, except while a new selection is loading.
+  const [pickedMetric, setMetric] = useState<Metric>(DEFAULT_METRIC);
+  const [pickedRange, setRange] = useState<Range>(DEFAULT_RANGE);
   // The window of the Time metric (its own toggle, shown only while Time is selected).
-  const [timeWindow, setTimeWindow] = useState<TimeWindow>(DEFAULT_TIME_WINDOW);
+  const [pickedWindow, setTimeWindow] = useState<TimeWindow>(DEFAULT_TIME_WINDOW);
   const [stack, setStack] = useState<GeoRef[]>(() => (initialProfile.geo_entity ? [toRef(initialProfile.geo_entity)] : []));
   const [data, setData] = useState<Loaded | null>(null);
   const [hoverId, setHoverId] = useState<string | null>(null);
@@ -149,14 +153,15 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
 
   const entity = stack.length ? stack[stack.length - 1] : null;
   // Only the Time metric depends on the window.
-  const win = metric === "usage" ? timeWindow : undefined;
-  const key = entity ? `${entity.id}|${metric}|${range}|${win ?? ""}` : "";
+  const pickedWin = pickedMetric === "usage" ? pickedWindow : undefined;
+  const key = entity ? `${entity.id}|${pickedMetric}|${pickedRange}|${pickedWin ?? ""}` : "";
 
   // ---- data: scores + spotlight for the current level ----
   useEffect(() => {
     if (!entity) return;
     const id = entity.id;
-    const k = `${id}|${metric}|${range}|${win ?? ""}`;
+    const k = `${id}|${pickedMetric}|${pickedRange}|${pickedWin ?? ""}`;
+    const meta = { key: k, entityId: id, metric: pickedMetric, range: pickedRange, timeWindow: pickedWindow };
     let cancelled = false;
     const getJson = async <T,>(url: string): Promise<T> => {
       const res = await fetch(url);
@@ -164,19 +169,27 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
       return (await res.json()) as T;
     };
     const viewer = profile.id;
-    Promise.all([getJson<ScoresResponse>(withViewer(scoresUrl(id, metric, range, win), viewer)), getJson<SpotlightResponse>(withViewer(spotlightUrl(id, metric, range, win), viewer)).catch(() => null)])
+    Promise.all([getJson<ScoresResponse>(withViewer(scoresUrl(id, pickedMetric, pickedRange, pickedWin), viewer)), getJson<SpotlightResponse>(withViewer(spotlightUrl(id, pickedMetric, pickedRange, pickedWin), viewer)).catch(() => null)])
       .then(([scores, spotlight]) => {
-        if (!cancelled) setData({ key: k, scores, spotlight, error: null });
+        if (!cancelled) setData({ ...meta, scores, spotlight, error: null });
       })
       .catch((err: Error) => {
-        if (!cancelled) setData({ key: k, scores: null, spotlight: null, error: err.message });
+        if (!cancelled) setData({ ...meta, scores: null, spotlight: null, error: err.message });
       });
     return () => {
       cancelled = true;
     };
-  }, [entity, metric, range, win, profile.id]);
+  }, [entity, pickedMetric, pickedRange, pickedWindow, pickedWin, profile.id]);
 
-  const loaded = data && data.key === key ? data : null;
+  const fresh = data && data.key === key ? data : null;
+  // A toggle was clicked and its answer is on the way: keep the previous
+  // answer for this entity on screen (rendered as it was fetched) instead of
+  // blanking the page to a loading line and back — that made the layout jump.
+  const stale = !fresh && entity && data?.scores && data.entityId === entity.id ? data : null;
+  const loaded = fresh ?? stale;
+  const metric = stale ? stale.metric : pickedMetric;
+  const range = stale ? stale.range : pickedRange;
+  const timeWindow = stale ? stale.timeWindow : pickedWindow;
   const scores = loaded?.scores ?? null;
   const spotlight = loaded?.spotlight ?? null;
   const loading = !!entity && !loaded;
@@ -393,9 +406,9 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
             {/* headline stats — narrower, with the shared metric tab */}
             <div className="mx-auto mt-6 max-w-5xl px-6">
               <div className="mb-3 flex flex-col items-center gap-2">
-                <MvpMetricToggle metric={metric} setMetric={setMetric} t={t} />
+                <MvpMetricToggle metric={pickedMetric} setMetric={setMetric} t={t} />
                 {/* Time only: yesterday / last seven days / all time */}
-                {isUsageMetric && <MvpTimeWindowToggle window={timeWindow} setWindow={setTimeWindow} t={t} />}
+                {pickedMetric === "usage" && <MvpTimeWindowToggle window={pickedWindow} setWindow={setTimeWindow} t={t} />}
               </div>
               {loaded?.error && <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">Could not load results — {loaded.error}</p>}
               {loading && <p className="text-center text-sm text-zinc-400">{t("Loading your dashboard…")}</p>}
@@ -532,7 +545,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                     </div>
                     {/* the Time window toggle lives under the title only — the trend has its own range */}
                     <div className="-mt-3 mb-5 flex justify-center">
-                      <MvpMetricToggle metric={metric} setMetric={setMetric} t={t} />
+                      <MvpMetricToggle metric={pickedMetric} setMetric={setMetric} t={t} />
                     </div>
                     <div className={CARD + " space-y-6"}>
                       {/* headline share of areas not on Lifteracy at all — hidden at school/class level */}
@@ -553,7 +566,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                             {t("Trend")}
                             <HoverLabel child={hoverId ? geoChildren.find((c) => c.id === hoverId) ?? null : null} time={timeMode} t={t} />
                           </div>
-                          <MvpRangeBar range={range} setRange={setRange} entityId={entity.id} metric={metric} timeWindow={win} t={t} />
+                          <MvpRangeBar range={pickedRange} setRange={setRange} entityId={entity.id} metric={pickedMetric} timeWindow={pickedWin} t={t} />
                         </div>
                         <RepTrend
                           series={scores.series}

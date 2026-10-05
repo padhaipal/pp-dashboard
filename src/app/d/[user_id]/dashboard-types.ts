@@ -217,7 +217,7 @@ export const TIME_WINDOWS: { key: TimeWindow; label: string; suffix: string }[] 
   { key: "7d", label: "Last seven days", suffix: "last seven days" },
   { key: "all", label: "All time", suffix: "all time" },
 ];
-export const DEFAULT_TIME_WINDOW: TimeWindow = "7d";
+export const DEFAULT_TIME_WINDOW: TimeWindow = "all";
 // "yesterday" / "last seven days" / "all time" for labels and captions.
 export const timeWindowSuffix = (w: TimeWindow, t: (s: string) => string = (s) => s) => t(TIME_WINDOWS.find((x) => x.key === w)!.suffix);
 // A scores response is in Time mode when pp-sketch echoed the window.
