@@ -322,6 +322,32 @@ describe("TeacherDashboard", () => {
     fireEvent.click(modalButton("NIPUN grade 3 proxy"));
     expect(dialog.querySelectorAll('[aria-label="Range"]').length).toBe(1);
     expect(modalButton("All time")).toBeDefined();
+    // …and narrows the interaction list to the answers that counted toward
+    // that test (counted_message_ids): the tap m-3 only, with a note
+    const sentencesOf = () => screen.getByTestId("student-sentences");
+    expect(screen.getByTestId("test-interactions-note").textContent).toBe("The answers behind this student's current and previous NIPUN grade 3 proxy score.");
+    expect(sentencesOf().querySelectorAll('[data-testid="tap-sentence"]').length).toBe(1);
+    expect(sentencesOf().querySelectorAll('[data-testid="audio-button"]').length).toBe(0);
+    expect(sentencesOf().textContent).not.toContain("the student said");
+    // the student's pass line sits at the NIPUN mark (75), not the area target (80)
+    const passLine = dialog.querySelector('[data-testid="student-pass-mark"]')!;
+    expect(Number(passLine.getAttribute("y1"))).toBeCloseTo(14 + 176 - 0.75 * 176, 1);
+    // MPL-B: one answer so far, twenty needed → listed with the explanation
+    fireEvent.click(modalButton("MPL-B proxy"));
+    expect(screen.getByTestId("test-interactions-note").textContent).toBe("These answers count toward MPL-B proxy, but at least 20 are needed before a score can be calculated.");
+    expect(sentencesOf().querySelectorAll('[data-testid="tap-sentence"]').length).toBe(1);
+    // NIPUN grade 2: nothing answered → blank list with the explanation
+    fireEvent.click(modalButton("NIPUN grade 2 proxy"));
+    expect(screen.getByTestId("test-interactions-note").textContent).toBe("No questions counting toward NIPUN grade 2 proxy answered yet.");
+    expect(sentencesOf().children.length).toBe(1);
+    expect(sentencesOf().textContent).not.toContain("No voice notes yet.");
+    // Time and the letter chart list everything again, without a note
+    fireEvent.click(modalButton("Time"));
+    expect(screen.queryByTestId("test-interactions-note")).toBeNull();
+    expect(sentencesOf().children.length).toBe(3);
+    fireEvent.click(modalButton("Letter scores"));
+    expect(screen.queryByTestId("test-interactions-note")).toBeNull();
+    expect(sentencesOf().children.length).toBe(3);
     fireEvent.click(screen.getByRole("button", { name: /Close/ }));
     expect(screen.queryByRole("dialog")).toBeNull();
 
@@ -354,16 +380,16 @@ describe("TeacherDashboard", () => {
     let mark = container.querySelector('[data-testid="pass-mark"]')!;
     // desktop geometry: mT 12, ih 234 → y(50) = 129
     expect(Number(mark.getAttribute("y1"))).toBeCloseTo(129, 0);
-    // NIPUN: the pass mark is 80 (all four right) — one line, no separate target
+    // NIPUN: the pass mark is 75 (three of four right) — one line, no separate target
     rerender(<RepTrend series={pts} metric="nipun_g3" label="NIPUN g3 proxy" />);
-    expect(container.textContent).toContain("80% pass mark");
+    expect(container.textContent).toContain("75% pass mark");
     expect(container.textContent).not.toContain("50% pass mark");
     expect(container.textContent).not.toContain("NIPUN target");
     mark = container.querySelector('[data-testid="pass-mark"]')!;
-    expect(Number(mark.getAttribute("y1"))).toBeCloseTo(58.8, 0);
+    expect(Number(mark.getAttribute("y1"))).toBeCloseTo(70.5, 0);
     // the response's own pass mark wins over the default
-    rerender(<RepTrend series={pts} metric="nipun_g2" passMark={75} label="NIPUN g2 proxy" />);
-    expect(container.textContent).toContain("75% pass mark");
+    rerender(<RepTrend series={pts} metric="nipun_g2" passMark={80} label="NIPUN g2 proxy" />);
+    expect(container.textContent).toContain("80% pass mark");
   });
 
   it("trend average line plots the metric mean, not the pass rate", () => {

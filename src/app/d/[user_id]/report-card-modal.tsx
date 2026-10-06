@@ -152,7 +152,7 @@ export function RepTrend({
 }) {
   const mobile = useIsMobile();
   const isUsage = metric === "usage";
-  // One dotted line per test: NIPUN at 80 (all four right), MPL-B at 50.
+  // One dotted line per test: NIPUN at 75 (three of four right), MPL-B at 50.
   const mark = passMarkOf(metric, passMark);
   const yLabel = label ?? t("Oral Literacy NIPUN Proxy percentage pass rate");
   const W = mobile ? 440 : 900,
@@ -265,7 +265,7 @@ export function RepTrend({
           )}
         </>
       )}
-      {/* the test's pass mark (a score strictly above it) — what the headline's "% passing" counts */}
+      {/* the test's pass mark (NIPUN passes at it, MPL-B strictly above) — what the headline's "% passing" counts */}
       {!isUsage && mark !== null && (
         <>
           <line x1={mL} x2={W - mR} y1={y(mark)} y2={y(mark)} stroke="#64748b" strokeWidth={mobile ? 1.6 : 1.1} strokeDasharray="2 4" pointerEvents="none" data-testid="pass-mark" data-mark={mark} />

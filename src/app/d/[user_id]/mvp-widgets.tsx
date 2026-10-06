@@ -25,6 +25,8 @@ import {
   RANGES,
   scoresUrl,
   TEST_KEY_OF,
+  TEST_QUESTION_COUNT,
+  PASS_MARK_PCT,
   testScoresUrl,
   type Child,
   type ChildType,
@@ -310,7 +312,9 @@ const fmtDay = (iso: string) => {
 const shiftDay = (iso: string, days: number) => new Date(new Date(`${iso}T00:00:00Z`).getTime() + days * 86400000).toISOString().slice(0, 10);
 
 // pass-rate-over-time line for one entity (inline styles so it rasterises for the PDF).
-export function MvpStudentTrend({ series, label }: { series: SeriesPoint[]; label?: string }) {
+// `passMark` = the dotted line (%). Areas: the 80 % NIPUN target; a
+// student's own score chart: the test's pass mark (PASS_MARK_PCT).
+export function MvpStudentTrend({ series, label, passMark = 80 }: { series: SeriesPoint[]; label?: string; passMark?: number }) {
   const W = 860,
     H = 220,
     mL = 40,
@@ -345,7 +349,7 @@ export function MvpStudentTrend({ series, label }: { series: SeriesPoint[]; labe
           </text>
         </g>
       ))}
-      <line x1={mL} x2={W - mR} y1={y(80)} y2={y(80)} stroke="#ef4444" strokeWidth={1.3} strokeDasharray="5 3" />
+      <line x1={mL} x2={W - mR} y1={y(passMark)} y2={y(passMark)} stroke="#ef4444" strokeWidth={1.3} strokeDasharray="5 3" data-testid="student-pass-mark" />
       {label && (
         <text transform={`translate(12 ${mT + ih / 2}) rotate(-90)`} textAnchor="middle" fontSize="8.5" fill="#64748b">
           {label}
@@ -768,6 +772,26 @@ export function MvpTeacherModal({
   const error = dataNow?.error ?? null;
   const shownMetric = dataNow?.metric ?? testMetric;
   const st = student && student.id === studentId ? student : null;
+  // The interaction list: everything for the letter chart and Time; for a
+  // test, only the answers that count toward the student's current and
+  // previous score (pp-sketch's counted_message_ids), with a note while
+  // there are not enough yet / none at all.
+  const testMetric2 = mMetric !== "letters" && mMetric !== "usage" ? mMetric : null;
+  const testScore = testMetric2 && st?.tests ? st.tests[TEST_KEY_OF[testMetric2]!] : null;
+  // null = no filter (letters / Time, or a pp-sketch without counted ids)
+  const counted = testScore?.counted_message_ids ? new Set(testScore.counted_message_ids) : null;
+  const allRows = studentModalRows(st?.media ?? []);
+  const rows = counted ? allRows.filter((r) => counted.has(r.id)) : allRows;
+  const testNote = (() => {
+    if (!testMetric2 || !testScore || !counted) return null;
+    const label = t(METRIC_BY[testMetric2].label);
+    if (counted.size === 0) return `${t("No questions counting toward")} ${label} ${t("answered yet.")}`;
+    if (testScore.status === "insufficient_data") {
+      const need = `${testMetric2 === "mpl_b" ? t("at least") + " " : ""}${TEST_QUESTION_COUNT[testMetric2]}`;
+      return `${t("These answers count toward")} ${label}${t(", but")} ${need} ${t("are needed before a score can be calculated.")}`;
+    }
+    return `${t("The answers behind this student's current and previous")} ${label} ${t("score.")}`;
+  })();
 
   return (
     <div className="fixed inset-0 z-[70] flex items-center justify-center bg-zinc-900/60 p-4" onClick={onClose} role="dialog" aria-modal="true">
@@ -869,7 +893,7 @@ export function MvpTeacherModal({
                   <>
                     {st?.error && <p className="text-sm text-red-600">{st.error}</p>}
                     {!st && <ChartLoading t={t} />}
-                    {st && <MvpStudentTrend series={historySeries(st.tests, mMetric, mRange)} label={METRIC_BY[mMetric].label} />}
+                    {st && <MvpStudentTrend series={historySeries(st.tests, mMetric, mRange)} label={METRIC_BY[mMetric].label} passMark={PASS_MARK_PCT[mMetric]} />}
                   </>
                 ) : null}
               </>
@@ -885,8 +909,13 @@ export function MvpTeacherModal({
           ) : (
             /* every recent interaction (voice note or flow tap) as one friendly sentence — fixed-height scroll pane so the chart stays visible */
             <div className="max-h-80 divide-y divide-zinc-100 overflow-y-auto px-6" data-testid="student-sentences">
-              {st?.media && studentModalRows(st.media).length === 0 && <p className="py-3 text-sm text-zinc-400">{t("No voice notes yet.")}</p>}
-              {studentModalRows(st?.media ?? []).map((row) => {
+              {testNote && (
+                <p className="py-3 text-sm text-zinc-500" data-testid="test-interactions-note">
+                  {testNote}
+                </p>
+              )}
+              {st?.media && !counted && allRows.length === 0 && <p className="py-3 text-sm text-zinc-400">{t("No voice notes yet.")}</p>}
+              {rows.map((row) => {
                 const w = whenParts(row.created_at);
                 if (row.kind === "tap") {
                   // a comprehension flow answer: no recording, the question and the option chosen instead
