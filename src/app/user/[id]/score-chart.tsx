@@ -41,8 +41,10 @@ const COLORS = [
   "#d946ef", "#eab308", "#64748b", "#fb923c", "#2dd4bf",
 ];
 
-// Letters not learnt yet are drawn at half saturation, so the learnt ones
-// (full colour + ★) stand out.
+// Letters not learnt yet are drawn muted — most of the saturation gone and
+// the colour pulled towards white (`mutedColor`), thin and translucent, under
+// the learnt ones — so the learnt letters (full colour + ★, thicker, drawn
+// on top) are what the eye lands on.
 export function desaturate(hex: string, keep = 0.5): string {
   const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
   const max = Math.max(r, g, b);
@@ -58,6 +60,18 @@ export function desaturate(hex: string, keep = 0.5): string {
   const rgb = h < 1 ? [c, x, 0] : h < 2 ? [x, c, 0] : h < 3 ? [0, c, x] : h < 4 ? [0, x, c] : h < 5 ? [x, 0, c] : [c, 0, x];
   return "#" + rgb.map((v) => Math.round((v + m) * 255).toString(16).padStart(2, "0")).join("");
 }
+
+// Keep a quarter of the saturation, then mix 45% white in.
+export function mutedColor(hex: string): string {
+  const d = desaturate(hex, 0.25);
+  return "#" + [1, 3, 5].map((i) => Math.round(parseInt(d.slice(i, i + 2), 16) * 0.55 + 255 * 0.45).toString(16).padStart(2, "0")).join("");
+}
+
+// Unlearnt letters: thin, translucent; learnt: thicker, opaque. Hovering or
+// pinning one letter fades every other.
+const lineWidth = (s: { learnt: boolean }, active: boolean, mobile: boolean) => (active ? 3.5 : s.learnt ? (mobile ? 2.2 : 2.5) : mobile ? 0.9 : 1.1);
+const dotRadius = (s: { learnt: boolean }, active: boolean, mobile: boolean) => (active ? 4 : s.learnt ? (mobile ? 2.4 : 3) : mobile ? 1.3 : 1.8);
+const fade = (s: { learnt: boolean }, hovered: string | null, id: string) => (hovered === null ? (s.learnt ? 1 : 0.55) : hovered === id ? 1 : 0.1);
 
 // `t` translates the few captions (the public /d student modal passes its
 // dictionary; the admin /user/[id] page leaves them in English).
@@ -147,7 +161,7 @@ export function ScoreChart({ userId, t = (s) => s }: { userId: string; t?: (s: s
             grapheme: grouped.get(lid)!.grapheme,
             points: grouped.get(lid)!.points,
             initialScore: grouped.get(lid)!.seedScore,
-            color: learnt ? base : desaturate(base),
+            color: learnt ? base : mutedColor(base),
             learnt,
           };
         });
@@ -219,6 +233,10 @@ export function ScoreChart({ userId, t = (s) => s }: { userId: string; t?: (s: s
     onClick: () => setPinned((cur) => (cur === id ? null : id)),
   });
 
+  // Draw order: unlearnt letters first, learnt on top, so a learnt line is
+  // never hidden under an unlearnt one where they overlap.
+  const drawOrder = [...series].sort((a, b) => Number(a.learnt) - Number(b.learnt));
+
   // Y-axis ticks (always include 0)
   const yTicks: number[] = [];
   const tickStep = Math.ceil(sRange / 5) || 1;
@@ -272,37 +290,29 @@ export function ScoreChart({ userId, t = (s) => s }: { userId: string; t?: (s: s
           ))}
 
           {/* Lines (the seed is folded into the path as a leading flat segment) */}
-          {series.map((s) => (
+          {drawOrder.map((s) => (
             <path
               key={s.letter_id}
               d={toPath(s.points)}
               fill="none"
               stroke={s.color}
-              strokeWidth={hoveredLetter === s.letter_id ? 3 : mobile ? 1.2 : 1.5}
-              opacity={
-                hoveredLetter === null || hoveredLetter === s.letter_id
-                  ? 1
-                  : 0.15
-              }
+              strokeWidth={lineWidth(s, hoveredLetter === s.letter_id, mobile)}
+              opacity={fade(s, hoveredLetter, s.letter_id)}
               {...hoverProps(s.letter_id)}
               style={{ cursor: "pointer" }}
             />
           ))}
 
           {/* Dots for each interaction point (no dot for the seed) */}
-          {series.map((s) =>
+          {drawOrder.map((s) =>
             s.points.map((p, pi) => (
               <circle
                 key={`dot-${s.letter_id}-${pi}`}
                 cx={xByX(p.x)}
                 cy={y(p.score)}
-                r={hoveredLetter === s.letter_id ? 4 : mobile ? 1.8 : 2.5}
+                r={dotRadius(s, hoveredLetter === s.letter_id, mobile)}
                 fill={s.color}
-                opacity={
-                  hoveredLetter === null || hoveredLetter === s.letter_id
-                    ? 1
-                    : 0.15
-                }
+                opacity={fade(s, hoveredLetter, s.letter_id)}
                 {...hoverProps(s.letter_id)}
                 style={{ cursor: "pointer" }}
               />
@@ -319,13 +329,13 @@ export function ScoreChart({ userId, t = (s) => s }: { userId: string; t?: (s: s
                 x={xByX(last.x)}
                 y={y(last.score) - 6}
                 textAnchor="middle"
-                fontSize={12 * fs}
+                fontSize={14 * fs}
+                fontWeight="bold"
                 fill={s.color}
-                opacity={
-                  hoveredLetter === null || hoveredLetter === s.letter_id
-                    ? 1
-                    : 0.15
-                }
+                stroke="#ffffff"
+                strokeWidth={2}
+                paintOrder="stroke"
+                opacity={fade(s, hoveredLetter, s.letter_id)}
                 {...hoverProps(s.letter_id)}
                 style={{ cursor: "pointer" }}
               >
@@ -335,7 +345,7 @@ export function ScoreChart({ userId, t = (s) => s }: { userId: string; t?: (s: s
           })}
 
           {/* Wider invisible hit areas for easier hover */}
-          {series.map((s) => (
+          {drawOrder.map((s) => (
             <path
               key={`hit-${s.letter_id}`}
               d={toPath(s.points)}
@@ -381,18 +391,13 @@ export function ScoreChart({ userId, t = (s) => s }: { userId: string; t?: (s: s
               key={s.letter_id}
               className={"flex items-center gap-1.5 cursor-pointer rounded px-1.5 py-1 text-sm sm:py-0.5 sm:text-xs" + (pinned === s.letter_id ? " bg-zinc-100 ring-1 ring-zinc-300" : "")}
               {...hoverProps(s.letter_id)}
-              style={{
-                opacity:
-                  hoveredLetter === null || hoveredLetter === s.letter_id
-                    ? 1
-                    : 0.3,
-              }}
+              style={{ opacity: hoveredLetter === null ? (s.learnt ? 1 : 0.6) : hoveredLetter === s.letter_id ? 1 : 0.3 }}
             >
               <span
                 className="w-2.5 h-2.5 rounded-sm flex-shrink-0"
                 style={{ backgroundColor: s.color }}
               />
-              <span className="text-zinc-600">{s.grapheme}</span>
+              <span className={s.learnt ? "font-semibold text-zinc-800" : "text-zinc-500"}>{s.grapheme}</span>
               {s.learnt && (
                 <span
                   className="text-amber-400 text-[11px] leading-none"
