@@ -13,7 +13,10 @@ export const USAGE_PASS_MINUTES = 5;
 // age-bands.ts METRIC_AGE_BANDS). Every scores response carries its own
 // `pass_mark` / `age_band`; these are the fallback for a pp-sketch that
 // predates them — keep in sync.
-export const PASS_MARK_PCT: Record<Exclude<Metric, "usage">, number> = { nipun_g2: 80, nipun_g3: 80, mpl_b: 50 };
+export const PASS_MARK_PCT: Record<Exclude<Metric, "usage">, number> = { nipun_g2: 75, nipun_g3: 75, mpl_b: 50 };
+// Questions a test needs before it has a score (NIPUN: the last 4 first
+// attempts; MPL-B: 20 — plus a spread of question types, so "at least").
+export const TEST_QUESTION_COUNT: Record<Exclude<Metric, "usage">, number> = { nipun_g2: 4, nipun_g3: 4, mpl_b: 20 };
 export const METRIC_AGE_BANDS: Record<Exclude<Metric, "usage">, [number, number]> = { nipun_g2: [7, 9], nipun_g3: [8, 10], mpl_b: [8, 10] };
 export const passMarkOf = (metric: Metric, fromResponse?: number | null): number | null => (metric === "usage" ? null : (fromResponse ?? PASS_MARK_PCT[metric]));
 export const ageBandOf = (metric: Metric, fromResponse?: [number, number] | null): [number, number] | null => (metric === "usage" ? null : (fromResponse ?? METRIC_AGE_BANDS[metric]));
@@ -121,7 +124,9 @@ export type StudentChild = TimeFields & {
 
 // GET users/:id/literacy-test-scores — per-test snapshot history (score 0-1).
 export type TestSnapshotPoint = { at: string; score: number; passed: boolean };
-export type SnapshotTestScore = { status: "ok" | "insufficient_data"; attempts_available: number; latest?: TestSnapshotPoint; history?: TestSnapshotPoint[] };
+// counted_message_ids: the interactions (media ids) behind `latest` and the
+// history point before it — or, while insufficient, every answer so far.
+export type SnapshotTestScore = { status: "ok" | "insufficient_data"; attempts_available: number; latest?: TestSnapshotPoint; history?: TestSnapshotPoint[]; counted_message_ids?: string[] };
 export type LiteracyTestScores = { nipun_grade_2: SnapshotTestScore; nipun_grade_3: SnapshotTestScore; mpl_b: SnapshotTestScore };
 // No test history for "usage" (undefined → empty series).
 export const TEST_KEY_OF: Partial<Record<Metric, keyof LiteracyTestScores>> = { nipun_g2: "nipun_grade_2", nipun_g3: "nipun_grade_3", mpl_b: "mpl_b" };

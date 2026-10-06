@@ -95,9 +95,9 @@ describe("usage metric", () => {
 });
 
 describe("pass marks and age bands", () => {
-  it("NIPUN passes above 80, MPL-B above 50; bands are the whole ages covered; the response's values win", () => {
-    expect(passMarkOf("nipun_g2")).toBe(80);
-    expect(passMarkOf("nipun_g3")).toBe(80);
+  it("NIPUN passes at 75 (three of four), MPL-B above 50; bands are the whole ages covered; the response's values win", () => {
+    expect(passMarkOf("nipun_g2")).toBe(75);
+    expect(passMarkOf("nipun_g3")).toBe(75);
     expect(passMarkOf("mpl_b")).toBe(50);
     expect(passMarkOf("usage")).toBeNull();
     expect(passMarkOf("mpl_b", 60)).toBe(60);

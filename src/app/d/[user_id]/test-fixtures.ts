@@ -55,7 +55,7 @@ export const SCORES: ScoresResponse = {
   metric: "nipun_g3",
   range: 30,
   age_band: [8, 10],
-  pass_mark: 80,
+  pass_mark: 75,
   entity: PROFILE.geo_entity!,
   root: { pass_rate: 72.0, mean: 0.7, sd: 0.1, n: 41, students_active: 160, students_unbanded: 3, delta: 1.5 },
   series: [
@@ -151,7 +151,7 @@ export const SCORES_CLASS: ScoresResponse = {
 
 // Student modal payloads (GET users/:id/literacy-test-scores, GET users/:id/media).
 export const TEST_SCORES = {
-  nipun_grade_2: { status: "insufficient_data", attempts_available: 0 },
+  nipun_grade_2: { status: "insufficient_data", attempts_available: 0, counted_message_ids: [] },
   nipun_grade_3: {
     status: "ok",
     attempts_available: 22,
@@ -160,8 +160,11 @@ export const TEST_SCORES = {
       { at: "2026-09-10T10:00:00Z", score: 0.5, passed: false },
       { at: "2026-09-17T10:00:00Z", score: 0.9, passed: true },
     ],
+    // m-3 is the one listed tap that counted; m-4 was never awaited (not listed)
+    counted_message_ids: ["m-3", "m-4", "m-old"],
   },
-  mpl_b: { status: "insufficient_data", attempts_available: 20 },
+  // one answer so far (the tap m-3), 20 needed
+  mpl_b: { status: "insufficient_data", attempts_available: 1, counted_message_ids: ["m-3"] },
 };
 
 export const MEDIA = {
