@@ -41,30 +41,17 @@ const COLORS = [
   "#d946ef", "#eab308", "#64748b", "#fb923c", "#2dd4bf",
 ];
 
-// Letters not learnt yet are drawn muted — most of the saturation gone and
-// the colour pulled towards white (`mutedColor`), thin and translucent, under
-// the learnt ones — so the learnt letters (full colour + ★, thicker, drawn
-// on top) are what the eye lands on.
-export function desaturate(hex: string, keep = 0.5): string {
-  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255);
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
-  const l = (max + min) / 2;
-  const d = max - min;
-  if (d === 0) return hex;
-  const sat = (d / (1 - Math.abs(2 * l - 1))) * keep;
-  const h = max === r ? ((g - b) / d + 6) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
-  const c = (1 - Math.abs(2 * l - 1)) * sat;
-  const x = c * (1 - Math.abs((h % 2) - 1));
-  const m = l - c / 2;
-  const rgb = h < 1 ? [c, x, 0] : h < 2 ? [x, c, 0] : h < 3 ? [0, c, x] : h < 4 ? [0, x, c] : h < 5 ? [x, 0, c] : [c, 0, x];
-  return "#" + rgb.map((v) => Math.round((v + m) * 255).toString(16).padStart(2, "0")).join("");
-}
-
-// Keep a quarter of the saturation, then mix 45% white in.
-export function mutedColor(hex: string): string {
-  const d = desaturate(hex, 0.25);
-  return "#" + [1, 3, 5].map((i) => Math.round(parseInt(d.slice(i, i + 2), 16) * 0.55 + 255 * 0.45).toString(16).padStart(2, "0")).join("");
+// Letters not learnt yet are drawn in greyscale — thin and translucent,
+// under the learnt ones — so the learnt letters (full colour + ★, thicker,
+// drawn on top) are the only colour on the chart.
+//
+// The grey keeps the colour's luminance (so neighbouring greys still differ
+// a little), clamped to a mid-light band that never competes with colour.
+export function greyscale(hex: string): string {
+  const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+  const lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  const v = Math.round(Math.min(200, Math.max(140, lum)));
+  return "#" + v.toString(16).padStart(2, "0").repeat(3);
 }
 
 // Unlearnt letters: thin, translucent; learnt: thicker, opaque. Hovering or
@@ -161,7 +148,7 @@ export function ScoreChart({ userId, t = (s) => s }: { userId: string; t?: (s: s
             grapheme: grouped.get(lid)!.grapheme,
             points: grouped.get(lid)!.points,
             initialScore: grouped.get(lid)!.seedScore,
-            color: learnt ? base : mutedColor(base),
+            color: learnt ? base : greyscale(base),
             learnt,
           };
         });
