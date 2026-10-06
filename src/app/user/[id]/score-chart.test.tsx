@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { desaturate, mutedColor, ScoreChart } from "./score-chart";
+import { greyscale, ScoreChart } from "./score-chart";
 
 const json = (body: unknown) => Promise.resolve({ ok: true, json: () => Promise.resolve(body) } as Response);
 const row = (letter_id: string, grapheme: string, score: number, user_message_id: string | null) => ({
@@ -19,17 +19,16 @@ describe("ScoreChart", () => {
     vi.unstubAllGlobals();
   });
 
-  it("desaturate halves the HSL saturation and keeps hue and lightness", () => {
-    // pure red (s = 1, l = 0.5) → s = 0.5
-    expect(desaturate("#ff0000")).toBe("#bf4040");
-    expect(desaturate("#808080")).toBe("#808080");
-    expect(desaturate("#10b981", 1)).toBe("#10b981");
-    // muted: a quarter of the saturation, then 45% white
-    expect(mutedColor("#ff0000")).toBe("#caa8a8");
-    expect(mutedColor("#808080")).toBe("#b9b9b9");
+  it("greyscale keeps the luminance within a mid-light grey band", () => {
+    expect(greyscale("#ffffff")).toBe("#c8c8c8"); // clamped high
+    expect(greyscale("#000000")).toBe("#8c8c8c"); // clamped low
+    expect(greyscale("#10b981")).toBe("#919191"); // emerald, lum ≈ 145
+    expect(greyscale("#f59e0b")).toBe("#a6a6a6"); // amber, lum ≈ 166
+    // pure grey, no hue
+    for (const c of ["#ef4444", "#3b82f6", "#84cc16"]) expect(greyscale(c)).toMatch(/^#(..)\1\1$/);
   });
 
-  it("learnt letters keep their colour and draw on top; the others are muted, thin and translucent; the legend sits under the chart and a tap pins a letter", async () => {
+  it("learnt letters keep their colour and draw on top; the others are greyscale, thin and translucent; the legend sits under the chart and a tap pins a letter", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn((url: string) =>
@@ -47,9 +46,9 @@ describe("ScoreChart", () => {
     expect(svg.parentElement!.className).not.toContain("flex");
 
     // data order is ख (unlearnt, colour 0) then क (learnt, colour 1), but the
-    // learnt line is drawn LAST (on top): muted + thin + translucent first
+    // learnt line is drawn LAST (on top): grey + thin + translucent first
     const lines = Array.from(svg.querySelectorAll("path")).filter((p) => p.getAttribute("stroke") !== "transparent");
-    expect(lines.map((p) => p.getAttribute("stroke"))).toEqual([mutedColor("#10b981"), "#3b82f6"]);
+    expect(lines.map((p) => p.getAttribute("stroke"))).toEqual([greyscale("#10b981"), "#3b82f6"]);
     expect(lines.map((p) => p.getAttribute("stroke-width"))).toEqual(["1.1", "2.5"]);
     expect(lines.map((p) => p.getAttribute("opacity"))).toEqual(["0.55", "1"]);
     // the legend keeps the data order
