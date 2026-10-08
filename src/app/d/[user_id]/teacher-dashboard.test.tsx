@@ -148,6 +148,33 @@ describe("TeacherDashboard", () => {
     expect((screen.getByRole("button", { name: "Up a level" }) as HTMLButtonElement).disabled).toBe(true);
   });
 
+  it("bars: double-click drills into the area; the hover card sits above the map's legend; double-click on the map / tiles background goes up", async () => {
+    const { fn } = makeFetch({ scoresById: { "g-09": SCORES_UP } });
+    vi.stubGlobal("fetch", vi.fn(fn));
+    const { container } = render(<TeacherDashboard profile={PROFILE} incompleteStates={[]} />);
+    await screen.findByTestId("bar-strip");
+    const bar = container.querySelector('[data-testid="bar"][data-id="g-09"]')!;
+    fireEvent.mouseEnter(bar);
+    expect(screen.getByTestId("bar-card").className).toContain("z-40");
+    fireEvent.dblClick(bar);
+    await waitFor(() => expect(screen.getByTestId("location-title").textContent).toContain("Uttar Pradesh"));
+    // double-click on the map background (not on an area) → back up to India
+    fireEvent.dblClick(screen.getByTestId("map-svg"));
+    await waitFor(() => expect(screen.getByTestId("location-title").textContent).toBe("India"));
+
+    // school → class, then double-click the grey background of the tiles → back to the school
+    cleanup();
+    vi.stubGlobal("fetch", vi.fn(makeFetch({ scoresById: { "g-sch": SCORES_SCHOOL, "t-1": SCORES_CLASS } }).fn));
+    render(<TeacherDashboard profile={PROFILE_SCHOOL} incompleteStates={[]} />);
+    fireEvent.dblClick(await screen.findByTestId("teacher-card"));
+    await screen.findAllByTestId("student-tile");
+    // a double-click on a tile does not go up
+    fireEvent.dblClick(screen.getAllByTestId("student-tile")[0]);
+    expect(screen.queryAllByTestId("student-tile").length).toBeGreaterThan(0);
+    fireEvent.dblClick(screen.getByTestId("student-tiles"));
+    await waitFor(() => expect(screen.queryByTestId("teacher-card")).not.toBeNull());
+  });
+
   it("builds the CSV link from the current metric and range (range bar lives in the Performance card)", async () => {
     const { fn } = makeFetch();
     vi.stubGlobal("fetch", vi.fn(fn));

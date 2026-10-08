@@ -32,3 +32,5 @@
  - Both spotlight cards always (the improved one in Time mode reads "+N min vs …"); an empty card carries `data-empty="1"`.
  - Trend lines: geo and school levels pass `scores.children_series` (one faint line per area / teacher's class, labelled by the child's name) as `students` to `RepTrend`; the class keeps `students_series`. Hover a marker / card / bar → its line lights up (shared `hoverId`).
  - Bar strip: at most `MAX_GREY` (10) grey no-engagement stubs; the count still says how many children there are.
+ - Bars under the map: double-click drills into the area (`BarStrip.onDoubleClick`; the class opens the student on single click already); the hover card is `z-40` so it sits over the map's legend / zoom / up button. Double-click on the map background (`GeoMap.onUp`, the svg; areas and markers stop the event), on the teacher cards' grey background or the student tiles' background → `up`.
+ - Map underlay tiles are drawn at their native 256 px at most (`MAX_TILE_PX`; was ≤ 520 px — 2× upscaled, pixelated) and fetched as `@2x` on HiDPI screens.

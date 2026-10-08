@@ -485,9 +485,9 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
               data-testid="map-card"
             >
               {entity.type === "school" ? (
-                scores && <TeacherCards teachers={geoChildren} metric={metric} range={range} time={timeMode} timeCaption={timeSuffix} selId={selId} onSelect={select} onDrill={drill} onClear={() => setSelId(null)} t={t} />
+                scores && <TeacherCards teachers={geoChildren} metric={metric} range={range} time={timeMode} timeCaption={timeSuffix} selId={selId} onSelect={select} onDrill={drill} onClear={() => setSelId(null)} onUp={up} t={t} />
               ) : entity.type === "teacher" ? (
-                scores && <StudentTiles students={students} metric={metric} time={timeMode} timeCaption={timeSuffix} onOpen={openStudent} onRename={renameStudent} t={t}
+                scores && <StudentTiles students={students} metric={metric} time={timeMode} timeCaption={timeSuffix} onOpen={openStudent} onRename={renameStudent} onUp={up} t={t}
                     hoverId={hoverId}
                     setHoverId={setHoverId}
                   />
@@ -502,6 +502,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                   selectedId={selId}
                   onSelect={select}
                   onDrill={drill}
+                  onUp={up}
                   metricLabel={metricLabel}
                   time={timeMode}
                   t={t}
@@ -544,6 +545,11 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                       const c = geoChildren.find((x) => x.id === b.id);
                       if (c) select(c);
                     }
+                  }}
+                  onDoubleClick={(b) => {
+                    if (inClass) return;
+                    const c = geoChildren.find((x) => x.id === b.id);
+                    if (c) drill(c);
                   }}
                   hint={`${t(inClass ? "students" : nounP)} · ${
                     timeMode
@@ -738,6 +744,7 @@ function TeacherCards({
   onSelect,
   onDrill,
   onClear,
+  onUp,
   t,
 }: {
   teachers: Child[];
@@ -751,11 +758,13 @@ function TeacherCards({
   onSelect: (c: Child) => void;
   onDrill: (c: Child) => void;
   onClear: () => void;
+  // double-click on the grey background → up a level (the cards stop the event)
+  onUp?: () => void;
   t: T;
 }) {
   const short = t(METRIC_BY[metric].short);
   return (
-    <div className="absolute inset-0 z-10 overflow-y-auto bg-[#eaf0f6] p-3 sm:p-5" onClick={onClear} data-testid="teacher-cards">
+    <div className="absolute inset-0 z-10 overflow-y-auto bg-[#eaf0f6] p-3 sm:p-5" onClick={onClear} onDoubleClick={() => onUp?.()} data-testid="teacher-cards">
       <div className="mx-auto flex max-w-3xl flex-col gap-3">
         {!teachers.length && <p className="py-10 text-center text-sm text-zinc-400">{t("No teachers yet.")}</p>}
         {teachers.map((c) => {
@@ -820,6 +829,7 @@ function StudentTiles({
   timeCaption,
   onOpen,
   onRename,
+  onUp,
   hoverId,
   setHoverId,
   t,
@@ -832,6 +842,8 @@ function StudentTiles({
   time: boolean;
   onOpen: (s: StudentChild) => void;
   onRename: (studentId: string, name: string) => void;
+  // double-click on the grey background → up a level (tiles stop the event)
+  onUp?: () => void;
   hoverId: string | null;
   setHoverId: (id: string | null) => void;
   t: T;
@@ -839,7 +851,7 @@ function StudentTiles({
   const short = t(METRIC_BY[metric].short);
   const isUsage = metric === "usage"; // score = minutes, delta in minutes
   return (
-    <div className="absolute inset-0 z-10 overflow-y-auto bg-[#eaf0f6] p-3 sm:p-5" data-testid="student-tiles">
+    <div className="absolute inset-0 z-10 overflow-y-auto bg-[#eaf0f6] p-3 sm:p-5" onDoubleClick={() => onUp?.()} data-testid="student-tiles">
       {!students.length && <p className="py-10 text-center text-sm text-zinc-400">{t("No students yet.")}</p>}
       <div className="mx-auto grid max-w-5xl gap-2.5 sm:gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))" }}>
         {students.map((s) => {
@@ -854,6 +866,7 @@ function StudentTiles({
               style={{ background: col, color: fg }}
               title="Click for this student's dashboard"
               onClick={() => onOpen(s)}
+              onDoubleClick={(e) => e.stopPropagation()}
               onMouseEnter={() => setHoverId(s.student_id)}
               onMouseLeave={() => setHoverId(null)}
               data-testid="student-tile"
