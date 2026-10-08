@@ -7,6 +7,9 @@ import { EMPTY_ROOT_TEXT, INCOMPLETE_TOOLTIP } from "./dashboard-types";
 import { CHILD_AP, CHILD_UP, EMPTY_SCORES, MEDIA_MASKED, PROFILE, PROFILE_BLOCK, PROFILE_SCHOOL, SCORES, SCORES_CLASS, SCORES_CLASS_MASKED, SCORES_SCHOOL, SCORES_UP, makeFetch } from "./test-fixtures";
 
 const pressed = (name: string) => screen.getAllByRole("button", { name }).map((b) => b.getAttribute("aria-pressed"));
+// a button of the headline Time window toggle (the trend has its own copy of the same toggle)
+const winBtn = (name: string) => within(screen.getByTestId("time-window-toggle")).getByRole("button", { name });
+const winPressed = (name: string) => [winBtn(name).getAttribute("aria-pressed")];
 // The page opens on Time; tests about the test-score metrics pick one first.
 const pickNipunG3 = async () => {
   fireEvent.click((await screen.findAllByRole("button", { name: "NIPUN grade 3 proxy" }))[0]);
@@ -79,13 +82,18 @@ describe("TeacherDashboard", () => {
     // one faint line per state on the trend, lit up by the shared hover
     expect(document.querySelectorAll('[data-testid="student-line"]')).toHaveLength(2);
     // most improved and top performing side by side, under the trend
-    expect(screen.getByTestId("most-improved").textContent).toContain("Most improved · last 30 days");
+    // plain headings: the ranking follows the selected metric
+    expect(screen.getByTestId("most-improved").textContent).toContain("Most improved");
+    expect(screen.getByTestId("most-improved").textContent).not.toContain("·");
     expect(screen.getByTestId("most-improved").textContent).toContain("+2.5%");
     const top = screen.getByTestId("top-performing");
-    expect(top.textContent).toContain("Top performing · last 30 days");
+    expect(top.textContent).toContain("Top performing");
+    expect(top.textContent).not.toContain("·");
     // UP 72 % above AP 60 %, figures as whole percentages
-    expect(top.querySelectorAll("g[data-id]").length).toBe(2);
-    expect(top.querySelector("g[data-id]")?.getAttribute("data-id")).toBe("g-09");
+    expect(top.querySelectorAll('[data-testid="rank-row"]').length).toBe(2);
+    expect(top.querySelector('[data-testid="rank-row"]')?.getAttribute("data-id")).toBe("g-09");
+    // the trend has its own Yesterday / 7 / 30 days / All time toggle, on 30 days
+    expect(within(screen.getByTestId("trend-window-toggle")).getByRole("button", { name: "Last 30 days" }).getAttribute("aria-pressed")).toBe("true");
     expect(top.textContent).toContain("72%");
     expect(top.textContent).toContain("60%");
     // no students-active / change / as-of tiles
@@ -606,14 +614,14 @@ describe("TeacherDashboard — Time metric", () => {
     // ONE window toggle, under the title (the Performance card keeps only the trend's own range), on "All time"
     await waitFor(() => expect(screen.getAllByTestId("time-window-toggle")).toHaveLength(1));
     expect(within(screen.getByTestId("time-window-toggle")).getByRole("button", { name: "All time" }).getAttribute("aria-pressed")).toBe("true");
-    expect(pressed("Last seven days")).toEqual(["false"]);
-    expect(pressed("Yesterday")).toEqual(["false"]);
+    expect(winPressed("Last seven days")).toEqual(["false"]);
+    expect(winPressed("Yesterday")).toEqual(["false"]);
     await waitFor(() => expect(calls).toContain("/api/proxy/geo-entities/g-in/scores?metric=usage&range=30&window=all&viewer=u1"));
     await waitFor(() => expect(screen.getByTestId("root-kpis").textContent).toContain("2.5 hours"));
 
     // Last seven days: refetch — the previous figures stay on screen meanwhile (no blank / loading line)
-    fireEvent.click(screen.getByRole("button", { name: "Last seven days" }));
-    expect(pressed("Last seven days")).toEqual(["true"]);
+    fireEvent.click(winBtn("Last seven days"));
+    expect(winPressed("Last seven days")).toEqual(["true"]);
     expect(screen.getByTestId("root-kpis").textContent).toContain("2.5 hours");
     expect(screen.queryByText("Loading your dashboard…")).toBeNull();
     expect(document.querySelector('#rep-perf [data-testid="time-window-toggle"]')).toBeNull();
@@ -639,9 +647,9 @@ describe("TeacherDashboard — Time metric", () => {
     expect(meta.querySelector('[data-testid="mvp-trend"]')).toBeNull();
 
     // most improved (minutes vs the previous 7 days) and top performing (minutes) side by side; both spotlight cards
-    expect(screen.getByTestId("most-improved").textContent).toContain("Most improved · vs the previous 7 days");
+    expect(screen.getByTestId("most-improved").textContent).toContain("Most improved");
     expect(screen.getByTestId("most-improved").textContent).toContain("+7.0 min");
-    expect(screen.getByTestId("top-performing").textContent).toContain("Top performing · last seven days");
+    expect(screen.getByTestId("top-performing").textContent).toContain("Top performing");
     expect(screen.getByTestId("top-performing").textContent).toContain("49 min");
     // the improved card is there in Time mode too (empty in this fixture: nobody qualifies yet)
     expect(screen.getByTestId("spotlight-improved").getAttribute("data-empty")).toBe("1");
@@ -657,20 +665,20 @@ describe("TeacherDashboard — Time metric", () => {
     expect(map.textContent).not.toContain("≥80");
 
     // bars: total minutes
-    expect(screen.getByTestId("bar-strip").textContent).toContain("states · minutes · last seven days");
+    // the strip has no caption text (2026-10)
+    expect(screen.getByTestId("bar-strip").textContent).not.toContain("click a bar");
 
     // the CSV export follows the window
     expect(screen.getByTestId("csv-link").getAttribute("href")).toBe("/api/proxy/geo-entities/g-09/scores.csv?metric=usage&range=30&window=7d&viewer=u1");
 
     // Yesterday: refetch, new figures (4 min per day → amber)
-    fireEvent.click(screen.getByRole("button", { name: "Yesterday" }));
+    fireEvent.click(winBtn("Yesterday"));
     await waitFor(() => expect(calls).toContain("/api/proxy/geo-entities/g-09/scores?metric=usage&range=30&window=yesterday&viewer=u1"));
     await waitFor(() => expect(screen.getByTestId("root-kpis").textContent).toContain("total time · yesterday"));
     expect(screen.getByTestId("root-kpis").textContent).toContain("4 min");
     // 4 minutes yesterday: some time, under the 5-minute mark → amber
     expect((screen.getByText("total time · yesterday").previousElementSibling as HTMLElement).style.color).toBe("rgb(245, 158, 11)");
-    expect(pressed("Yesterday")).toEqual(["true"]);
-    expect(screen.getByTestId("most-improved").textContent).toContain("vs the day before");
+    expect(winPressed("Yesterday")).toEqual(["true"]);
 
     // All time: totals of 120 minutes and more are shown in hours, the average stays in minutes
     fireEvent.click(within(screen.getAllByTestId("time-window-toggle")[0]).getByRole("button", { name: "All time" }));
@@ -693,7 +701,7 @@ describe("TeacherDashboard — Time metric", () => {
     await screen.findAllByTestId("student-tile");
 
     fireEvent.click(screen.getAllByRole("button", { name: "Time" })[0]);
-    fireEvent.click(screen.getByRole("button", { name: "Last seven days" }));
+    fireEvent.click(winBtn("Last seven days"));
     await waitFor(() => expect(screen.getAllByTestId("student-tile")[0].textContent).toContain("84 min"));
     const tiles = screen.getAllByTestId("student-tile");
     // coloured by the window's marks (last seven days: 84 min ≥ 35 → green; 3 min < 10 → red); the figure is the total, captioned by the window
@@ -703,11 +711,12 @@ describe("TeacherDashboard — Time metric", () => {
     expect(tiles[1].textContent).toContain("3 min");
     expect((tiles[1] as HTMLElement).style.background).toBe("rgb(220, 38, 38)");
     for (const tile of tiles) expect(tile.textContent).not.toMatch(/[▲▼→]/);
-    expect(screen.getByTestId("bar-strip").textContent).toContain("minutes · last seven days");
+    // the strip has no caption text (2026-10)
+    expect(screen.getByTestId("bar-strip").textContent).not.toContain("click a bar");
     // the class ranks its own students: only the rise counts as improved; top by total minutes
-    expect(screen.getByTestId("most-improved").querySelectorAll("g[data-id]").length).toBe(1);
+    expect(screen.getByTestId("most-improved").querySelectorAll('[data-testid="rank-row"]').length).toBe(1);
     expect(screen.getByTestId("most-improved").textContent).toContain("+5.0 min");
-    expect(screen.getByTestId("top-performing").querySelectorAll("g[data-id]").length).toBe(2);
+    expect(screen.getByTestId("top-performing").querySelectorAll('[data-testid="rank-row"]').length).toBe(2);
 
     // all time: 119 minutes stays in minutes, 120 becomes hours
     fireEvent.click(within(screen.getAllByTestId("time-window-toggle")[0]).getByRole("button", { name: "All time" }));

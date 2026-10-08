@@ -28,6 +28,9 @@ import {
   usageColor,
   usageHistoryUrl,
   type MediaRow,
+  lastDays,
+  rangeForWindow,
+  WINDOW_DAYS,
 } from "./dashboard-types";
 import { parseIncompleteStates } from "./incomplete-states";
 import { jitterLatLng, JITTER_MAX_M } from "./map-helpers";
@@ -113,12 +116,14 @@ describe("pass marks and age bands", () => {
 });
 
 describe("Time windows", () => {
-  it("offers yesterday / last seven days / all time, defaulting to all time", () => {
+  it("offers yesterday / last seven days / last 30 days / all time, defaulting to all time", () => {
     expect(TIME_WINDOWS.map((w) => [w.key, w.label])).toEqual([
       ["yesterday", "Yesterday"],
       ["7d", "Last seven days"],
+      ["30d", "Last 30 days"],
       ["all", "All time"],
     ]);
+    expect(timeWindowSuffix("30d")).toBe("last 30 days");
     expect(DEFAULT_TIME_WINDOW).toBe("all");
     expect(timeWindowSuffix("7d")).toBe("last seven days");
     expect(timeWindowSuffix("yesterday")).toBe("yesterday");
@@ -195,5 +200,22 @@ describe("studentModalRows", () => {
     ];
     expect(studentModalRows(rows).map((r) => r.id)).toEqual(["legacy", "voice", "tap-right", "tap-wrong"]);
     expect(studentModalRows([])).toEqual([]);
+  });
+});
+
+describe("trend window", () => {
+  const pts = ["2026-09-01", "2026-09-20", "2026-10-01", "2026-10-06", "2026-10-07"].map((date) => ({ date }));
+  it("keeps the points within the last N days up to the newest date; all time keeps everything", () => {
+    expect(lastDays(pts, WINDOW_DAYS.yesterday).map((p) => p.date)).toEqual(["2026-10-07"]);
+    expect(lastDays(pts, WINDOW_DAYS["7d"]).map((p) => p.date)).toEqual(["2026-10-01", "2026-10-06", "2026-10-07"]);
+    expect(lastDays(pts, WINDOW_DAYS["30d"]).map((p) => p.date)).toEqual(["2026-09-20", "2026-10-01", "2026-10-06", "2026-10-07"]);
+    expect(lastDays(pts, WINDOW_DAYS.all)).toHaveLength(5);
+    // a child line ends where the root series ends
+    expect(lastDays(pts, 7, "2026-10-01").map((p) => p.date)).toEqual(["2026-10-01"]);
+  });
+  it("fetches the full history only for all time", () => {
+    expect(rangeForWindow("all")).toBe("all");
+    expect(rangeForWindow("30d")).toBe(30);
+    expect(rangeForWindow("yesterday")).toBe(30);
   });
 });

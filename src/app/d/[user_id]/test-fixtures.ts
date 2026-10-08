@@ -254,6 +254,7 @@ export const SCORES_UP: ScoresResponse = {
 const TIME_BY_WINDOW: Record<TimeWindow, { root: [number, number, number]; up: [number, number, number]; ap: [number, number, number]; s1: [number, number, number]; s2: [number, number, number] }> = {
   yesterday: { root: [4, 4, 1], up: [6, 6, 1], ap: [0, 0, 1], s1: [12, 12, 1], s2: [0, 0, 1] },
   "7d": { root: [38, 5.4, 7], up: [49, 7, 7], ap: [14, 2, 7], s1: [84, 12, 7], s2: [3, 0.4, 7] },
+  "30d": { root: [90, 3, 30], up: [130, 4.3, 30], ap: [40, 1.3, 30], s1: [100, 3.3, 30], s2: [20, 0.7, 30] },
   all: { root: [150, 3.1, 48], up: [1500, 31.3, 48], ap: [120, 2.5, 48], s1: [119, 2.5, 48], s2: [120, 2.5, 48] },
 };
 // time_sum (the total over every student) = time_total in these fixtures, so the figures asserted stay the same

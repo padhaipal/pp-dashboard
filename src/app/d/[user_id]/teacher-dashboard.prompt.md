@@ -45,3 +45,10 @@
  - `RepImproved` is drawn in a 440-unit viewBox (half column) with 12.5-unit type and at most five rows.
  - Block (schools) view fits the viewport to the CLUSTER of schools (`clusterPoints`: within 3× the median distance of the median point, ≥ 2 km) — UDISE places a few schools per block tens of km away; the strays are still drawn.
  - A drill clears the map tooltip (`useEffect` on `entity.id`).
+
+15.) 2026-10 (30 days, trend window, ranking rows).
+ - Time windows: Yesterday · Last seven days · Last 30 days (`30d`) · All time. `TIME_MARKS["30d"]` = all time's (2 h / 30 min). Time deltas for 30d compare the 30 days before (`time_delta_days` 30).
+ - The trend's "30 days / All time" range bar is replaced by its own `MvpTimeWindowToggle` (`trend-window-toggle`, default Last 30 days) + the CSV link: it sets the x-axis (`lastDays(series, WINDOW_DAYS[w])`, child / student lines cut to the same end date) and the fetched range (`rangeForWindow`: all time → "all", else 30).
+ - "Most improved" (left) / "Top performing" (right): plain headings; rows are `RankBars` (rank badge, name, gradient bar on a track, value pill; ≤ 5; `rank-row` with `data-id`).
+ - The bar strip has no caption row.
+ - Block view fits ALL schools again (`clusterPoints` removed at the user's request).
