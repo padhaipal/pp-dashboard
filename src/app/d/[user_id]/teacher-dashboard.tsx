@@ -24,8 +24,7 @@ import {
   CHILD_NOUN,
   CHILD_OFFICER,
   DEFAULT_METRIC,
-  DEFAULT_RANGE,
-  DEFAULT_TIME_WINDOW,
+    DEFAULT_TIME_WINDOW,
   displayName,
   EMPTY_ROOT_TEXT,
   fmtDelta,
@@ -62,14 +61,18 @@ import {
   type StudentChild,
   UNNAMED,
   isPiiFull,
+  rangeForWindow,
+  lastDays,
+  WINDOW_DAYS,
+  csvUrl,
 } from "./dashboard-types";
 import { withViewer } from "./viewer-url";
 import { ViewerProvider } from "./viewer-context";
 import { BarStrip, type BarItem } from "./bar-strip";
 import { GeoMap } from "./geo-map";
 import { isLang, LANG_STORAGE_KEY, makeT, type Lang, type T } from "./i18n";
-import { AvatarImg, EditableStudentName, MvpLangToggle, MvpMetricToggle, MvpRangeBar, MvpShareBar, MvpTeacherModal, MvpTimeWindowToggle, MvpTrend, type ModalSubject } from "./mvp-widgets";
-import { ReportCardModal, RepImproved, RepKpis, RepMeta, RepQuote, RepTrend, type ImprovedRow, type ReportData } from "./report-card-modal";
+import { AvatarImg, EditableStudentName, MvpLangToggle, MvpMetricToggle, MvpShareBar, MvpTeacherModal, MvpTimeWindowToggle, MvpTrend, type ModalSubject } from "./mvp-widgets";
+import { ReportCardModal, RepKpis, RepMeta, RepQuote, RepTrend, type ImprovedRow, type ReportData } from "./report-card-modal";
 
 export type TeacherDashboardProps = {
   profile: PublicProfile;
@@ -129,7 +132,10 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
   // What the toggles are on. The page body renders `metric` / `range` /
   // `timeWindow` below — the same, except while a new selection is loading.
   const [pickedMetric, setMetric] = useState<Metric>(DEFAULT_METRIC);
-  const [pickedRange, setRange] = useState<Range>(DEFAULT_RANGE);
+  // The trend's own window (same toggle as the Time window): its x-axis.
+  // The data range follows it (all time → the full history, else 30 days).
+  const [trendWindow, setTrendWindow] = useState<TimeWindow>("30d");
+  const pickedRange: Range = rangeForWindow(trendWindow);
   // The window of the Time metric (its own toggle, shown only while Time is selected).
   const [pickedWindow, setTimeWindow] = useState<TimeWindow>(DEFAULT_TIME_WINDOW);
   const [stack, setStack] = useState<GeoRef[]>(() => homeStack(initialProfile));
@@ -391,6 +397,8 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
   // The viewer's own entity, highlighted among its peers at the home level
   // only (a teacher's "entity" among the school's teachers is their user id).
   const ownId = stack.length === 1 && profile.geo_entity ? (profile.geo_entity.type === "school" ? profile.id : profile.geo_entity.id) : null;
+  // The newest date of the root series: the trend's window ends there for every line.
+  const newestDate = scores?.series.length ? scores.series[scores.series.length - 1].date : undefined;
   const closeModal = useCallback(() => setModal(null), []);
   const closeReport = useCallback(() => setReportOpen(false), []);
 
@@ -506,15 +514,6 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                     if (c) drill(c);
                   }}
                   ownId={ownId}
-                  hint={`${t(inClass ? "students" : nounP)} · ${
-                    timeMode
-                      ? `${t("minutes")} · ${timeSuffix}`
-                      : isUsageMetric
-                        ? inClass
-                          ? t("min yesterday")
-                          : t("5+ min yesterday")
-                        : t(METRIC_BY[metric].short)
-                  } · ${t("click a bar to select")}`}
                   t={t}
                 />
               </div>
@@ -614,10 +613,21 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                             {t("Trend")}
                             <HoverLabel child={hoverId ? geoChildren.find((c) => c.id === hoverId) ?? null : null} time={timeMode} t={t} />
                           </div>
-                          <MvpRangeBar range={pickedRange} setRange={setRange} entityId={entity.id} metric={pickedMetric} timeWindow={pickedWin} t={t} />
+                          <div className="flex flex-wrap items-center gap-2">
+                            <MvpTimeWindowToggle window={trendWindow} setWindow={setTrendWindow} label="Trend window" testId="trend-window-toggle" t={t} />
+                            <a
+                              href={withViewer(csvUrl(entity.id, pickedMetric, pickedRange, pickedWin), profile.id)}
+                              target="_blank"
+                              rel="noreferrer"
+                              data-testid="csv-link"
+                              className="hidden rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-600 shadow-sm hover:bg-zinc-50 sm:block"
+                            >
+                              {t("Download CSV")}
+                            </a>
+                          </div>
                         </div>
                         <RepTrend
-                          series={scores.series}
+                          series={lastDays(scores.series, WINDOW_DAYS[trendWindow])}
                           label={isUsageMetric ? t("Total minutes") : t(METRIC_BY[metric].short)}
                           metric={metric}
                           passMark={scores.pass_mark}
@@ -626,13 +636,13 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                               ? (scores.students_series ?? []).map((ss) => ({
                                   id: ss.student_id,
                                   label: ((s) => withPhone(s?.name?.split(/\s+/)[0] ?? UNNAMED, s?.phone))(students.find((s) => s.student_id === ss.student_id)),
-                                  points: ss.points,
+                                  points: lastDays(ss.points, WINDOW_DAYS[trendWindow], newestDate),
                                 }))
                               : // one faint line per child (area, or a teacher's class) — hover a marker / card to light it up
                                 (scores.children_series ?? []).map((cs) => ({
                                   id: cs.id,
                                   label: geoChildren.find((c) => c.id === cs.id)?.name ?? "",
-                                  points: cs.points,
+                                  points: lastDays(cs.points, WINDOW_DAYS[trendWindow], newestDate),
                                 }))
                           }
                           hoverId={hoverId}
@@ -643,21 +653,17 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                         />
                       </div>
                       {/* most improved (change vs the range / the Time window before) and top performing, side by side */}
+                      {/* most improved (left) and top performing (right): both by the selected metric / Time window */}
                       <div className="grid grid-cols-1 gap-6 border-t border-zinc-100 pt-5 md:grid-cols-2">
                         <div data-testid="most-improved">
-                          <div className="mb-1 text-base font-semibold text-zinc-800">
-                            {t("Most improved")} · {deltaSuffix}
-                            <HoverLabel child={hoverId ? geoChildren.find((c) => c.id === hoverId) ?? null : null} t={t} />
-                          </div>
+                          <div className="mb-3 text-base font-semibold text-zinc-800">{t("Most improved")}</div>
                           {improvedRows.length === 0 && <p className="py-2 text-sm text-zinc-400">{t("Nobody has improved yet.")}</p>}
-                          <RepImproved mostImproved={improvedRows} hoverId={hoverId} setHoverId={setHoverId} selId={selId} onSelect={select} onPick={pickRow} format={fmtDelta} />
+                          <RankBars rows={improvedRows} kind="improved" format={fmtDelta} hoverId={hoverId} setHoverId={setHoverId} selId={selId} onSelect={select} onPick={pickRow} />
                         </div>
                         <div data-testid="top-performing">
-                          <div className="mb-1 text-base font-semibold text-zinc-800">
-                            {t("Top performing")} · {timeMode ? timeSuffix : rangeSuffix(range, t)}
-                          </div>
+                          <div className="mb-3 text-base font-semibold text-zinc-800">{t("Top performing")}</div>
                           {topRows.length === 0 && <p className="py-2 text-sm text-zinc-400">{t("No results in this window")}</p>}
-                          <RepImproved mostImproved={topRows} hoverId={hoverId} setHoverId={setHoverId} selId={selId} onSelect={select} onPick={pickRow} format={fmtRank} signed={false} />
+                          <RankBars rows={topRows} kind="top" format={fmtRank} hoverId={hoverId} setHoverId={setHoverId} selId={selId} onSelect={select} onPick={pickRow} />
                         </div>
                       </div>
                     </div>
@@ -1058,5 +1064,66 @@ function SiteFooter({ t }: { t: T }) {
         ))}
       </div>
     </div>
+  );
+}
+
+// Most improved / top performing: up to five rows — rank, name, a rounded
+// gradient bar on a track, the figure in a pill. Hover lights the row (and
+// the area on the map), click selects, double-click opens / drills.
+function RankBars({
+  rows,
+  kind,
+  format,
+  hoverId,
+  setHoverId,
+  selId,
+  onSelect,
+  onPick,
+}: {
+  rows: ImprovedRow[];
+  kind: "improved" | "top";
+  format: (v: number) => string;
+  hoverId: string | null;
+  setHoverId: (id: string | null) => void;
+  selId: string | null;
+  onSelect: (r: ImprovedRow) => void;
+  onPick: (r: ImprovedRow) => void;
+}) {
+  const arr = rows.filter((r) => r.delta != null).slice(0, 5);
+  if (!arr.length) return null;
+  const max = Math.max(1e-9, ...arr.map((r) => Math.abs(r.delta!)));
+  return (
+    <ol className="space-y-2" data-testid={`rank-bars-${kind}`}>
+      {arr.map((r, i) => {
+        const v = r.delta!;
+        const neg = v < 0;
+        const hot = hoverId === r.id || selId === r.id;
+        const fill = neg ? "linear-gradient(90deg,#fca5a5,#dc2626)" : kind === "top" ? "linear-gradient(90deg,#93c5fd,#2563eb)" : "linear-gradient(90deg,#86efac,#16a34a)";
+        const pill = neg ? "bg-red-50 text-red-700" : kind === "top" ? "bg-blue-50 text-blue-700" : "bg-emerald-50 text-emerald-700";
+        return (
+          <li
+            key={r.id}
+            data-id={r.id}
+            data-testid="rank-row"
+            className={"flex cursor-pointer items-center gap-3 rounded-xl px-2 py-1.5 transition " + (hot ? "bg-zinc-100" : "hover:bg-zinc-50")}
+            onMouseEnter={() => setHoverId(r.id)}
+            onMouseLeave={() => setHoverId(null)}
+            onClick={() => onSelect(r)}
+            onDoubleClick={() => onPick(r)}
+          >
+            <span className={"flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-bold " + (i === 0 ? "bg-amber-400 text-white" : "bg-zinc-200 text-zinc-600")}>{i + 1}</span>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-semibold text-zinc-800" title={r.name}>
+                {r.name}
+              </div>
+              <div className="mt-1 h-2.5 w-full overflow-hidden rounded-full bg-zinc-100">
+                <div className="h-full rounded-full" style={{ width: `${Math.max(4, (Math.abs(v) / max) * 100)}%`, background: fill }} />
+              </div>
+            </div>
+            <span className={"shrink-0 rounded-full px-2.5 py-1 text-xs font-bold tabular-nums " + pill}>{format(v)}</span>
+          </li>
+        );
+      })}
+    </ol>
   );
 }

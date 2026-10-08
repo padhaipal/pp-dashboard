@@ -202,7 +202,7 @@ export type ScoresResponse = {
   // Time mode: `delta` on root / children / students = minutes vs the window
   // before (1 = yesterday vs the day before, 7 = the last seven days vs the
   // seven before — all time compares the last seven days too).
-  time_delta_days?: 1 | 7;
+  time_delta_days?: 1 | 7 | 30;
   child_type: ChildType;
   children: Child[] | StudentChild[];
   most_improved: Child[];
@@ -225,10 +225,11 @@ export const METRIC_BY: Record<Metric, { key: Metric; label: string; short: stri
 };
 // The window of the Time metric: a second toggle shown under the metric
 // toggle while Time is selected. "7d" = the last seven days (never "week").
-export type TimeWindow = "yesterday" | "7d" | "all";
+export type TimeWindow = "yesterday" | "7d" | "30d" | "all";
 export const TIME_WINDOWS: { key: TimeWindow; label: string; suffix: string }[] = [
   { key: "yesterday", label: "Yesterday", suffix: "yesterday" },
   { key: "7d", label: "Last seven days", suffix: "last seven days" },
+  { key: "30d", label: "Last 30 days", suffix: "last 30 days" },
   { key: "all", label: "All time", suffix: "all time" },
 ];
 export const DEFAULT_TIME_WINDOW: TimeWindow = "all";
@@ -362,7 +363,19 @@ export const timeColor = (perDay: number | null | undefined): string => (perDay 
 // Colour of a Time figure, from the minutes PER STUDENT in the window, with a
 // mark that fits the window (2026-10): all time 2 h+ green, 30 min – 2 h amber,
 // under 30 min red; last seven days 35 / 10 min; yesterday more than 5 / some.
-export const TIME_MARKS: Record<TimeWindow, { green: number; amber: number }> = { all: { green: 120, amber: 30 }, "7d": { green: 35, amber: 10 }, yesterday: { green: 5, amber: 0.5 } };
+export const TIME_MARKS: Record<TimeWindow, { green: number; amber: number }> = { all: { green: 120, amber: 30 }, "30d": { green: 120, amber: 30 }, "7d": { green: 35, amber: 10 }, yesterday: { green: 5, amber: 0.5 } };
+// Days a window covers on the trend's x-axis (null = everything).
+export const WINDOW_DAYS: Record<TimeWindow, number | null> = { yesterday: 1, "7d": 7, "30d": 30, all: null };
+// The data range to fetch for a trend window: all time needs the full
+// history, the rest fit in the 30-day range.
+export const rangeForWindow = (w: TimeWindow): Range => (w === "all" ? "all" : 30);
+// Points of a series within the last `days` days up to its newest date.
+export function lastDays<P extends { date: string }>(points: P[], days: number | null, newest?: string): P[] {
+  if (days == null || !points.length) return points;
+  const end = newest ?? points.reduce((m, p) => (p.date > m ? p.date : m), points[0].date);
+  const from = new Date(new Date(`${end}T00:00:00Z`).getTime() - (days - 1) * 86_400_000).toISOString().slice(0, 10);
+  return points.filter((p) => p.date >= from && p.date <= end);
+}
 export const windowColor = (perStudent: number | null | undefined, window: TimeWindow = "all"): string => {
   if (perStudent == null) return UNCOVERED;
   const m = TIME_MARKS[window];
@@ -420,4 +433,4 @@ export function displayName(name: string, type: GeoType | "teacher" | "student")
 export const EMPTY_ROOT_TEXT = "No results yet — share your link to get started.";
 export const INACTIVE_LINK_TEXT = "This link is not active";
 // Caption for a Time-mode delta.
-export const timeDeltaSuffix = (days: 1 | 7 | undefined, t: (s: string) => string = (s) => s) => (days === 1 ? t("vs the day before") : t("vs the previous 7 days"));
+export const timeDeltaSuffix = (days: 1 | 7 | 30 | undefined, t: (s: string) => string = (s) => s) => (days === 1 ? t("vs the day before") : days === 30 ? t("vs the previous 30 days") : t("vs the previous 7 days"));

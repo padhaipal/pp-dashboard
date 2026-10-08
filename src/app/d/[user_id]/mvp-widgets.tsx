@@ -158,9 +158,22 @@ export function MvpMetricToggle<M extends string = Metric>({
 
 // Shown under the metric toggle while Time is selected: Yesterday · Last
 // seven days · All time (the window of the Time figures).
-export function MvpTimeWindowToggle({ window, setWindow, t = same }: { window: TimeWindow; setWindow: (w: TimeWindow) => void; t?: T }) {
+export function MvpTimeWindowToggle({
+  window,
+  setWindow,
+  label = "Time window",
+  testId = "time-window-toggle",
+  t = same,
+}: {
+  window: TimeWindow;
+  setWindow: (w: TimeWindow) => void;
+  // the trend's own copy (same look) passes its own label / test id
+  label?: string;
+  testId?: string;
+  t?: T;
+}) {
   return (
-    <div className="inline-flex overflow-hidden rounded-lg border border-zinc-300 bg-white text-xs font-semibold shadow-sm" role="group" aria-label="Time window" data-testid="time-window-toggle">
+    <div className="inline-flex overflow-hidden rounded-lg border border-zinc-300 bg-white text-xs font-semibold shadow-sm" role="group" aria-label={label} data-testid={testId}>
       {TIME_WINDOWS.map((w) => (
         <button
           key={w.key}

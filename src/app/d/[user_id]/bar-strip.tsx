@@ -30,7 +30,6 @@ export function BarStrip({
   onClick,
   onDoubleClick,
   ownId = null,
-  hint,
   t = (s) => s,
 }: {
   items: BarItem[];
@@ -43,7 +42,8 @@ export function BarStrip({
   onDoubleClick?: (item: BarItem) => void;
   // the viewer's own area: blue outline + "You" tag above its bar
   ownId?: string | null;
-  hint: string;
+  // (unused since 2026-10: the strip has no caption row)
+  hint?: string;
   t?: T;
 }) {
   const [localHover, setLocalHover] = useState<string | null>(null);
@@ -64,12 +64,6 @@ export function BarStrip({
       }}
       data-testid="bar-strip"
     >
-      <div className="flex items-center justify-between px-3 py-1 text-[11px] text-zinc-500">
-        <span>
-          {items.length} · {hint}
-        </span>
-        <span className="text-zinc-400">{t("hover a bar for details")}</span>
-      </div>
       <div className="absolute inset-x-0 bottom-0 flex items-end gap-px px-2" style={{ top: 26 }}>
         {bars.map((b, i) => {
           const pct = b.value == null ? 0 : (Math.max(0, b.value) / top) * 100;

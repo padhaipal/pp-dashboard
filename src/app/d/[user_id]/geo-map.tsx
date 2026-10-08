@@ -83,25 +83,6 @@ const CARTO_KEY = process.env.NEXT_PUBLIC_CARTO_KEY ?? "";
 const hiDpi = () => typeof window !== "undefined" && (window.devicePixelRatio ?? 1) > 1.5;
 const tileUrl = (z: number, x: number, y: number) =>
   `https://${"abc"[(x + y) % 3]}.basemaps.cartocdn.com/light_nolabels/${z}/${x}/${y}${hiDpi() ? "@2x" : ""}.png` + (CARTO_KEY ? `?key=${encodeURIComponent(CARTO_KEY)}` : "");
-// Points to FIT the view to: the dense cluster, not the strays. UDISE puts
-// a few schools per block tens of km away (wrong coordinates); fitting to
-// them shrank the real block to a dot. Keeps points within 3× the median
-// distance of the median point (at least 2 km); the strays are still drawn.
-export function clusterPoints(pts: [number, number][]): [number, number][] {
-  if (pts.length < 4) return pts;
-  const med = (xs: number[]) => {
-    const s = [...xs].sort((a, b) => a - b);
-    return s[Math.floor(s.length / 2)];
-  };
-  const mlon = med(pts.map((p) => p[0])),
-    mlat = med(pts.map((p) => p[1]));
-  const km = (p: [number, number]) => Math.hypot((p[0] - mlon) * 111 * Math.cos((mlat * Math.PI) / 180), (p[1] - mlat) * 111);
-  const d = pts.map(km);
-  const cut = Math.max(2, 3 * med(d));
-  const kept = pts.filter((_, i) => d[i] <= cut);
-  return kept.length >= 3 ? kept : pts;
-}
-
 // A tile is drawn at most this wide (its native 256 px, so never upscaled).
 const MAX_TILE_PX = 256;
 
@@ -245,7 +226,8 @@ export function GeoMap(props: GeoMapProps) {
       for (const f of ready.byCode.values()) feats.push(f);
     }
     if (!feats.length) {
-      const pf = pointsFeature(clusterPoints(points.map((p) => [p.lng, p.lat])));
+      // fit to EVERY school of the block (2026-10: the user wants them all in view)
+      const pf = pointsFeature(points.map((p) => [p.lng, p.lat]));
       if (pf) feats.push(pf);
     }
     if (!feats.length) return null;
