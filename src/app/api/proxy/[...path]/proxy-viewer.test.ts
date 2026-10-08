@@ -4,11 +4,17 @@ import { proxyRequestHeaders, VIEWER_ID_HEADER, VIEWER_STAFF_HEADER, viewerForwa
 const UUID = "5c2a6f0e-1a2b-4c3d-9e8f-0a1b2c3d4e5f";
 
 describe("viewerForward", () => {
-  it("a staff session becomes the staff header; any viewer param is ignored and stripped", () => {
-    expect(viewerForward(`?metric=usage&viewer=${UUID}`, true)).toEqual({
+  it("a staff session becomes the staff header only without a viewer param; a /d page's viewer wins over the session (a dev sees the link holder's view)", () => {
+    expect(viewerForward("?metric=usage", true)).toEqual({
       headers: { [VIEWER_STAFF_HEADER]: "1" },
       search: "?metric=usage",
     });
+    expect(viewerForward(`?metric=usage&viewer=${UUID}`, true)).toEqual({
+      headers: { [VIEWER_ID_HEADER]: UUID },
+      search: "?metric=usage",
+    });
+    // a junk viewer on a staff session: anonymous, not staff
+    expect(viewerForward("?viewer=abc", true)).toEqual({ headers: {}, search: "" });
   });
 
   it("a sessionless caller's uuid viewer becomes the viewer-id header (lower-cased) and leaves the query", () => {

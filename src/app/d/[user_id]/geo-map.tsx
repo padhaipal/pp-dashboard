@@ -24,7 +24,6 @@ import {
   UNCOVERED,
   fmtDuration,
   fmtPct,
-  fmtPerDay,
   timeFill,
   type Child,
   type ChildType,
@@ -320,7 +319,7 @@ export function GeoMap(props: GeoMapProps) {
           c.name,
           (c.using_lifteracy
             ? time
-              ? `${fmtDuration(c.time_total, t)} · ${fmtPerDay(c.time_per_day, t)} · n=${c.n}`
+              ? `${fmtDuration(c.time_total, t)} · n=${c.n}`
               : `${fmtPct(c.pass_rate)} · n=${c.n}`
             : t("Not using Lifteracy")) + (isPrivateSchool(c) ? ` · ${t("private school")}` : ""),
         ];

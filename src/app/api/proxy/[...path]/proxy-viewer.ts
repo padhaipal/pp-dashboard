@@ -18,14 +18,18 @@ export interface ViewerForward {
   search: string;
 }
 
+// A `viewer` param means a /d page: it is seen AS that user, staff session
+// or not — a dev opening a block official's link must not see the students'
+// names and numbers that the official cannot (2026-10). Without the param
+// (the staff pages) a staff session sees everything.
 export function viewerForward(search: string, staff: boolean): ViewerForward {
   const params = new URLSearchParams(search);
   const viewer = params.get(VIEWER_PARAM);
   params.delete(VIEWER_PARAM);
   const rest = params.toString();
   const headers: Record<string, string> = {};
-  if (staff) headers[VIEWER_STAFF_HEADER] = "1";
-  else if (viewer && UUID_RE.test(viewer)) headers[VIEWER_ID_HEADER] = viewer.toLowerCase();
+  if (viewer && UUID_RE.test(viewer)) headers[VIEWER_ID_HEADER] = viewer.toLowerCase();
+  else if (staff && viewer === null) headers[VIEWER_STAFF_HEADER] = "1";
   return { headers, search: rest ? `?${rest}` : "" };
 }
 

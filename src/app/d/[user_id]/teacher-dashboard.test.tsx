@@ -4,7 +4,7 @@ import { TeacherDashboard } from "./teacher-dashboard";
 import { RepTrend } from "./report-card-modal";
 import { MvpMinutesChart } from "./mvp-widgets";
 import { EMPTY_ROOT_TEXT, INCOMPLETE_TOOLTIP } from "./dashboard-types";
-import { CHILD_UP, EMPTY_SCORES, MEDIA_MASKED, PROFILE, PROFILE_SCHOOL, SCORES, SCORES_CLASS, SCORES_CLASS_MASKED, SCORES_SCHOOL, SCORES_UP, makeFetch } from "./test-fixtures";
+import { CHILD_UP, EMPTY_SCORES, MEDIA_MASKED, PROFILE, PROFILE_BLOCK, PROFILE_SCHOOL, SCORES, SCORES_CLASS, SCORES_CLASS_MASKED, SCORES_SCHOOL, SCORES_UP, makeFetch } from "./test-fixtures";
 
 const pressed = (name: string) => screen.getAllByRole("button", { name }).map((b) => b.getAttribute("aria-pressed"));
 // The page opens on Time; tests about the test-score metrics pick one first.
@@ -54,11 +54,23 @@ describe("TeacherDashboard", () => {
     expect(kpis.textContent).toContain("72%");
     expect(kpis.textContent).toContain("of 8 year old students pass the NIPUN grade 3 proxy");
     expect(kpis.textContent).not.toContain("average NIPUN");
-    expect(kpis.textContent).toContain("2 of 2");
     expect(kpis.textContent).toContain("states using Lifteracy");
-    // 2 of 2 = 100 % → green; the figure carries the colour inline (0 of N would be red)
+    // a plain count ("2", not "2 of 2"), in black
     const usingBig = screen.getByText("states using Lifteracy").previousElementSibling as HTMLElement;
-    expect(usingBig.style.color).toBe("rgb(22, 163, 74)");
+    expect(usingBig.textContent).toBe("2");
+    expect(usingBig.style.color).toBe("rgb(24, 24, 27)");
+    // one faint line per state on the trend, lit up by the shared hover
+    expect(document.querySelectorAll('[data-testid="student-line"]')).toHaveLength(2);
+    // most improved and top performing side by side, under the trend
+    expect(screen.getByTestId("most-improved").textContent).toContain("Most improved · last 30 days");
+    expect(screen.getByTestId("most-improved").textContent).toContain("+2.5%");
+    const top = screen.getByTestId("top-performing");
+    expect(top.textContent).toContain("Top performing · last 30 days");
+    // UP 72 % above AP 60 %, figures as whole percentages
+    expect(top.querySelectorAll("g[data-id]").length).toBe(2);
+    expect(top.querySelector("g[data-id]")?.getAttribute("data-id")).toBe("g-09");
+    expect(top.textContent).toContain("72%");
+    expect(top.textContent).toContain("60%");
     // no students-active / change / as-of tiles
     expect(kpis.textContent).not.toContain("students active");
     expect(kpis.textContent).not.toContain("as of");
@@ -123,6 +135,17 @@ describe("TeacherDashboard", () => {
     fireEvent.pointerMove(svg, { pointerType: "mouse", clientX: 60, clientY: 30 });
     await waitFor(() => expect(screen.queryByText(/Something went wrong/)).toBeNull());
     expect(screen.getByTestId("geo-map")).toBeTruthy();
+  });
+
+  it("a block official opens on their district — every block ranked, their own selected — with no level above; the title is not doubled", async () => {
+    const { fn, calls } = makeFetch({ scoresById: { "g-0901": { ...SCORES, entity: { id: "g-0901", type: "district", code: "0901", name: "LUCKNOW", has_boundary: true, lat: null, lng: null }, child_type: "block" } } });
+    vi.stubGlobal("fetch", vi.fn(fn));
+    render(<TeacherDashboard profile={PROFILE_BLOCK} incompleteStates={[]} />);
+    await waitFor(() => expect(calls.some((u) => u.startsWith("/api/proxy/geo-entities/g-0901/scores?"))).toBe(true));
+    expect(calls.some((u) => u.includes("/geo-entities/g-0901-01/"))).toBe(false);
+    await screen.findByTestId("root-kpis");
+    expect(screen.getByTestId("location-title").textContent).toBe("Lucknow  -  Uttar Pradesh  -  India");
+    expect((screen.getByRole("button", { name: "Up a level" }) as HTMLButtonElement).disabled).toBe(true);
   });
 
   it("builds the CSV link from the current metric and range (range bar lives in the Performance card)", async () => {
@@ -511,7 +534,7 @@ describe("TeacherDashboard — Time metric", () => {
     vi.unstubAllGlobals();
   });
 
-  it("'Time' reveals the window toggle (default: all time) and shows total + minutes per day, coloured by the per-day average; no change arrows, no most improved", async () => {
+  it("'Time' reveals the window toggle (default: all time) and shows totals only, coloured by the per-day average; no change arrows; most improved = rise in minutes", async () => {
     const { fn, calls } = makeFetch({ timeById: { "g-in": "geo" } });
     vi.stubGlobal("fetch", vi.fn(fn));
     render(<TeacherDashboard profile={PROFILE} incompleteStates={[]} />);
@@ -545,25 +568,31 @@ describe("TeacherDashboard — Time metric", () => {
     await waitFor(() => expect(calls).toContain("/api/proxy/geo-entities/g-in/scores?metric=usage&range=30&window=7d&viewer=u1"));
     expect(calls).toContain("/api/proxy/geo-entities/g-in/spotlight?metric=usage&range=30&window=7d&viewer=u1");
 
-    // headline: total per student, minutes per day under it, both coloured by the per-day average (5.4 → green)
+    // headline: the total per student only (no minutes per day), coloured by the per-day average (5.4 → green)
     await waitFor(() => expect(screen.getByTestId("root-kpis").textContent).toContain("38 min"));
     const kpis = screen.getByTestId("root-kpis");
-    expect(kpis.textContent).toContain("5.4 min per day");
+    expect(kpis.textContent).not.toContain("per day");
     expect(kpis.textContent).toContain("average time per student · last seven days");
     expect(kpis.textContent).not.toContain("72%");
-    expect((screen.getByTestId("kpi-per-day") as HTMLElement).style.color).toBe("rgb(22, 163, 74)");
+    expect(screen.queryByTestId("kpi-per-day")).toBeNull();
+    expect((screen.getByText("average time per student · last seven days").previousElementSibling as HTMLElement).style.color).toBe("rgb(22, 163, 74)");
 
-    // detail card: the top state's total + per day, no trend arrow
+    // detail card: the top state's total, no per-day figure, no trend arrow
     const meta = screen.getByTestId("rep-meta");
     expect(meta.textContent).toContain("49 min");
-    expect(meta.textContent).toContain("7 min per day");
+    expect(meta.textContent).not.toContain("per day");
     expect(meta.textContent).toContain("Time · last seven days · per student");
     expect(meta.querySelector('[data-testid="mvp-trend"]')).toBeNull();
 
-    // no "most improved" block, no "most improved" spotlight card; the top card carries the time
-    expect(screen.queryByTestId("most-improved")).toBeNull();
-    expect(screen.queryByTestId("spotlight-improved")).toBeNull();
-    expect(screen.getByTestId("spotlight-top").textContent).toContain("49 min · 7 min per day");
+    // most improved (minutes vs the previous 7 days) and top performing (minutes) side by side; both spotlight cards
+    expect(screen.getByTestId("most-improved").textContent).toContain("Most improved · vs the previous 7 days");
+    expect(screen.getByTestId("most-improved").textContent).toContain("+7.0 min");
+    expect(screen.getByTestId("top-performing").textContent).toContain("Top performing · last seven days");
+    expect(screen.getByTestId("top-performing").textContent).toContain("49 min");
+    // the improved card is there in Time mode too (empty in this fixture: nobody qualifies yet)
+    expect(screen.getByTestId("spotlight-improved").getAttribute("data-empty")).toBe("1");
+    expect(screen.getByTestId("spotlight-top").textContent).toContain("49 min");
+    expect(screen.getByTestId("spotlight-top").textContent).not.toContain("per day");
 
     // map: areas coloured by minutes per day (7 → green, 2 → amber), legend in minutes
     const map = screen.getByTestId("geo-map");
@@ -571,8 +600,8 @@ describe("TeacherDashboard — Time metric", () => {
     expect(map.textContent).toContain("up to 5 min per day");
     expect(map.textContent).not.toContain("≥80");
 
-    // bars: minutes per student per day
-    expect(screen.getByTestId("bar-strip").textContent).toContain("per student per day · last seven days");
+    // bars: total minutes per student
+    expect(screen.getByTestId("bar-strip").textContent).toContain("minutes per student · last seven days");
 
     // the CSV export follows the window
     expect(screen.getByTestId("csv-link").getAttribute("href")).toBe("/api/proxy/geo-entities/g-in/scores.csv?metric=usage&range=30&window=7d&viewer=u1");
@@ -582,15 +611,15 @@ describe("TeacherDashboard — Time metric", () => {
     await waitFor(() => expect(calls).toContain("/api/proxy/geo-entities/g-in/scores?metric=usage&range=30&window=yesterday&viewer=u1"));
     await waitFor(() => expect(screen.getByTestId("root-kpis").textContent).toContain("average time per student · yesterday"));
     expect(screen.getByTestId("root-kpis").textContent).toContain("4 min");
-    expect((screen.getByTestId("kpi-per-day") as HTMLElement).style.color).toBe("rgb(245, 158, 11)");
+    expect((screen.getByText("average time per student · yesterday").previousElementSibling as HTMLElement).style.color).toBe("rgb(245, 158, 11)");
     expect(pressed("Yesterday")).toEqual(["true"]);
+    expect(screen.getByTestId("most-improved").textContent).toContain("vs the day before");
 
     // All time: totals of 120 minutes and more are shown in hours, the average stays in minutes
     fireEvent.click(within(screen.getAllByTestId("time-window-toggle")[0]).getByRole("button", { name: "All time" }));
     await waitFor(() => expect(screen.getByTestId("root-kpis").textContent).toContain("2.5 hours"));
-    expect(screen.getByTestId("root-kpis").textContent).toContain("3.1 min per day");
+    expect(screen.getByTestId("root-kpis").textContent).not.toContain("per day");
     expect(screen.getByTestId("rep-meta").textContent).toContain("25 hours");
-    expect(screen.getByTestId("rep-meta").textContent).toContain("31 min per day");
 
     // leaving Time hides the window toggle and brings the pass-rate view back
     fireEvent.click(screen.getAllByRole("button", { name: "NIPUN grade 3 proxy" })[0]);
@@ -599,7 +628,7 @@ describe("TeacherDashboard — Time metric", () => {
     expect(screen.getByTestId("most-improved")).toBeDefined();
   });
 
-  it("class view: each student's total and minutes per day, no ▲/▼; the student pop-up's Time chart plots active minutes per day", async () => {
+  it("class view: each student's total (no minutes per day), no ▲/▼; the student pop-up's Time chart plots active minutes per day", async () => {
     const { fn, calls } = makeFetch({ scoresById: { "g-sch": SCORES_SCHOOL, "t-1": SCORES_CLASS }, timeById: { "t-1": "class" } });
     vi.stubGlobal("fetch", vi.fn(fn));
     render(<TeacherDashboard profile={PROFILE_SCHOOL} incompleteStates={[]} />);
@@ -610,15 +639,18 @@ describe("TeacherDashboard — Time metric", () => {
     fireEvent.click(screen.getByRole("button", { name: "Last seven days" }));
     await waitFor(() => expect(screen.getAllByTestId("student-tile")[0].textContent).toContain("84 min"));
     const tiles = screen.getAllByTestId("student-tile");
-    // 12 min per day → green; 0.4 min per day → amber
-    expect(tiles[0].textContent).toContain("12 min per day");
+    // coloured by minutes per day (12 → green; 0.4 → amber) but the figure is the total, captioned by the window
+    expect(tiles[0].textContent).not.toContain("per day");
+    expect(tiles[0].textContent).toContain("last seven days");
     expect((tiles[0] as HTMLElement).style.background).toBe("rgb(22, 163, 74)");
     expect(tiles[1].textContent).toContain("3 min");
-    expect(tiles[1].textContent).toContain("0.4 min per day");
     expect((tiles[1] as HTMLElement).style.background).toBe("rgb(245, 158, 11)");
     for (const tile of tiles) expect(tile.textContent).not.toMatch(/[▲▼→]/);
-    expect(screen.getByTestId("bar-strip").textContent).toContain("min per day · last seven days");
-    expect(screen.queryByTestId("most-improved")).toBeNull();
+    expect(screen.getByTestId("bar-strip").textContent).toContain("minutes · last seven days");
+    // the class ranks its own students: only the rise counts as improved; top by total minutes
+    expect(screen.getByTestId("most-improved").querySelectorAll("g[data-id]").length).toBe(1);
+    expect(screen.getByTestId("most-improved").textContent).toContain("+5.0 min");
+    expect(screen.getByTestId("top-performing").querySelectorAll("g[data-id]").length).toBe(2);
 
     // all time: 119 minutes stays in minutes, 120 becomes hours
     fireEvent.click(within(screen.getAllByTestId("time-window-toggle")[0]).getByRole("button", { name: "All time" }));

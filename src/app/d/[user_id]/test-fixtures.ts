@@ -66,6 +66,11 @@ export const SCORES: ScoresResponse = {
   child_type: "state",
   children: [CHILD_UP, CHILD_AP],
   most_improved: [CHILD_UP],
+  // one faint line per state on the trend
+  children_series: [
+    { id: CHILD_UP.id, points: [{ date: "2026-09-08", value: 80 }, { date: "2026-09-10", value: 82 }] },
+    { id: CHILD_AP.id, points: [{ date: "2026-09-09", value: 60 }, { date: "2026-09-10", value: 58 }] },
+  ],
 };
 
 export const EMPTY_SCORES: ScoresResponse = {
@@ -81,6 +86,20 @@ export const EMPTY_SCORES: ScoresResponse = {
 };
 
 export const SPOTLIGHT: SpotlightResponse = { top: { child: CHILD_UP, official: CHILD_UP.official }, most_improved: null };
+
+// A block official (BEO): the page opens on their DISTRICT, among the peer blocks.
+export const PROFILE_BLOCK: PublicProfile = {
+  ...PROFILE,
+  id: "u-beo",
+  name: "Meena",
+  role_title: "BEO",
+  geo_entity: { id: "g-0901-01", type: "block", code: "090101", name: "KAKORI", has_boundary: false, lat: null, lng: null },
+  ancestors: [
+    { id: "g-in", type: "country", code: "IN", name: "India" },
+    { id: "g-09", type: "state", code: "09", name: "UTTAR PRADESH" },
+    { id: "g-0901", type: "district", code: "0901", name: "LUCKNOW" },
+  ],
+};
 
 // School level: a teacher whose entity is a school; children are students.
 export const PROFILE_SCHOOL: PublicProfile = {
@@ -245,12 +264,14 @@ export function timeScores(window: TimeWindow): ScoresResponse {
     ...SCORES,
     metric: "usage",
     window,
-    root: { ...SCORES.root, delta: null, ...tf(w.root) },
+    root: { ...SCORES.root, delta: 2, ...tf(w.root) },
+    // deltas = minutes vs the window before; only a rise ranks as most improved
     children: [
-      { ...CHILD_UP, delta: null, bin: "high", ...tf(w.up) },
-      { ...CHILD_AP, delta: null, bin: "mid", ...tf(w.ap) },
+      { ...CHILD_UP, delta: 7, bin: "high", ...tf(w.up) },
+      { ...CHILD_AP, delta: -2, bin: "mid", ...tf(w.ap) },
     ],
-    most_improved: [],
+    most_improved: [{ ...CHILD_UP, delta: 7, bin: "high", ...tf(w.up) }],
+    time_delta_days: window === "yesterday" ? 1 : 7,
   };
 }
 
@@ -260,11 +281,12 @@ export function timeScoresClass(window: TimeWindow): ScoresResponse {
     ...SCORES_CLASS,
     metric: "usage",
     window,
-    root: { ...SCORES_CLASS.root, delta: null, ...tf(w.root) },
+    root: { ...SCORES_CLASS.root, delta: 3, ...tf(w.root) },
     children: [
-      { ...STUDENTS[0], score: w.s1[0], delta: null, ...tf(w.s1) },
-      { ...STUDENTS[1], score: w.s2[0], delta: null, ...tf(w.s2) },
+      { ...STUDENTS[0], score: w.s1[0], delta: 5, ...tf(w.s1) },
+      { ...STUDENTS[1], score: w.s2[0], delta: -2, ...tf(w.s2) },
     ],
+    time_delta_days: window === "yesterday" ? 1 : 7,
   };
 }
 
