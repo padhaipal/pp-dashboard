@@ -194,6 +194,13 @@ export type ScoresResponse = {
   root: RootStats;
   series: SeriesPoint[];
   students_series?: StudentSeries[];
+  // Geo and school levels: one faint line per child (an area, or a
+  // teacher's class) on the trend chart.
+  children_series?: { id: string; points: { date: string; value: number | null }[] }[];
+  // Time mode: `delta` on root / children / students = minutes vs the window
+  // before (1 = yesterday vs the day before, 7 = the last seven days vs the
+  // seven before — all time compares the last seven days too).
+  time_delta_days?: 1 | 7;
   child_type: ChildType;
   children: Child[] | StudentChild[];
   most_improved: Child[];
@@ -394,3 +401,5 @@ export function displayName(name: string, type: GeoType | "teacher" | "student")
 }
 export const EMPTY_ROOT_TEXT = "No results yet — share your link to get started.";
 export const INACTIVE_LINK_TEXT = "This link is not active";
+// Caption for a Time-mode delta.
+export const timeDeltaSuffix = (days: 1 | 7 | undefined, t: (s: string) => string = (s) => s) => (days === 1 ? t("vs the day before") : t("vs the previous 7 days"));

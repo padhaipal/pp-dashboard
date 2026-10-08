@@ -17,6 +17,10 @@ export type BarItem = {
   color: string;
 };
 
+// Children without any engagement are grey stubs; past this many they only
+// pad the strip, so the rest are dropped (the count still says how many).
+export const MAX_GREY = 10;
+
 export function BarStrip({
   items,
   max = 100,
@@ -37,7 +41,9 @@ export function BarStrip({
   t?: T;
 }) {
   const [localHover, setLocalHover] = useState<string | null>(null);
-  const bars = [...items].sort((a, b) => (b.value ?? -1) - (a.value ?? -1));
+  // Ranked by value; at most MAX_GREY of the grey (no engagement) stubs.
+  let grey = 0;
+  const bars = [...items].sort((a, b) => (b.value ?? -1) - (a.value ?? -1)).filter((b) => b.value != null || grey++ < MAX_GREY);
   const hovIdx = hoverId != null ? bars.findIndex((b) => b.id === hoverId) : -1;
   const hov = hovIdx >= 0 ? bars[hovIdx] : null;
   const showCard = hov && localHover === hov.id; // only for a hover that started on a bar
@@ -54,7 +60,7 @@ export function BarStrip({
     >
       <div className="flex items-center justify-between px-3 py-1 text-[11px] text-zinc-500">
         <span>
-          {bars.length} · {hint}
+          {items.length} · {hint}
         </span>
         <span className="text-zinc-400">{t("hover a bar for details")}</span>
       </div>
