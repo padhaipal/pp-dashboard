@@ -4,13 +4,26 @@ import { TeacherDashboard } from "./teacher-dashboard";
 import { RepTrend } from "./report-card-modal";
 import { MvpMinutesChart } from "./mvp-widgets";
 import { EMPTY_ROOT_TEXT, INCOMPLETE_TOOLTIP } from "./dashboard-types";
-import { CHILD_UP, EMPTY_SCORES, MEDIA_MASKED, PROFILE, PROFILE_BLOCK, PROFILE_SCHOOL, SCORES, SCORES_CLASS, SCORES_CLASS_MASKED, SCORES_SCHOOL, SCORES_UP, makeFetch } from "./test-fixtures";
+import { CHILD_AP, CHILD_UP, EMPTY_SCORES, MEDIA_MASKED, PROFILE, PROFILE_BLOCK, PROFILE_SCHOOL, SCORES, SCORES_CLASS, SCORES_CLASS_MASKED, SCORES_SCHOOL, SCORES_UP, makeFetch } from "./test-fixtures";
 
 const pressed = (name: string) => screen.getAllByRole("button", { name }).map((b) => b.getAttribute("aria-pressed"));
 // The page opens on Time; tests about the test-score metrics pick one first.
 const pickNipunG3 = async () => {
   fireEvent.click((await screen.findAllByRole("button", { name: "NIPUN grade 3 proxy" }))[0]);
   await waitFor(() => expect(screen.getByTestId("rep-meta").textContent).toContain("Latest NIPUN grade 3 proxy"));
+};
+
+// The home level is for ranking against peers: no headline figures until a
+// drill. Tests that check the figures drill into UP first (answered with the
+// same fixture).
+const drillIntoUp = async () => {
+  const up = await waitFor(() => {
+    const el = document.querySelector('path[data-code="09"]');
+    if (!el) throw new Error("not drawn yet");
+    return el;
+  });
+  fireEvent.dblClick(up);
+  await waitFor(() => expect(screen.getByTestId("location-title").textContent).toContain("Uttar Pradesh"));
 };
 
 describe("TeacherDashboard", () => {
@@ -43,10 +56,14 @@ describe("TeacherDashboard", () => {
   });
 
   it("renders mvp2's headline cards (average metric + using count, both on the red/amber/green scale) and the report sections", async () => {
-    const { fn } = makeFetch();
+    const { fn } = makeFetch({ scoresById: { "g-09": SCORES } });
     vi.stubGlobal("fetch", vi.fn(fn));
     render(<TeacherDashboard profile={PROFILE} incompleteStates={[]} />);
     await pickNipunG3();
+    // no headline figures at the home level
+    await screen.findByTestId("map-card");
+    expect(screen.queryByTestId("root-kpis")).toBeNull();
+    await drillIntoUp();
 
     const kpis = await screen.findByTestId("root-kpis");
     expect(kpis.textContent).toContain("72%");
@@ -138,13 +155,21 @@ describe("TeacherDashboard", () => {
   });
 
   it("a block official opens on their district — every block ranked, their own selected — with no level above; the title is not doubled", async () => {
-    const { fn, calls } = makeFetch({ scoresById: { "g-0901": { ...SCORES, entity: { id: "g-0901", type: "district", code: "0901", name: "LUCKNOW", has_boundary: true, lat: null, lng: null }, child_type: "block" } } });
+    const own = { ...CHILD_UP, id: "g-0901-01", code: "090101", name: "KAKORI" };
+    const { fn, calls } = makeFetch({
+      scoresById: { "g-0901": { ...SCORES, entity: { id: "g-0901", type: "district", code: "0901", name: "LUCKNOW", has_boundary: true, lat: null, lng: null }, child_type: "block", children: [own, CHILD_AP], most_improved: [own] } },
+    });
     vi.stubGlobal("fetch", vi.fn(fn));
     render(<TeacherDashboard profile={PROFILE_BLOCK} incompleteStates={[]} />);
     await waitFor(() => expect(calls.some((u) => u.startsWith("/api/proxy/geo-entities/g-0901/scores?"))).toBe(true));
     expect(calls.some((u) => u.includes("/geo-entities/g-0901-01/"))).toBe(false);
-    await screen.findByTestId("root-kpis");
+    await screen.findByTestId("map-card");
+    expect(screen.queryByTestId("root-kpis")).toBeNull();
     expect(screen.getByTestId("location-title").textContent).toBe("Lucknow  -  Uttar Pradesh  -  India");
+    // their own block is tagged "You" on its bar and outlined on the strip
+    const ownBar = await screen.findByTestId("own-bar-tag");
+    expect(ownBar.textContent).toBe("You");
+    expect(ownBar.parentElement?.getAttribute("data-own")).toBe("1");
     expect((screen.getByRole("button", { name: "Up a level" }) as HTMLButtonElement).disabled).toBe(true);
   });
 
@@ -261,8 +286,9 @@ describe("TeacherDashboard", () => {
     expect(cards[0].textContent).toContain("+2.0% last 30 days");
     // teachers get their referral link right under the map card + bar strip (officials never do — see the country test)
     const shareBar = screen.getByTestId("share-bar");
-    expect(shareBar.previousElementSibling?.getAttribute("data-testid")).toBe("bar-strip-wrap");
-    expect(shareBar.previousElementSibling?.previousElementSibling?.getAttribute("data-testid")).toBe("map-card");
+    // the bar strip sits ABOVE the map card (2026-10)
+    expect(shareBar.previousElementSibling?.getAttribute("data-testid")).toBe("map-card");
+    expect(shareBar.previousElementSibling?.previousElementSibling?.getAttribute("data-testid")).toBe("bar-strip-wrap");
     // one bar per teacher under the map; hovering it marks the bar hot and shows the card
     const teacherBars = document.querySelectorAll('[data-testid="bar-strip"] [data-testid="bar"]');
     expect(teacherBars).toHaveLength(1);
@@ -282,10 +308,9 @@ describe("TeacherDashboard", () => {
     const segs = screen.getByTestId("location-title").querySelectorAll("span");
     expect(segs[0].className).toContain("text-zinc-900");
     expect(segs[1].className).toContain("text-zinc-400");
-    // one headline card only at school level
-    const kpis = screen.getByTestId("root-kpis");
-    expect(kpis.textContent).toContain("75%");
-    expect(kpis.textContent).not.toContain("using Lifteracy");
+    // no headline figures at the home level; Tom (u-sch) has no card in this fixture, so no "You" tag
+    expect(screen.queryByTestId("root-kpis")).toBeNull();
+    expect(screen.queryByTestId("own-card-tag")).toBeNull();
     expect(screen.getByText("Teacher Detail", { selector: "div" })).toBeDefined();
     expect(screen.getByText("Teacher Performance", { selector: "div" })).toBeDefined();
     expect(screen.getByText("Teacher Spotlight", { selector: "div" })).toBeDefined();
@@ -505,7 +530,7 @@ describe("TeacherDashboard", () => {
     expect(container.querySelector('circle[data-id="g-s1"]')).not.toBeNull();
     expect(container.querySelector('rect[data-id="g-s1"]')).toBeNull();
     // grey dot first in document order, coloured dots after it (on top)
-    const order = [...container.querySelectorAll("[data-id]")].map((el) => el.getAttribute("data-id"));
+    const order = [...container.querySelectorAll('[data-testid="geo-map"] [data-id]')].map((el) => el.getAttribute("data-id"));
     expect(order).toContain("g-s0");
     expect(order.indexOf("g-s0")).toBeLessThan(order.indexOf("g-s1"));
     expect(order.indexOf("g-s0")).toBeLessThan(order.indexOf("g-s2"));
@@ -562,12 +587,13 @@ describe("TeacherDashboard — Time metric", () => {
   });
 
   it("'Time' reveals the window toggle (default: all time) and shows totals only, coloured by the per-day average; no change arrows; most improved = rise in minutes", async () => {
-    const { fn, calls } = makeFetch({ timeById: { "g-in": "geo" } });
+    const { fn, calls } = makeFetch({ timeById: { "g-in": "geo", "g-09": "geo" }, scoresById: { "g-09": SCORES } });
     vi.stubGlobal("fetch", vi.fn(fn));
     render(<TeacherDashboard profile={PROFILE} incompleteStates={[]} />);
 
     // the usage metric is called "Time", and it is what the page opens on (fresh load / refresh)
-    await screen.findByTestId("root-kpis");
+    await screen.findByTestId("map-card");
+    await drillIntoUp();
     expect(screen.queryByRole("button", { name: "Daily usage (5+ min)" })).toBeNull();
     expect(pressed("Time")).toEqual(["true", "true"]);
     expect(screen.getAllByTestId("time-window-toggle")).toHaveLength(1);
@@ -592,17 +618,18 @@ describe("TeacherDashboard — Time metric", () => {
     expect(screen.queryByText("Loading your dashboard…")).toBeNull();
     expect(document.querySelector('#rep-perf [data-testid="time-window-toggle"]')).toBeNull();
     expect(screen.queryByRole("button", { name: /week/i })).toBeNull();
-    await waitFor(() => expect(calls).toContain("/api/proxy/geo-entities/g-in/scores?metric=usage&range=30&window=7d&viewer=u1"));
-    expect(calls).toContain("/api/proxy/geo-entities/g-in/spotlight?metric=usage&range=30&window=7d&viewer=u1");
+    await waitFor(() => expect(calls).toContain("/api/proxy/geo-entities/g-09/scores?metric=usage&range=30&window=7d&viewer=u1"));
+    expect(calls).toContain("/api/proxy/geo-entities/g-09/spotlight?metric=usage&range=30&window=7d&viewer=u1");
 
     // headline: the total per student only (no minutes per day), coloured by the per-day average (5.4 → green)
     await waitFor(() => expect(screen.getByTestId("root-kpis").textContent).toContain("38 min"));
     const kpis = screen.getByTestId("root-kpis");
     expect(kpis.textContent).not.toContain("per day");
-    expect(kpis.textContent).toContain("average time per student · last seven days");
+    expect(kpis.textContent).toContain("total time · last seven days");
     expect(kpis.textContent).not.toContain("72%");
     expect(screen.queryByTestId("kpi-per-day")).toBeNull();
-    expect((screen.getByText("average time per student · last seven days").previousElementSibling as HTMLElement).style.color).toBe("rgb(22, 163, 74)");
+    // 38 min per student in seven days clears the 35-minute mark → green
+    expect((screen.getByText("total time · last seven days").previousElementSibling as HTMLElement).style.color).toBe("rgb(22, 163, 74)");
 
     // detail card: the top state's total, no per-day figure, no trend arrow
     const meta = screen.getByTestId("rep-meta");
@@ -623,22 +650,25 @@ describe("TeacherDashboard — Time metric", () => {
 
     // map: areas coloured by minutes per day (7 → green, 2 → amber), legend in minutes
     const map = screen.getByTestId("geo-map");
-    expect(map.textContent).toContain("more than 5 min per day");
-    expect(map.textContent).toContain("up to 5 min per day");
+    // legend marks fit the window (last seven days: 35 / 10 min)
+    expect(map.textContent).toContain("35 min+");
+    expect(map.textContent).toContain("10 min – 35 min");
+    expect(map.textContent).toContain("under 10 min");
     expect(map.textContent).not.toContain("≥80");
 
-    // bars: total minutes per student
-    expect(screen.getByTestId("bar-strip").textContent).toContain("minutes per student · last seven days");
+    // bars: total minutes
+    expect(screen.getByTestId("bar-strip").textContent).toContain("states · minutes · last seven days");
 
     // the CSV export follows the window
-    expect(screen.getByTestId("csv-link").getAttribute("href")).toBe("/api/proxy/geo-entities/g-in/scores.csv?metric=usage&range=30&window=7d&viewer=u1");
+    expect(screen.getByTestId("csv-link").getAttribute("href")).toBe("/api/proxy/geo-entities/g-09/scores.csv?metric=usage&range=30&window=7d&viewer=u1");
 
     // Yesterday: refetch, new figures (4 min per day → amber)
     fireEvent.click(screen.getByRole("button", { name: "Yesterday" }));
-    await waitFor(() => expect(calls).toContain("/api/proxy/geo-entities/g-in/scores?metric=usage&range=30&window=yesterday&viewer=u1"));
-    await waitFor(() => expect(screen.getByTestId("root-kpis").textContent).toContain("average time per student · yesterday"));
+    await waitFor(() => expect(calls).toContain("/api/proxy/geo-entities/g-09/scores?metric=usage&range=30&window=yesterday&viewer=u1"));
+    await waitFor(() => expect(screen.getByTestId("root-kpis").textContent).toContain("total time · yesterday"));
     expect(screen.getByTestId("root-kpis").textContent).toContain("4 min");
-    expect((screen.getByText("average time per student · yesterday").previousElementSibling as HTMLElement).style.color).toBe("rgb(245, 158, 11)");
+    // 4 minutes yesterday: some time, under the 5-minute mark → amber
+    expect((screen.getByText("total time · yesterday").previousElementSibling as HTMLElement).style.color).toBe("rgb(245, 158, 11)");
     expect(pressed("Yesterday")).toEqual(["true"]);
     expect(screen.getByTestId("most-improved").textContent).toContain("vs the day before");
 
@@ -666,12 +696,12 @@ describe("TeacherDashboard — Time metric", () => {
     fireEvent.click(screen.getByRole("button", { name: "Last seven days" }));
     await waitFor(() => expect(screen.getAllByTestId("student-tile")[0].textContent).toContain("84 min"));
     const tiles = screen.getAllByTestId("student-tile");
-    // coloured by minutes per day (12 → green; 0.4 → amber) but the figure is the total, captioned by the window
+    // coloured by the window's marks (last seven days: 84 min ≥ 35 → green; 3 min < 10 → red); the figure is the total, captioned by the window
     expect(tiles[0].textContent).not.toContain("per day");
     expect(tiles[0].textContent).toContain("last seven days");
     expect((tiles[0] as HTMLElement).style.background).toBe("rgb(22, 163, 74)");
     expect(tiles[1].textContent).toContain("3 min");
-    expect((tiles[1] as HTMLElement).style.background).toBe("rgb(245, 158, 11)");
+    expect((tiles[1] as HTMLElement).style.background).toBe("rgb(220, 38, 38)");
     for (const tile of tiles) expect(tile.textContent).not.toMatch(/[▲▼→]/);
     expect(screen.getByTestId("bar-strip").textContent).toContain("minutes · last seven days");
     // the class ranks its own students: only the rise counts as improved; top by total minutes
@@ -701,12 +731,13 @@ describe("TeacherDashboard — Time metric", () => {
 
   it("a pp-sketch without Time windows (no window echoed): falls back to the 5+ min yesterday share", async () => {
     // no timeById → the usage request gets a plain response without time fields
-    const { fn, calls } = makeFetch();
+    const { fn, calls } = makeFetch({ scoresById: { "g-09": SCORES } });
     vi.stubGlobal("fetch", vi.fn(fn));
     render(<TeacherDashboard profile={PROFILE} incompleteStates={[]} />);
-    await screen.findByTestId("root-kpis");
+    await screen.findByTestId("map-card");
+    await drillIntoUp();
     fireEvent.click(screen.getAllByRole("button", { name: "Time" })[0]);
-    await waitFor(() => expect(calls).toContain("/api/proxy/geo-entities/g-in/scores?metric=usage&range=30&window=all&viewer=u1"));
+    await waitFor(() => expect(calls).toContain("/api/proxy/geo-entities/g-09/scores?metric=usage&range=30&window=all&viewer=u1"));
     await waitFor(() => expect(screen.getByTestId("root-kpis").textContent).toContain("of students pass the Time · 5+ min yesterday"));
     expect(screen.getByTestId("root-kpis").textContent).toContain("72%");
     expect(screen.queryByTestId("kpi-per-day")).toBeNull();

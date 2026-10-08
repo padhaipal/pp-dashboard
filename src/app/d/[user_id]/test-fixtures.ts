@@ -256,7 +256,8 @@ const TIME_BY_WINDOW: Record<TimeWindow, { root: [number, number, number]; up: [
   "7d": { root: [38, 5.4, 7], up: [49, 7, 7], ap: [14, 2, 7], s1: [84, 12, 7], s2: [3, 0.4, 7] },
   all: { root: [150, 3.1, 48], up: [1500, 31.3, 48], ap: [120, 2.5, 48], s1: [119, 2.5, 48], s2: [120, 2.5, 48] },
 };
-const tf = ([time_total, time_per_day, time_days]: [number, number, number]) => ({ time_total, time_per_day, time_days });
+// time_sum (the total over every student) = time_total in these fixtures, so the figures asserted stay the same
+const tf = ([time_total, time_per_day, time_days]: [number, number, number]) => ({ time_total, time_per_day, time_days, time_sum: time_total });
 
 export function timeScores(window: TimeWindow): ScoresResponse {
   const w = TIME_BY_WINDOW[window];

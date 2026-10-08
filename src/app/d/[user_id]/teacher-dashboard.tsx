@@ -37,9 +37,9 @@ import {
   isTimeMode,
   ageBandOf,
   METRIC_BY,
-  timeColor,
   timeDeltaSuffix,
-  timeFill,
+  windowColor,
+  windowFill,
   timeWindowSuffix,
   type TimeWindow,
   usageColor,
@@ -287,15 +287,15 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
               sub: studentSub(s, t),
               value: s.time_total ?? null,
               display: fmtDuration(s.time_total, t),
-              color: timeColor(s.time_per_day),
+              color: windowColor(s.time_total, timeWindow),
             }))
           : geoChildren.map((c) => ({
               id: c.id,
               name: c.name,
               sub: c.official?.name ? `${c.official.role_title ?? t(CHILD_OFFICER[c.type as keyof typeof CHILD_OFFICER] ?? "")} · ${c.official.name}` : "",
-              value: c.using_lifteracy ? (c.time_total ?? null) : null,
-              display: c.using_lifteracy ? fmtDuration(c.time_total, t) : t("Not using Lifteracy"),
-              color: timeFill(c),
+              value: c.using_lifteracy ? (c.time_sum ?? null) : null,
+              display: c.using_lifteracy ? fmtDuration(c.time_sum, t) : t("Not using Lifteracy"),
+              color: windowFill(c, timeWindow),
             }))
         : inClass
         ? students.map((s) => {
@@ -317,10 +317,10 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
             display: c.using_lifteracy ? fmtPctInt(c.pass_rate) : t("Not using Lifteracy"),
             color: binColor(c.bin),
           })),
-    [inClass, students, geoChildren, isUsageMetric, timeMode, t],
+    [inClass, students, geoChildren, isUsageMetric, timeMode, timeWindow, t],
   );
   const barMax = timeMode
-    ? Math.max(10, Math.ceil(Math.max(0, ...(inClass ? students : geoChildren).map((x) => x.time_total ?? 0)) / 10) * 10)
+    ? Math.max(10, Math.ceil(Math.max(0, ...(inClass ? students.map((s) => s.time_total ?? 0) : geoChildren.map((c) => c.time_sum ?? 0))) / 10) * 10)
     : inClass && isUsageMetric
       ? Math.max(30, Math.ceil(Math.max(0, ...students.map((s) => s.score ?? 0)) / 10) * 10)
       : 100;
@@ -347,7 +347,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
           name: withPhone(s.name ?? UNNAMED, s.phone),
           delta: timeMode ? (s.time_total ?? null) : isUsageMetric ? s.score : s.score == null ? null : s.score * 100,
         }))
-      : geoChildren.map((c) => ({ id: c.id, name: c.name, delta: c.using_lifteracy ? (timeMode ? (c.time_total ?? null) : c.pass_rate) : null }));
+      : geoChildren.map((c) => ({ id: c.id, name: c.name, delta: c.using_lifteracy ? (timeMode ? (c.time_sum ?? null) : c.pass_rate) : null }));
     return rows
       .filter((r) => r.delta != null)
       .sort((a, b) => (b.delta ?? 0) - (a.delta ?? 0))
@@ -388,6 +388,9 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
       if (c) drill(c);
     }
   };
+  // The viewer's own entity, highlighted among its peers at the home level
+  // only (a teacher's "entity" among the school's teachers is their user id).
+  const ownId = stack.length === 1 && profile.geo_entity ? (profile.geo_entity.type === "school" ? profile.id : profile.geo_entity.id) : null;
   const closeModal = useCallback(() => setModal(null), []);
   const closeReport = useCallback(() => setReportOpen(false), []);
 
@@ -463,7 +466,8 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                   {t(EMPTY_ROOT_TEXT)}
                 </div>
               )}
-              {scores && !emptyRoot && (
+              {/* the headline figures only after a drill: the home level is for ranking against peers */}
+              {scores && !emptyRoot && stack.length > 1 && (
                 <RepKpis
                   root={scores.root}
                   metricLabel={metricLabel}
@@ -478,16 +482,54 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
               )}
             </div>
 
+            {/* bars: every child ranked — ABOVE the map (2026-10) */}
+            {scores && !emptyRoot && barItems.length > 0 && (
+              <div className="mx-auto mt-6 shrink-0" style={{ width: "min(calc(100% - 3rem), 69rem)" }} data-testid="bar-strip-wrap">
+                <BarStrip
+                  items={barItems}
+                  max={barMax}
+                  hoverId={hoverId}
+                  setHoverId={setHoverId}
+                  selId={selId}
+                  onClick={(b) => {
+                    if (inClass) {
+                      const st = students.find((x) => x.student_id === b.id);
+                      if (st) openStudent(st);
+                    } else {
+                      const c = geoChildren.find((x) => x.id === b.id);
+                      if (c) select(c);
+                    }
+                  }}
+                  onDoubleClick={(b) => {
+                    if (inClass) return;
+                    const c = geoChildren.find((x) => x.id === b.id);
+                    if (c) drill(c);
+                  }}
+                  ownId={ownId}
+                  hint={`${t(inClass ? "students" : nounP)} · ${
+                    timeMode
+                      ? `${t("minutes")} · ${timeSuffix}`
+                      : isUsageMetric
+                        ? inClass
+                          ? t("min yesterday")
+                          : t("5+ min yesterday")
+                        : t(METRIC_BY[metric].short)
+                  } · ${t("click a bar to select")}`}
+                  t={t}
+                />
+              </div>
+            )}
+
             {/* map card: the map (geo levels), teacher cards (school) or student tiles (class), + the up-a-level button */}
             <div
-              className="relative mx-auto mt-6 h-[460px] shrink-0 overflow-hidden rounded-t-2xl border border-zinc-200 bg-[#eaf0f6] shadow-sm"
+              className="relative mx-auto h-[460px] shrink-0 overflow-hidden rounded-b-2xl border border-zinc-200 bg-[#eaf0f6] shadow-sm"
               style={{ width: "min(calc(100% - 3rem), 69rem)" }}
               data-testid="map-card"
             >
               {entity.type === "school" ? (
-                scores && <TeacherCards teachers={geoChildren} metric={metric} range={range} time={timeMode} timeCaption={timeSuffix} selId={selId} onSelect={select} onDrill={drill} onClear={() => setSelId(null)} onUp={up} t={t} />
+                scores && <TeacherCards teachers={geoChildren} metric={metric} range={range} time={timeMode} timeWindow={timeWindow} timeCaption={timeSuffix} selId={selId} ownId={ownId} onSelect={select} onDrill={drill} onClear={() => setSelId(null)} onUp={up} t={t} />
               ) : entity.type === "teacher" ? (
-                scores && <StudentTiles students={students} metric={metric} time={timeMode} timeCaption={timeSuffix} onOpen={openStudent} onRename={renameStudent} onUp={up} t={t}
+                scores && <StudentTiles students={students} metric={metric} time={timeMode} timeWindow={timeWindow} timeCaption={timeSuffix} onOpen={openStudent} onRename={renameStudent} onUp={up} t={t}
                     hoverId={hoverId}
                     setHoverId={setHoverId}
                   />
@@ -503,6 +545,8 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                   onSelect={select}
                   onDrill={drill}
                   onUp={up}
+                  ownId={ownId}
+                  timeWindow={timeWindow}
                   metricLabel={metricLabel}
                   time={timeMode}
                   t={t}
@@ -529,42 +573,6 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
               </div>
             </div>
 
-            {scores && !emptyRoot && barItems.length > 0 && (
-              <div className="mx-auto shrink-0" style={{ width: "min(calc(100% - 3rem), 69rem)" }} data-testid="bar-strip-wrap">
-                <BarStrip
-                  items={barItems}
-                  max={barMax}
-                  hoverId={hoverId}
-                  setHoverId={setHoverId}
-                  selId={selId}
-                  onClick={(b) => {
-                    if (inClass) {
-                      const st = students.find((x) => x.student_id === b.id);
-                      if (st) openStudent(st);
-                    } else {
-                      const c = geoChildren.find((x) => x.id === b.id);
-                      if (c) select(c);
-                    }
-                  }}
-                  onDoubleClick={(b) => {
-                    if (inClass) return;
-                    const c = geoChildren.find((x) => x.id === b.id);
-                    if (c) drill(c);
-                  }}
-                  hint={`${t(inClass ? "students" : nounP)} · ${
-                    timeMode
-                      ? `${t(inClass ? "minutes" : "minutes per student")} · ${timeSuffix}`
-                      : isUsageMetric
-                        ? inClass
-                          ? t("min yesterday")
-                          : t("5+ min yesterday")
-                        : t(METRIC_BY[metric].short)
-                  } · ${t("click a bar to select")}`}
-                  t={t}
-                />
-              </div>
-            )}
-
             {/* teachers only: the referral link parents use to enrol under this teacher, right below the map card */}
             {profile.geo_entity?.type === "school" && <MvpShareBar shareLink={profile.share_link} t={t} />}
 
@@ -583,7 +591,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                         onDoubleClick={() => detailChild && drill(detailChild)}
                         onClick={() => detailChild && openChild(detailChild)}
                       >
-                        <RepMeta child={detailChild} metricLabel={metricLabel} officer={officer} range={range} time={timeMode} t={t} />
+                        <RepMeta child={detailChild} metricLabel={metricLabel} officer={officer} range={range} time={timeMode} timeWindow={timeWindow} t={t} />
                       </div>
                     </div>
                   </section>
@@ -600,18 +608,6 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                       <MvpMetricToggle metric={pickedMetric} setMetric={setMetric} t={t} />
                     </div>
                     <div className={CARD + " space-y-6"}>
-                      {/* headline share of areas not on Lifteracy at all — hidden at school/class level */}
-                      {childType !== "teacher" && !inClass && (
-                        <div className="text-center text-base font-medium text-zinc-700">
-                          <span className="text-xl font-extrabold tabular-nums text-red-600">
-                            {Math.round(((geoChildren.length - usingN) / Math.max(1, geoChildren.length)) * 100)}%
-                          </span>{" "}
-                          {t("of")} {t(nounP)} {t("in")} {t(displayName(entity.name, entity.type))} {t("are not using Lifteracy at all")}
-                          <span className="ml-1 text-zinc-400">
-                            ({geoChildren.length - usingN} {t("of")} {geoChildren.length})
-                          </span>
-                        </div>
-                      )}
                       <div>
                         <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
                           <div className="text-base font-semibold text-zinc-800">
@@ -622,7 +618,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                         </div>
                         <RepTrend
                           series={scores.series}
-                          label={isUsageMetric ? t("Minutes per student") : t(METRIC_BY[metric].short)}
+                          label={isUsageMetric ? t("Total minutes") : t(METRIC_BY[metric].short)}
                           metric={metric}
                           passMark={scores.pass_mark}
                           students={
@@ -724,7 +720,7 @@ function HoverLabel({ child, time = false, t }: { child: Child | null; time?: bo
       · {child.name}
       {child.using_lifteracy
         ? time
-          ? ` — ${fmtDuration(child.time_total, t)}`
+          ? ` — ${fmtDuration(child.time_sum, t)}`
           : ` — ${fmtPct(child.pass_rate)} (${fmtDelta(child.delta)})`
         : ` — ${t("not using Lifteracy")}`}
     </span>
@@ -739,7 +735,9 @@ function TeacherCards({
   metric,
   range,
   time,
+  timeWindow,
   timeCaption,
+  ownId = null,
   selId,
   onSelect,
   onDrill,
@@ -753,8 +751,11 @@ function TeacherCards({
   // Time mode: the class's active time per student over the window
   // (`timeCaption` names it), coloured by the per-day average; no trend arrow.
   time: boolean;
+  timeWindow?: TimeWindow;
   timeCaption?: string;
   selId: string | null;
+  // the viewer's own card (a teacher among the school's teachers)
+  ownId?: string | null;
   onSelect: (c: Child) => void;
   onDrill: (c: Child) => void;
   onClear: () => void;
@@ -768,14 +769,16 @@ function TeacherCards({
       <div className="mx-auto flex max-w-3xl flex-col gap-3">
         {!teachers.length && <p className="py-10 text-center text-sm text-zinc-400">{t("No teachers yet.")}</p>}
         {teachers.map((c) => {
-          const col = time ? timeColor(c.time_per_day) : nipColor(c.pass_rate);
-          const big = time ? fmtDuration(c.time_total, t) : fmtPctInt(c.pass_rate);
+          const col = time ? windowColor(c.time_total, timeWindow) : nipColor(c.pass_rate);
+          const big = time ? fmtDuration(c.time_sum, t) : fmtPctInt(c.pass_rate);
+          const own = ownId === c.id;
           const caption = time ? (timeCaption ?? "") : metric === "usage" ? t("5+ min yesterday") : short;
           const on = selId === c.id;
           return (
             <div
               key={c.id}
-              className={"flex cursor-pointer items-center gap-3 rounded-xl px-3 py-3 shadow-sm transition hover:shadow-md sm:gap-4 sm:px-5 sm:py-4" + (on ? " ring-2 ring-blue-500" : "")}
+              className={"relative flex cursor-pointer items-center gap-3 rounded-xl px-3 py-3 shadow-sm transition hover:shadow-md sm:gap-4 sm:px-5 sm:py-4" + (own ? " ring-4 ring-blue-600" : on ? " ring-2 ring-blue-500" : "")}
+              data-own={own ? "1" : undefined}
               style={{ background: col + "1f", border: "1px solid " + col + "55" }}
               title="Double-click for this teacher's class"
               onClick={(e) => {
@@ -788,6 +791,11 @@ function TeacherCards({
               }}
               data-testid="teacher-card"
             >
+              {own && (
+                <span className="absolute -top-2.5 left-4 rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow" data-testid="own-card-tag">
+                  {t("You")}
+                </span>
+              )}
               <AvatarImg seed={c.official?.avatar_seed ?? c.id} size={64} className="h-12 w-12 sm:h-16 sm:w-16" ring={col} />
               <div className="min-w-0 flex-1">
                 <div className="truncate text-[15px] font-bold leading-tight text-zinc-900 sm:text-lg">{c.name}</div>
@@ -826,6 +834,7 @@ function StudentTiles({
   students,
   metric,
   time,
+  timeWindow,
   timeCaption,
   onOpen,
   onRename,
@@ -836,6 +845,7 @@ function StudentTiles({
 }: {
   students: StudentChild[];
   metric: Metric;
+  timeWindow?: TimeWindow;
   timeCaption?: string;
   // Time mode: the student's active time in the window (total + minutes per
   // day), coloured by the per-day average; no ▲/▼ change.
@@ -856,7 +866,7 @@ function StudentTiles({
       <div className="mx-auto grid max-w-5xl gap-2.5 sm:gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))" }}>
         {students.map((s) => {
           const pct = s.score == null ? null : s.score * 100;
-          const col = time ? timeColor(s.time_per_day) : isUsage ? usageColor(s.score) : pct == null ? UNCOVERED : nipColor(pct);
+          const col = time ? windowColor(s.time_total, timeWindow) : isUsage ? usageColor(s.score) : pct == null ? UNCOVERED : nipColor(pct);
           const fg = col === "#f59e0b" ? "#1c1917" : "#ffffff";
           const d = s.delta;
           return (
