@@ -24,7 +24,9 @@ import {
   UNCOVERED,
   fmtDuration,
   fmtPct,
-  timeFill,
+  timeMarkLabels,
+  type TimeWindow,
+  windowFill,
   type Child,
   type ChildType,
   type GeoRef,
@@ -57,6 +59,10 @@ export type GeoMapProps = {
   onDrill: (c: Child) => void;
   // double-click on the map background (no area / marker) → up a level
   onUp?: () => void;
+  // The viewer's own area among its peers: thick blue outline + "You" tag.
+  ownId?: string | null;
+  // Time mode: the window the colours are marked for (windowColor).
+  timeWindow?: TimeWindow;
   metricLabel: string;
   // Time mode: areas / labels / dots are coloured by minutes per student per
   // day (green past 5, amber for some, red for none) and the tooltip shows
@@ -77,6 +83,25 @@ const CARTO_KEY = process.env.NEXT_PUBLIC_CARTO_KEY ?? "";
 const hiDpi = () => typeof window !== "undefined" && (window.devicePixelRatio ?? 1) > 1.5;
 const tileUrl = (z: number, x: number, y: number) =>
   `https://${"abc"[(x + y) % 3]}.basemaps.cartocdn.com/light_nolabels/${z}/${x}/${y}${hiDpi() ? "@2x" : ""}.png` + (CARTO_KEY ? `?key=${encodeURIComponent(CARTO_KEY)}` : "");
+// Points to FIT the view to: the dense cluster, not the strays. UDISE puts
+// a few schools per block tens of km away (wrong coordinates); fitting to
+// them shrank the real block to a dot. Keeps points within 3× the median
+// distance of the median point (at least 2 km); the strays are still drawn.
+export function clusterPoints(pts: [number, number][]): [number, number][] {
+  if (pts.length < 4) return pts;
+  const med = (xs: number[]) => {
+    const s = [...xs].sort((a, b) => a - b);
+    return s[Math.floor(s.length / 2)];
+  };
+  const mlon = med(pts.map((p) => p[0])),
+    mlat = med(pts.map((p) => p[1]));
+  const km = (p: [number, number]) => Math.hypot((p[0] - mlon) * 111 * Math.cos((mlat * Math.PI) / 180), (p[1] - mlat) * 111);
+  const d = pts.map(km);
+  const cut = Math.max(2, 3 * med(d));
+  const kept = pts.filter((_, i) => d[i] <= cut);
+  return kept.length >= 3 ? kept : pts;
+}
+
 // A tile is drawn at most this wide (its native 256 px, so never upscaled).
 const MAX_TILE_PX = 256;
 
@@ -115,12 +140,14 @@ export function areaFill(d: string, child: Child, incomplete: boolean, fill: (c:
 type Tip = { x: number; y: number; title: string; sub: string | null };
 
 export function GeoMap(props: GeoMapProps) {
-  const { entity, childType, childrenRows, incompleteStates, hoverId, setHoverId, selectedId, onSelect, onDrill, onUp, metricLabel, time = false, t = same } = props;
-  const fillOf = time ? timeFill : childFill;
+  const { entity, childType, childrenRows, incompleteStates, hoverId, setHoverId, selectedId, onSelect, onDrill, onUp, ownId = null, timeWindow = "all", metricLabel, time = false, t = same } = props;
+  const fillOf = time ? (c: Child) => windowFill(c, timeWindow) : childFill;
   const wrapRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 640, h: 420 });
   const [geo, setGeo] = useState<{ key: string; outline: Feature | null; byCode: Map<string, Feature> } | null>(null);
   const [tip, setTip] = useState<Tip | null>(null);
+  // A drill leaves the tooltip of the area that was double-clicked behind.
+  useEffect(() => setTip(null), [entity.id]);
   const [tf, setTf] = useState({ k: 1, x: 0, y: 0 });
   const [dragging, setDragging] = useState(false);
   const drag = useRef<{ x: number; y: number; tx: number; ty: number } | null>(null);
@@ -218,7 +245,7 @@ export function GeoMap(props: GeoMapProps) {
       for (const f of ready.byCode.values()) feats.push(f);
     }
     if (!feats.length) {
-      const pf = pointsFeature(points.map((p) => [p.lng, p.lat]));
+      const pf = pointsFeature(clusterPoints(points.map((p) => [p.lng, p.lat])));
       if (pf) feats.push(pf);
     }
     if (!feats.length) return null;
@@ -326,7 +353,7 @@ export function GeoMap(props: GeoMapProps) {
           c.name,
           (c.using_lifteracy
             ? time
-              ? `${fmtDuration(c.time_total, t)} · n=${c.n}`
+              ? `${fmtDuration(c.time_sum, t)} · n=${c.n}`
               : `${fmtPct(c.pass_rate)} · n=${c.n}`
             : t("Not using Lifteracy")) + (isPrivateSchool(c) ? ` · ${t("private school")}` : ""),
         ];
@@ -392,6 +419,7 @@ export function GeoMap(props: GeoMapProps) {
           {outlineD && <path d={outlineD} fill={tiles ? "none" : "#ffffff"} fillOpacity={0.6} stroke="#334155" strokeWidth={1.4 / k} pointerEvents="none" />}
 
           {areas.map((a) => {
+            const own = ownId === a.child.id;
             const on = hoverId === a.child.id || selectedId === a.child.id;
             const [t1, t2] = tipFor(a.child, a.incomplete);
             return (
@@ -404,8 +432,9 @@ export function GeoMap(props: GeoMapProps) {
                   data-code={a.child.code}
                   data-id={a.child.id}
                   data-incomplete={a.incomplete ? "true" : undefined}
-                  stroke={on ? "#0f172a" : "#ffffff"}
-                  strokeWidth={(on ? 1.6 : 0.6) / k}
+                  stroke={own ? "#2563eb" : on ? "#0f172a" : "#ffffff"}
+                  strokeWidth={(own ? 3.2 : on ? 1.6 : 0.6) / k}
+                  data-own={own ? "1" : undefined}
                   style={{ cursor: a.incomplete ? "not-allowed" : "pointer" }}
                   onMouseEnter={(e) => {
                     setHoverId(a.child.id);
@@ -431,6 +460,18 @@ export function GeoMap(props: GeoMapProps) {
             );
           })}
 
+          {/* the viewer's own area: a blue "You" tag at its centre */}
+          {ownId &&
+            areas
+              .filter((a) => a.child.id === ownId)
+              .map((a) => (
+                <g key={`own-${a.child.id}`} pointerEvents="none" data-testid="own-tag">
+                  <rect x={a.c[0] - 22 / k} y={a.c[1] - 24 / k} width={44 / k} height={16 / k} rx={8 / k} fill="#2563eb" />
+                  <text x={a.c[0]} y={a.c[1] - 12.5 / k} textAnchor="middle" fontSize={10 / k} fontWeight="700" fill="#ffffff">
+                    {t("You")}
+                  </text>
+                </g>
+              ))}
           {/* labels (blocks; districts without a boundary file) */}
           {childType !== "school" &&
             projected.map((p) => {
@@ -558,9 +599,9 @@ export function GeoMap(props: GeoMapProps) {
         <div className="mb-1 font-semibold text-zinc-700">{time ? `${metricLabel} · ${t("per student")}` : `${t("Latest")} ${metricLabel}`}</div>
         {(time
           ? [
-              [t("more than 5 min per day"), "#16a34a"],
-              [t("up to 5 min per day"), "#f59e0b"],
-              [t("no time"), "#dc2626"],
+              [timeMarkLabels(timeWindow, t)[0], "#16a34a"],
+              [timeMarkLabels(timeWindow, t)[1], "#f59e0b"],
+              [timeMarkLabels(timeWindow, t)[2], "#dc2626"],
               [t("Not using Lifteracy"), UNCOVERED],
             ]
           : [

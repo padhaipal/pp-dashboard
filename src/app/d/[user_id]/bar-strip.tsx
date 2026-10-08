@@ -29,6 +29,7 @@ export function BarStrip({
   selId = null,
   onClick,
   onDoubleClick,
+  ownId = null,
   hint,
   t = (s) => s,
 }: {
@@ -40,6 +41,8 @@ export function BarStrip({
   onClick: (item: BarItem) => void;
   // double-click: drill into the area (the class opens the student on click already)
   onDoubleClick?: (item: BarItem) => void;
+  // the viewer's own area: blue outline + "You" tag above its bar
+  ownId?: string | null;
   hint: string;
   t?: T;
 }) {
@@ -53,7 +56,7 @@ export function BarStrip({
   const top = Math.max(1, max);
   return (
     <div
-      className="relative select-none rounded-b-2xl border border-t-0 border-zinc-200 bg-white"
+      className="relative select-none rounded-t-2xl border border-b-0 border-zinc-200 bg-white"
       style={{ height: 150 }}
       onMouseLeave={() => {
         setLocalHover(null);
@@ -85,14 +88,22 @@ export function BarStrip({
               style={{
                 height: `${Math.max(2, pct)}%`,
                 background: b.value == null ? "#e5e7eb" : b.color,
-                outline: selId === b.id ? "2px solid #2563eb" : "none",
-                outlineOffset: "-1px",
+                outline: ownId === b.id ? "3px solid #2563eb" : selId === b.id ? "2px solid #2563eb" : "none",
+                outlineOffset: ownId === b.id ? "0px" : "-1px",
+                position: "relative",
                 opacity: hoverId != null && !on ? 0.45 : 1,
               }}
               data-testid="bar"
               data-id={b.id}
               data-hot={on ? "1" : undefined}
-            />
+              data-own={ownId === b.id ? "1" : undefined}
+            >
+              {ownId === b.id && (
+                <span className="pointer-events-none absolute -top-5 left-1/2 -translate-x-1/2 rounded-full bg-blue-600 px-1.5 py-0.5 text-[9px] font-bold leading-none text-white" data-testid="own-bar-tag">
+                  {t("You")}
+                </span>
+              )}
+            </div>
           );
         })}
       </div>

@@ -18,8 +18,8 @@ import {
   fmtPctInt,
   METRIC_BY,
   nipColor,
-  timeColor,
-  timeFill,
+  windowColor,
+  windowFill,
   timeWindowSuffix,
   type TimeWindow,
   UNCOVERED,
@@ -96,7 +96,7 @@ export function RepKpis({
   return (
     <div className="flex flex-col gap-3 sm:flex-row" data-testid="root-kpis">
       {timeWindow
-        ? card(fmtDuration(root.time_total, t), `${t("average time per student")} · ${timeWindowSuffix(timeWindow, t)}`, timeColor(root.time_per_day), "pass")
+        ? card(fmtDuration(root.time_sum, t), `${t("total time")} · ${timeWindowSuffix(timeWindow, t)}`, windowColor(root.time_total, timeWindow), "pass")
         : card(
             fmtPctInt(root.pass_rate),
             ageBand ? `${t("of")} ${ageBandLabel(ageBand)} ${t("year old students pass the")} ${metricLabel}` : `${t("of students pass the")} ${metricLabel}`,
@@ -117,6 +117,14 @@ export function RepKpis({
 // the metric: percentages with the 80 % NIPUN target for the two NIPUN
 // proxies, percentages without a target for MPL-B, and minutes (from
 // `mean` / student `value`) for usage.
+// 1, 2 or 5 × 10ⁿ at or above `raw` — a readable axis step.
+export function niceStep(raw: number): number {
+  if (!(raw > 0)) return 1;
+  const p = 10 ** Math.floor(Math.log10(raw));
+  const m = raw / p;
+  return (m <= 1 ? 1 : m <= 2 ? 2 : m <= 5 ? 5 : 10) * p;
+}
+
 export type TrendStudent = { id: string; label: string; points: { date: string; value: number | null }[] };
 export function RepTrend({
   series,
@@ -155,19 +163,21 @@ export function RepTrend({
     mB = mobile ? 40 : 34,
     iw = W - mL - mR,
     ih = H - mT - mB;
-  // Root value per point: the MEAN of the metric (mean score × 100, or mean
-  // minutes for usage) — the average of the student lines, not the pass rate.
-  const rootVal = (p: SeriesPoint) => p.mean;
+  // Root value per point: for usage the day's TOTAL minutes; for the tests the
+  // mean score × 100. When child lines are drawn the navy line is instead the
+  // average of those lines (below).
+  const rootVal = (p: SeriesPoint) => (isUsage ? (p.total ?? p.mean) : p.mean);
   // A usage row dated D holds the previous IST day's minutes: label it by
   // that day so the axis ends at yesterday, the last complete day.
   const dayLabel = (iso: string) => fmtDay(isUsage ? shiftDay(iso, -1) : iso);
   const n = series.length;
   const byDate = new Map(series.map((p, i) => [p.date, i]));
-  // Minutes axis grows with the data (multiples of 10, at least 30).
-  const yMax = isUsage
-    ? Math.max(30, Math.ceil(Math.max(0, ...series.map((p) => p.mean ?? 0), ...students.flatMap((s) => s.points.map((q) => q.value ?? 0))) / 10) * 10)
-    : 100;
-  const ticks = isUsage ? Array.from({ length: yMax / 10 + 1 }, (_, i) => i * 10) : [0, 20, 40, 60, 80, 100];
+  // Minutes axis fits the data: a "nice" step (1, 2, 5 × 10ⁿ) so the top
+  // tick sits just above the highest line; the tests keep 0–100.
+  const dataMax = isUsage ? Math.max(0, ...series.map((p) => rootVal(p) ?? 0), ...students.flatMap((s) => s.points.map((q) => q.value ?? 0))) : 100;
+  const step = isUsage ? niceStep(dataMax / 5) : 20;
+  const yMax = isUsage ? Math.max(step, Math.ceil(dataMax / step) * step) : 100;
+  const ticks = Array.from({ length: Math.round(yMax / step) + 1 }, (_, i) => i * step);
   const x = (i: number) => mL + (n <= 1 ? iw / 2 : (i / (n - 1)) * iw),
     y = (v: number) => mT + ih - (v / yMax) * ih;
   const pathOf = (pts: Array<{ i: number; v: number | null }>) => {
@@ -183,7 +193,14 @@ export function RepTrend({
     }
     return d;
   };
-  const rootPts = series.map((p, i) => ({ i, v: rootVal(p) }));
+  // The navy line: the average of the lines on the plot (an area's children,
+  // a school's teachers, a class's students) on each date; the root series
+  // only where there are no lines.
+  const rootPts = series.map((p, i) => {
+    if (!students.length) return { i, v: rootVal(p) };
+    const vals = students.map((s) => s.points.find((q) => q.date === p.date)?.value).filter((v): v is number => v != null);
+    return { i, v: vals.length ? Math.round((vals.reduce((a, v) => a + v, 0) / vals.length) * 10) / 10 : null };
+  });
   const d = pathOf(rootPts);
   let li = -1;
   for (let i = n - 1; i >= 0; i--) if (rootPts[i].v != null) {
@@ -281,7 +298,7 @@ export function RepTrend({
 
 // Best first; children not using Lifteracy last. Time mode ranks by total minutes.
 export function sortedLatest(children: Child[], time = false): Child[] {
-  const v = (c: Child) => (c.using_lifteracy ? ((time ? c.time_total : c.pass_rate) ?? -1) : -2);
+  const v = (c: Child) => (c.using_lifteracy ? ((time ? c.time_sum : c.pass_rate) ?? -1) : -2);
   return children.slice().sort((a, b) => v(b) - v(a));
 }
 
@@ -307,8 +324,8 @@ export function RepLatest({
   time?: boolean;
 }) {
   const arr = sortedLatest(childrenRows, time);
-  const valueOf = (c: Child) => (time ? c.time_total : c.pass_rate) ?? null;
-  const top = time ? Math.max(10, Math.ceil(Math.max(0, ...arr.map((c) => c.time_total ?? 0)) / 10) * 10) : 100;
+  const valueOf = (c: Child) => (time ? c.time_sum : c.pass_rate) ?? null;
+  const top = time ? Math.max(10, Math.ceil(Math.max(0, ...arr.map((c) => c.time_sum ?? 0)) / 10) * 10) : 100;
   const W = 900,
     H = 232,
     mT = 8,
@@ -335,7 +352,7 @@ export function RepLatest({
         const has = it.using_lifteracy && val != null;
         const v = has ? val : 0,
           h = has ? (v / top) * ih : ih;
-        const col = has ? (time ? timeFill(it) : binColor(it.bin)) : "#e5e7eb",
+        const col = has ? (time ? windowFill(it) : binColor(it.bin)) : "#e5e7eb",
           xx = mL + i * bw,
           on = hoverId === it.id || selId === it.id;
         return (
@@ -355,7 +372,7 @@ export function RepLatest({
             onDoubleClick={() => onPick(it)}
             style={{ cursor: "pointer" }}
           >
-            <title>{`${it.name} — ${has ? (time ? fmtDuration(it.time_total) : fmtPct(it.pass_rate)) : "not using Lifteracy"}`}</title>
+            <title>{`${it.name} — ${has ? (time ? fmtDuration(it.time_sum) : fmtPct(it.pass_rate)) : "not using Lifteracy"}`}</title>
           </rect>
         );
       })}
@@ -398,16 +415,18 @@ export function RepImproved<R extends ImprovedRow>({
   format?: (v: number) => string;
   signed?: boolean;
 }) {
-  const mobile = useIsMobile();
   const fmt = format ?? ((v: number) => (signed && v >= 0 ? "+" : "") + v.toFixed(1));
-  const arr = mostImproved.filter((c) => c.delta != null);
-  // mvp2 renders nothing under the heading until there is something to rank.
+  // At most five rows; nothing under the heading until there is something to rank.
+  const arr = mostImproved.filter((c) => c.delta != null).slice(0, 5);
   if (!arr.length) return null;
-  const W = mobile ? 440 : 900,
-    rowH = mobile ? 30 : 19,
+  // Drawn in a half-width column, so a 440-unit viewBox with 12.5-unit type
+  // reads at ~13 px (the old 900-unit box scaled the text to ~6 px).
+  const mobile = true;
+  const W = 440,
+    rowH = 30,
     mT = 6,
-    mL = mobile ? 190 : 210,
-    mR = mobile ? 52 : 44,
+    mL = 150,
+    mR = 70,
     H = mT * 2 + arr.length * rowH;
   const max = Math.max(1, ...arr.map((i) => Math.abs(i.delta!))),
     iw = W - mL - mR;
@@ -417,7 +436,7 @@ export function RepImproved<R extends ImprovedRow>({
         const yy = mT + i * rowH,
           bw = Math.max(2, (Math.abs(it.delta!) / max) * iw),
           hot = hoverId === it.id || selId === it.id;
-        const mx = mobile ? 26 : 38;
+        const mx = 20;
         const nm = it.name.length > mx ? it.name.slice(0, mx - 1) + "…" : it.name;
         const pos = !signed || it.delta! >= 0;
         return (
@@ -482,7 +501,7 @@ export function RepQuote({
   const when = deltaSuffix ?? (range ? rangeSuffix(range, t) : t("this week"));
   const head =
     kind === "top"
-      ? `${title} — ${time ? fmtDuration(child.time_total, t) : fmtPctInt(child.pass_rate)}`
+      ? `${title} — ${time ? fmtDuration(child.time_sum, t) : fmtPctInt(child.pass_rate)}`
       : `${title} — ${child.delta != null && child.delta >= 0 ? "+" : ""}${child.delta?.toFixed(1) ?? "—"} ${t(time ? "min" : "pts")} ${when}`;
   return (
     <div className="flex items-start gap-3 rounded-lg border border-emerald-200 bg-emerald-100/80 px-4 py-4" data-testid={`spotlight-${kind}`}>
@@ -515,6 +534,7 @@ export function RepMeta({
   officer,
   range,
   time = false,
+  timeWindow,
   t = same,
 }: {
   child?: Child | null;
@@ -525,6 +545,7 @@ export function RepMeta({
   // Time mode: the figure is the child's active time per student (total, with
   // minutes per day under it), coloured by the per-day average; no trend arrow.
   time?: boolean;
+  timeWindow?: TimeWindow;
   t?: T;
 }) {
   const suffix = range ? rangeSuffix(range, t) : "";
@@ -570,7 +591,7 @@ export function RepMeta({
     );
   }
   if (!child) return <p className="text-sm text-zinc-400">{t("Hover or click a row or map area to see its details.")}</p>;
-  const col = time ? timeFill(child) : child.using_lifteracy ? nipColor(child.pass_rate) : UNCOVERED;
+  const col = time ? windowFill(child, timeWindow) : child.using_lifteracy ? nipColor(child.pass_rate) : UNCOVERED;
   return box(
     col,
     <>
@@ -583,7 +604,7 @@ export function RepMeta({
         <div className="text-[12px] text-zinc-500">{child.official?.role_title ?? t(officer)}</div>
       </div>
     </>,
-    child.using_lifteracy ? (time ? fmtDuration(child.time_total, t) : fmtPctInt(child.pass_rate)) : "—",
+    child.using_lifteracy ? (time ? fmtDuration(child.time_sum, t) : fmtPctInt(child.pass_rate)) : "—",
     child.using_lifteracy && !time ? <MvpTrend delta={child.delta} suffix={suffix} /> : null,
     undefined,
     time && child.using_lifteracy,
@@ -686,7 +707,7 @@ export async function exportReportPdf(data: ReportData, root: HTMLElement | null
   const usingN = data.childrenRows.filter((c) => c.using_lifteracy).length;
   const kpis: [string, string, [number, number, number]][] = [
     time
-      ? [fmtDuration(data.root.time_total), `average time per student · ${timeWindowSuffix(data.timeWindow!)}`, rgb(timeColor(data.root.time_per_day))]
+      ? [fmtDuration(data.root.time_sum), `total time · ${timeWindowSuffix(data.timeWindow!)}`, rgb(windowColor(data.root.time_total, data.timeWindow))]
       : [fmtPctInt(data.root.pass_rate), `of ${ageBandLabel(ageBandOf(data.metric, data.ageBand) ?? [0, 1])} year old students pass the ${metricLabel}`, rgb(nipColor(data.root.pass_rate))],
   ];
   if (data.childType !== "student") kpis.push([`${usingN}`, `${nounP} using Lifteracy`, [24, 24, 27]]);
@@ -734,7 +755,7 @@ export async function exportReportPdf(data: ReportData, root: HTMLElement | null
       bx = M + 24,
       bw = CW - 24;
     // Time: minutes per student on an axis that fits the data, no target line.
-    const top = time ? Math.max(10, Math.ceil(Math.max(0, ...arr.map((c) => c.time_total ?? 0)) / 10) * 10) : 100;
+    const top = time ? Math.max(10, Math.ceil(Math.max(0, ...arr.map((c) => c.time_sum ?? 0)) / 10) * 10) : 100;
     doc.setDrawColor(230).line(bx, y + bh, bx + bw, y + bh);
     if (!time) doc.setDrawColor(239, 68, 68).setLineDashPattern([3, 2], 0).line(bx, y + bh * 0.2, bx + bw, y + bh * 0.2).setLineDashPattern([], 0);
     doc.setFont("helvetica", "normal").setFontSize(6.5).setTextColor(120);
@@ -742,10 +763,10 @@ export async function exportReportPdf(data: ReportData, root: HTMLElement | null
     doc.text("0", bx - 3, y + bh + 2, { align: "right" });
     const w = bw / Math.max(1, arr.length);
     arr.forEach((c, i) => {
-      const val = time ? c.time_total : c.pass_rate;
+      const val = time ? c.time_sum : c.pass_rate;
       const has = c.using_lifteracy && val != null;
       const h = has ? (val / top) * bh : bh;
-      const col: [number, number, number] = has ? rgb(time ? timeFill(c) : binColor(c.bin)) : [229, 231, 235];
+      const col: [number, number, number] = has ? rgb(time ? windowFill(c, data.timeWindow) : binColor(c.bin)) : [229, 231, 235];
       doc.setFillColor(col[0], col[1], col[2]).rect(bx + i * w + 0.3, y + bh - h, Math.max(0.6, w - 0.6), h, "F");
     });
     y += bh + 16;
@@ -891,7 +912,7 @@ export function ReportCardModal({ data, onClose }: { data: ReportData; onClose: 
               selId={null}
               onSelect={() => {}}
               onPick={() => {}}
-              label={time ? "Minutes per student" : `${metricLabel} pass rate`}
+              label={time ? "Total minutes" : `${metricLabel} pass rate`}
               time={time}
             />
           </div>

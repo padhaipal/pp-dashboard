@@ -86,8 +86,9 @@ export type PublicProfile = {
 // window. A student's own figures; for an area, a teacher or a class they are
 // PER STUDENT. Absent on a pp-sketch that predates Time windows.
 export type TimeFields = {
-  time_total?: number | null; // minutes in the window
-  time_per_day?: number | null; // minutes per day — what the colour follows
+  time_total?: number | null; // minutes PER STUDENT in the window — drives the colour
+  time_sum?: number | null; // total minutes over every student in the window — what is shown (2026-10)
+  time_per_day?: number | null; // minutes per day
   time_days?: number; // days the figures cover
 };
 
@@ -166,7 +167,8 @@ export const studentModalRows = (media: MediaRow[]): MediaRow[] =>
   media.filter((m) => m.kind !== "onboarding" && !(m.kind === "tap" && m.answer_correct === null));
 
 // mean: usage = minutes per student that day (absent = 0); tests = mean score × 100.
-export type SeriesPoint = { date: string; pass_rate: number | null; n: number; mean: number | null };
+// `total` (usage only): the day's minutes over every student — the trend's y-axis.
+export type SeriesPoint = { date: string; pass_rate: number | null; n: number; mean: number | null; total?: number | null };
 // Class level only: one line per student (minutes for usage, score × 100 for tests, null = gap).
 export type StudentSeries = { student_id: string; points: { date: string; value: number | null }[] };
 
@@ -357,6 +359,22 @@ export function fmtPerDay(minutes: number | null | undefined, t: (s: string) => 
 // 5-minute mark, amber for some use, red for none, grey when there is nothing
 // to average (not using Lifteracy).
 export const timeColor = (perDay: number | null | undefined): string => (perDay == null ? UNCOVERED : usageColor(perDay));
+// Colour of a Time figure, from the minutes PER STUDENT in the window, with a
+// mark that fits the window (2026-10): all time 2 h+ green, 30 min – 2 h amber,
+// under 30 min red; last seven days 35 / 10 min; yesterday more than 5 / some.
+export const TIME_MARKS: Record<TimeWindow, { green: number; amber: number }> = { all: { green: 120, amber: 30 }, "7d": { green: 35, amber: 10 }, yesterday: { green: 5, amber: 0.5 } };
+export const windowColor = (perStudent: number | null | undefined, window: TimeWindow = "all"): string => {
+  if (perStudent == null) return UNCOVERED;
+  const m = TIME_MARKS[window];
+  return perStudent >= m.green ? "#16a34a" : perStudent >= m.amber ? "#f59e0b" : "#dc2626";
+};
+export const windowFill = (c: { using_lifteracy: boolean; time_total?: number | null }, window: TimeWindow = "all"): string => (c.using_lifteracy ? windowColor(c.time_total, window) : UNCOVERED);
+// Legend lines for windowColor: ["2 hours+", "30 min – 2 hours", "under 30 min"].
+export const timeMarkLabels = (window: TimeWindow, t: (s: string) => string = (s) => s): [string, string, string] => {
+  const m = TIME_MARKS[window];
+  const lo = m.amber < 1 ? t("some time") : `${fmtDuration(m.amber, t)} – ${fmtDuration(m.green, t)}`;
+  return [`${fmtDuration(m.green, t)}+`, lo, m.amber < 1 ? t("no time") : `${t("under")} ${fmtDuration(m.amber, t)}`];
+};
 // Map / marker / bar fill of a child in Time mode.
 export const timeFill = (c: { using_lifteracy: boolean; time_per_day?: number | null }): string => (c.using_lifteracy ? timeColor(c.time_per_day) : UNCOVERED);
 

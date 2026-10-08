@@ -34,3 +34,14 @@
  - Bar strip: at most `MAX_GREY` (10) grey no-engagement stubs; the count still says how many children there are.
  - Bars under the map: double-click drills into the area (`BarStrip.onDoubleClick`; the class opens the student on single click already); the hover card is `z-40` so it sits over the map's legend / zoom / up button. Double-click on the map background (`GeoMap.onUp`, the svg; areas and markers stop the event), on the teacher cards' grey background or the student tiles' background → `up`.
  - Map underlay tiles are drawn at their native 256 px at most (`MAX_TILE_PX`; was ≤ 520 px — 2× upscaled, pixelated) and fetched as `@2x` on HiDPI screens.
+
+14.) 2026-10 (totals, peers polish).
+ - The headline figures (`RepKpis`) render only after a drill (`stack.length > 1`): the home level — a teacher's school, a BEO's district, a BSA's state, the DGSE's India — is for ranking against peers.
+ - The viewer's own entity at the home level (`ownId`: the geo entity id, or the user id for a teacher among the school's teachers) is tagged "You": a 3-unit blue outline + blue tag on the map (`data-own`, `own-tag`), a blue outline + tag on its bar (`own-bar-tag`), a `ring-4` + tag on its teacher card (`own-card-tag`).
+ - The bar strip sits ABOVE the map card (`bar-strip-wrap` then `map-card`; corners swapped).
+ - Time = TOTALS: every figure is `time_sum` (the minutes over every student in the window; a student's own total); the colour is `windowColor(time_total, window)` — per-student minutes against marks that fit the window (`TIME_MARKS`: all time 2 h / 30 min, last seven days 35 / 10 min, yesterday 5 min / some); the map legend reads them off `timeMarkLabels`. Headline label "total time · {window}".
+ - Trend: usage lines are total minutes per day (`SeriesPoint.total`, child lines total); the y-axis fits the data with a nice step (`niceStep`), tests keep 0–100; the navy line is the AVERAGE of the lines drawn (children / teachers / students) on each date, the root series only when there are no lines. Label "Total minutes".
+ - The "XX% of {nounP} in {entity} are not using Lifteracy at all" line is gone.
+ - `RepImproved` is drawn in a 440-unit viewBox (half column) with 12.5-unit type and at most five rows.
+ - Block (schools) view fits the viewport to the CLUSTER of schools (`clusterPoints`: within 3× the median distance of the median point, ≥ 2 km) — UDISE places a few schools per block tens of km away; the strays are still drawn.
+ - A drill clears the map tooltip (`useEffect` on `entity.id`).
