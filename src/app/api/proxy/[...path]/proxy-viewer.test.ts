@@ -1,20 +1,26 @@
 import { describe, expect, it } from "vitest";
-import { proxyRequestHeaders, VIEWER_ID_HEADER, VIEWER_STAFF_HEADER, viewerForward } from "./proxy-viewer";
+import { actsAsStaff, proxyRequestHeaders, VIEWER_ID_HEADER, VIEWER_STAFF_HEADER, viewerForward } from "./proxy-viewer";
 
 const UUID = "5c2a6f0e-1a2b-4c3d-9e8f-0a1b2c3d4e5f";
 
 describe("viewerForward", () => {
-  it("a staff session becomes the staff header only without a viewer param; a /d page's viewer wins over the session (a dev sees the link holder's view)", () => {
+  it("a staff session without a viewer param (the staff /user/[id] page) becomes the staff header", () => {
     expect(viewerForward("?metric=usage", true)).toEqual({
       headers: { [VIEWER_STAFF_HEADER]: "1" },
       search: "?metric=usage",
     });
+  });
+
+  it("a /d page's viewer param wins over a staff session: a logged-in dev sees what the link holder sees", () => {
     expect(viewerForward(`?metric=usage&viewer=${UUID}`, true)).toEqual({
       headers: { [VIEWER_ID_HEADER]: UUID },
       search: "?metric=usage",
     });
-    // a junk viewer on a staff session: anonymous, not staff
+    // …and a junk viewer still never falls back to staff
     expect(viewerForward("?viewer=abc", true)).toEqual({ headers: {}, search: "" });
+    expect(actsAsStaff("?viewer=abc", true)).toBe(false);
+    expect(actsAsStaff("?range=30", true)).toBe(true);
+    expect(actsAsStaff("", false)).toBe(false);
   });
 
   it("a sessionless caller's uuid viewer becomes the viewer-id header (lower-cased) and leaves the query", () => {

@@ -3,7 +3,7 @@ import { logger } from "@/lib/logger";
 import { ppSketchFetch } from "@/lib/pp-sketch";
 import { NextRequest } from "next/server";
 import { forwardedSearch, isPublicAllowed } from "./public-allowlist";
-import { proxyRequestHeaders, viewerForward } from "./proxy-viewer";
+import { actsAsStaff, proxyRequestHeaders, viewerForward } from "./proxy-viewer";
 
 export const runtime = "nodejs";
 
@@ -56,9 +56,10 @@ async function proxyToSketch(req: NextRequest, { params }: { params: Promise<{ p
   const { path } = await params;
   const joined = path.join("/");
 
-  // Public teacher-dashboard endpoints (/d/[user_id]) need no session; for
-  // them a staff session, when there is one, still counts (the admin
-  // /user/:id page reuses the same reads).
+  // Public teacher-dashboard endpoints (/d/[user_id]) need no session. A
+  // staff session still counts for them on the admin /user/:id page (same
+  // reads, no `?viewer=`); a /d page names its viewer and is answered as that
+  // person even for a logged-in dev (proxy-viewer.ts actsAsStaff).
   let staff: boolean;
   if (!isPublicAllowed(joined, req.method)) {
     const session = await auth();
@@ -72,7 +73,7 @@ async function proxyToSketch(req: NextRequest, { params }: { params: Promise<{ p
     staff = true;
   } else {
     const session = await auth().catch(() => null);
-    staff = isStaff(session?.user?.role);
+    staff = actsAsStaff(req.nextUrl.search, isStaff(session?.user?.role));
   }
 
   const viewer = viewerForward(req.nextUrl.search, staff);
