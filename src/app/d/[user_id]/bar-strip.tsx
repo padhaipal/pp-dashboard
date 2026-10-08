@@ -28,6 +28,7 @@ export function BarStrip({
   setHoverId,
   selId = null,
   onClick,
+  onDoubleClick,
   hint,
   t = (s) => s,
 }: {
@@ -37,6 +38,8 @@ export function BarStrip({
   setHoverId: (id: string | null) => void;
   selId?: string | null;
   onClick: (item: BarItem) => void;
+  // double-click: drill into the area (the class opens the student on click already)
+  onDoubleClick?: (item: BarItem) => void;
   hint: string;
   t?: T;
 }) {
@@ -77,6 +80,7 @@ export function BarStrip({
                 setHoverId(b.id);
               }}
               onClick={() => onClick(b)}
+              onDoubleClick={() => onDoubleClick?.(b)}
               className="min-w-0 flex-1 cursor-pointer rounded-t-sm"
               style={{
                 height: `${Math.max(2, pct)}%`,
@@ -94,7 +98,7 @@ export function BarStrip({
       </div>
       {showCard && (
         <div
-          className="pointer-events-none absolute z-10 w-48 -translate-x-1/2 rounded-lg border border-zinc-200 bg-white p-2 shadow-xl"
+          className="pointer-events-none absolute z-40 w-48 -translate-x-1/2 rounded-lg border border-zinc-200 bg-white p-2 shadow-xl"
           style={{ left: `max(96px, min(calc(100% - 96px), ${((hovIdx + 0.5) / bars.length) * 100}%))`, bottom: 132 }}
           data-testid="bar-card"
         >

@@ -55,6 +55,8 @@ export type GeoMapProps = {
   selectedId: string | null;
   onSelect: (c: Child) => void;
   onDrill: (c: Child) => void;
+  // double-click on the map background (no area / marker) → up a level
+  onUp?: () => void;
   metricLabel: string;
   // Time mode: areas / labels / dots are coloured by minutes per student per
   // day (green past 5, amber for some, red for none) and the tooltip shows
@@ -70,8 +72,13 @@ const same: T = (s) => s;
 // NEXT_PUBLIC_CARTO_KEY (free key from carto.com/basemaps/apikey, inlined at
 // build time) removes it. Attribution stays on the map — that is the deal.
 const CARTO_KEY = process.env.NEXT_PUBLIC_CARTO_KEY ?? "";
+// 256 px tiles; on a HiDPI screen the 512 px "@2x" rendition so the underlay
+// is not upscaled (it looked pixelated at 2×).
+const hiDpi = () => typeof window !== "undefined" && (window.devicePixelRatio ?? 1) > 1.5;
 const tileUrl = (z: number, x: number, y: number) =>
-  `https://${"abc"[(x + y) % 3]}.basemaps.cartocdn.com/light_nolabels/${z}/${x}/${y}.png` + (CARTO_KEY ? `?key=${encodeURIComponent(CARTO_KEY)}` : "");
+  `https://${"abc"[(x + y) % 3]}.basemaps.cartocdn.com/light_nolabels/${z}/${x}/${y}${hiDpi() ? "@2x" : ""}.png` + (CARTO_KEY ? `?key=${encodeURIComponent(CARTO_KEY)}` : "");
+// A tile is drawn at most this wide (its native 256 px, so never upscaled).
+const MAX_TILE_PX = 256;
 
 type BoundaryCache = Map<string, Feature | null>;
 const cache: BoundaryCache = new Map();
@@ -108,7 +115,7 @@ export function areaFill(d: string, child: Child, incomplete: boolean, fill: (c:
 type Tip = { x: number; y: number; title: string; sub: string | null };
 
 export function GeoMap(props: GeoMapProps) {
-  const { entity, childType, childrenRows, incompleteStates, hoverId, setHoverId, selectedId, onSelect, onDrill, metricLabel, time = false, t = same } = props;
+  const { entity, childType, childrenRows, incompleteStates, hoverId, setHoverId, selectedId, onSelect, onDrill, onUp, metricLabel, time = false, t = same } = props;
   const fillOf = time ? timeFill : childFill;
   const wrapRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 640, h: 420 });
@@ -222,7 +229,7 @@ export function GeoMap(props: GeoMapProps) {
   // (schools) views only — mvp2's slippy-tile math. The projection is plain
   // Mercator with a central-meridian rotation, so tiles project to
   // axis-aligned rects: each <image> is placed by projecting its NW/SE
-  // corners. Zoom picked so one tile is ≈≤520 px; padded 40 % for panning;
+  // corners. Zoom picked so one tile is ≤ MAX_TILE_PX (a tile drawn at 2× was visibly pixelated); padded 40 % for panning;
   // hard cap 120 tiles.
   const tiles = useMemo(() => {
     if (!proj || !proj.invert || (childType !== "block" && childType !== "school")) return null;
@@ -248,7 +255,7 @@ export function GeoMap(props: GeoMapProps) {
         y = lat2ty(cLat, z);
       const a = proj([tx2lon(x, z), ty2lat(y, z)]),
         b = proj([tx2lon(x + 1, z), ty2lat(y + 1, z)]);
-      if (a && b && Math.abs(b[0] - a[0]) <= 520) break;
+      if (a && b && Math.abs(b[0] - a[0]) <= MAX_TILE_PX) break;
     }
     const padLon = Math.abs(seLL[0] - nwLL[0]) * 0.4,
       padLat = Math.abs(nwLL[1] - seLL[1]) * 0.4;
@@ -368,7 +375,9 @@ export function GeoMap(props: GeoMapProps) {
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerLeave={onPointerUp}
+        onDoubleClick={() => onUp?.()}
         style={{ cursor: dragging ? "grabbing" : "default" }}
+        data-testid="map-svg"
       >
         <g transform={`translate(${tf.x},${tf.y}) scale(${k})`} style={{ transition: dragging ? "none" : "transform .25s ease" }}>
           {/* street/landmark underlay (district + block views only) */}
