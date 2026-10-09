@@ -227,7 +227,21 @@ describe("TeacherDashboard", () => {
             json: async () => ({
               level: "teacher",
               as_of: "2026-09-10",
-              top: [{ id: "t-9", name: "Meera", sub: "919800000009", value: 80, delta: 5 }],
+              top: [
+                {
+                  id: "t-9",
+                  name: "Meera",
+                  sub: "919800000009",
+                  value: 80,
+                  delta: 5,
+                  path: [
+                    { id: "g-0901", type: "district", code: "0901", name: "LUCKNOW", has_boundary: true, lat: null, lng: null },
+                    { id: "g-090101", type: "block", code: "090101", name: "KAKORI", has_boundary: false, lat: null, lng: null },
+                    { id: "g-s9", type: "school", code: "09010100109", name: "P.S. GWALPUR", has_boundary: false, lat: null, lng: null },
+                    { id: "t-9", type: "teacher", code: "", name: "Meera", has_boundary: false, lat: null, lng: null },
+                  ],
+                },
+              ],
               most_improved: [{ id: "t-9", name: "Meera", sub: "919800000009", value: 80, delta: 5 }],
             }),
           } as unknown as Response;
@@ -248,6 +262,9 @@ describe("TeacherDashboard", () => {
     await waitFor(() => expect(rankCalls[0]).toContain("/api/proxy/geo-entities/g-09/rankings?level=teacher&metric=nipun_g3"));
     // teachers listed with their number
     await waitFor(() => expect(screen.getByTestId("top-performing").textContent).toContain("Meera · 919800000009"));
+    // double-click: straight to the teacher's class, via district → block → school
+    fireEvent.dblClick(within(screen.getByTestId("top-performing")).getByTestId("rank-row"));
+    await waitFor(() => expect(screen.getByTestId("location-title").textContent).toBe("Meera  -  P.S. GWALPUR  -  Kakori  -  Lucknow  -  Uttar Pradesh  -  India"));
   });
 
   it("builds the CSV link from the current metric and range (range bar lives in the Performance card)", async () => {

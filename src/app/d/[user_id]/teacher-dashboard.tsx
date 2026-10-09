@@ -450,7 +450,16 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
       : null;
 
   // Double-click on a ranking row: open the student, or drill into the area.
+  // A row from a deeper level drills straight to its own view (pp-sketch's
+  // path: an area, a teacher's class, a student's teacher's class).
   const pickRow = (r: ImprovedRow) => {
+    const deep = deeper ? [...(rankedNow?.top ?? []), ...(rankedNow?.most_improved ?? [])].find((x) => x.id === r.id) : undefined;
+    if (deep?.path?.length) {
+      setStack((st) => [...st, ...deep.path!.map(toRef)]);
+      setHoverId(null);
+      setSelId(null);
+      return;
+    }
     if (inClass) {
       const s = students.find((x) => x.student_id === r.id);
       if (s) openStudent(s);

@@ -417,7 +417,9 @@ export const csvUrl = (id: string, metric: Metric, range: Range, window?: TimeWi
 // GET geo-entities/:id/rankings — most improved / top performing among the
 // `level` entities below `:id` (teachers with their number in `sub`).
 export type RankLevel = "state" | "district" | "block" | "school" | "teacher" | "student";
-export type RankRow = { id: string; name: string; sub: string | null; value: number | null; delta: number | null };
+// path: refs from just below the entity down to the row's own view (a geo
+// entity, a teacher's class, or a student's teacher's class) — the drill of a double-click.
+export type RankRow = { id: string; name: string; sub: string | null; value: number | null; delta: number | null; path?: GeoRef[] };
 export type RankingsResponse = { level: RankLevel; as_of: string | null; top: RankRow[]; most_improved: RankRow[] };
 export const rankingsUrl = (id: string, level: RankLevel, metric: Metric, window?: TimeWindow) =>
   `/api/proxy/geo-entities/${encodeURIComponent(id)}/rankings?level=${level}&metric=${metric}${windowQs(metric, window)}`;
