@@ -2,7 +2,7 @@
 
 // Public teacher/official dashboard (/d/[user_id]) — the mvp2.html "report"
 // layout (sandbox-global-map/mvp2.html) ported to Next, section for section:
-// sticky header (logo · nav · EN/हिं · Generate report), location title, metric
+// sticky header (logo · nav · EN/हिं), location title, metric
 // toggle, headline KPI card(s), the 460 px map card with the up-a-level button
 // — geo levels draw the map, a school lists its TEACHERS as row cards, a
 // teacher (the class view) shows STUDENT tiles —, "{Noun} Detail",
@@ -479,7 +479,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
   return (
     <ViewerProvider id={profile.id}>
       <div className="min-h-screen scroll-smooth bg-zinc-50 text-zinc-900">
-        {/* report header — logo + section shortcuts + language + Generate report */}
+        {/* header — logo + section shortcuts + language */}
         <header className="sticky top-0 z-40 border-b border-zinc-200/70 bg-zinc-50/90 backdrop-blur">
           <div className="relative mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-2.5 sm:px-6">
             <Image src="/lifteracy-logo-only.svg" alt="Lifteracy" width={160} height={64} className="h-10 w-auto shrink-0 sm:h-14 md:h-16" priority />
@@ -502,17 +502,6 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
             </nav>
             <div className="flex shrink-0 items-center gap-2 sm:gap-3">
               <MvpLangToggle lang={lang} setLang={setLang} />
-              <button
-                type="button"
-                onClick={() => setReportOpen(true)}
-                disabled={!reportData}
-                className="whitespace-nowrap rounded-lg px-3 py-2 text-xs font-bold text-white shadow-sm transition hover:opacity-90 disabled:opacity-40 sm:px-5 sm:text-sm md:text-base"
-                style={{ background: ACCENT }}
-              >
-                {/* phones: just "Report" */}
-                ⤓ <span className="sm:hidden">{t("Report")}</span>
-                <span className="hidden sm:inline">{t("Generate report")}</span>
-              </button>
             </div>
           </div>
         </header>
@@ -664,9 +653,10 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                     <div className={"mb-6 " + H} style={{ color: ACCENT }}>
                       {t(nounS)} {t("Performance")}
                     </div>
-                    {/* the Time window toggle lives under the title only — the trend has its own range */}
-                    <div className="-mt-3 mb-5 flex justify-center">
+                    {/* metric, then the trend's window directly under it (as at the top of the page) */}
+                    <div className="-mt-3 mb-5 flex flex-col items-center gap-2">
                       <MvpMetricToggle metric={pickedMetric} setMetric={setMetric} t={t} />
+                      <MvpTimeWindowToggle window={trendWindow} setWindow={setTrendWindow} label="Trend window" testId="trend-window-toggle" t={t} />
                     </div>
                     <div className={CARD + " space-y-6"}>
                       <div>
@@ -676,7 +666,6 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                             <HoverLabel child={hoverId ? geoChildren.find((c) => c.id === hoverId) ?? null : null} time={timeMode} t={t} />
                           </div>
                           <div className="flex flex-wrap items-center gap-2">
-                            <MvpTimeWindowToggle window={trendWindow} setWindow={setTrendWindow} label="Trend window" testId="trend-window-toggle" t={t} />
                             <a
                               href={withViewer(csvUrl(entity.id, pickedMetric, pickedRange, pickedWin), profile.id)}
                               target="_blank"
@@ -737,12 +726,12 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                       <div className={"grid grid-cols-1 gap-6 md:grid-cols-2" + (rankOptions.length > 1 ? "" : " border-t border-zinc-100 pt-5")}>
                         <div data-testid="most-improved">
                           <div className="mb-3 text-base font-semibold text-zinc-800">{t("Most improved")}</div>
-                          {shownImproved.length === 0 && <p className="py-2 text-sm text-zinc-400">{t("Nobody has improved yet.")}</p>}
+                          {shownImproved.length === 0 && <p className="py-2 text-sm text-zinc-400">{t("No data")}</p>}
                           <RankBars rows={shownImproved} kind="improved" format={fmtDelta} hoverId={hoverId} setHoverId={setHoverId} selId={selId} onSelect={select} onPick={pickRow} />
                         </div>
                         <div data-testid="top-performing">
                           <div className="mb-3 text-base font-semibold text-zinc-800">{t("Top performing")}</div>
-                          {shownTop.length === 0 && <p className="py-2 text-sm text-zinc-400">{t("No results in this window")}</p>}
+                          {shownTop.length === 0 && <p className="py-2 text-sm text-zinc-400">{t("No data")}</p>}
                           <RankBars rows={shownTop} kind="top" format={fmtRank} hoverId={hoverId} setHoverId={setHoverId} selId={selId} onSelect={select} onPick={pickRow} />
                         </div>
                       </div>
@@ -871,7 +860,7 @@ function TeacherCards({
           return (
             <div
               key={c.id}
-              className={"relative flex cursor-pointer items-center gap-3 rounded-2xl px-3 py-3 shadow-sm transition hover:shadow-md sm:gap-4 sm:px-5 sm:py-4" + (own ? " ring-4 ring-blue-600" : on ? " ring-2 ring-blue-500" : "")}
+              className={"relative flex cursor-pointer items-center gap-3 rounded-2xl px-3 py-3 shadow-sm transition hover:shadow-md sm:gap-4 sm:px-5 sm:py-4" + (own ? " ring-2 ring-blue-500 ring-offset-2 ring-offset-[#eaf0f6] shadow-lg shadow-blue-500/20" : on ? " ring-2 ring-blue-500" : "")}
               data-own={own ? "1" : undefined}
               style={{ background: col + "1f", border: "1px solid " + col + "55" }}
               title="Double-click for this teacher's class"
@@ -889,7 +878,7 @@ function TeacherCards({
               data-testid="teacher-card"
             >
               {own && (
-                <span className="absolute -top-2.5 left-4 rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow" data-testid="own-card-tag">
+                <span className="absolute -top-3 left-5 rounded-full bg-gradient-to-r from-blue-600 to-blue-500 px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wider text-white shadow-md ring-2 ring-white" data-testid="own-card-tag">
                   {t("You")}
                 </span>
               )}

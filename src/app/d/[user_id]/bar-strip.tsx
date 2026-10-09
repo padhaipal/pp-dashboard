@@ -68,7 +68,8 @@ export function BarStrip({
       }}
       data-testid="bar-strip"
     >
-      <div className="absolute inset-x-0 bottom-0 flex items-end gap-px px-2" style={{ top: 26 }}>
+      <div className="pointer-events-none absolute inset-x-3 bottom-2 rounded-xl bg-zinc-50" style={{ top: 26 }} />
+      <div className="absolute inset-x-0 bottom-2 flex items-end gap-1 px-3" style={{ top: 26 }}>
         {bars.map((b, i) => {
           const pct = b.value == null ? 0 : (Math.max(0, b.value) / top) * 100;
           const on = hoverId === b.id || selId === b.id;
@@ -82,14 +83,13 @@ export function BarStrip({
               }}
               onClick={() => onClick(b)}
               onDoubleClick={() => onDoubleClick?.(b)}
-              className="min-w-0 flex-1 cursor-pointer rounded-t-sm"
+              className="relative min-w-0 flex-1 cursor-pointer rounded-t-full transition-opacity"
               style={{
-                height: `${Math.max(2, pct)}%`,
-                background: b.value == null ? "#e5e7eb" : b.color,
-                outline: ownId === b.id ? "3px solid #2563eb" : selId === b.id ? "2px solid #2563eb" : "none",
-                outlineOffset: ownId === b.id ? "0px" : "-1px",
-                position: "relative",
-                opacity: hoverId != null && !on ? 0.45 : 1,
+                height: `${Math.max(4, pct)}%`,
+                // like the ranking rows: a soft gradient into the colour, rounded top
+                background: b.value == null ? "#e4e4e7" : `linear-gradient(180deg, ${b.color}, ${b.color}99)`,
+                boxShadow: ownId === b.id ? "0 0 0 2px #ffffff, 0 0 0 4px #3b82f6" : selId === b.id ? "0 0 0 2px #93c5fd" : "none",
+                opacity: hoverId != null && !on ? 0.4 : 1,
               }}
               data-testid="bar"
               data-id={b.id}
@@ -97,7 +97,7 @@ export function BarStrip({
               data-own={ownId === b.id ? "1" : undefined}
             >
               {ownId === b.id && (
-                <span className="pointer-events-none absolute -top-5 left-1/2 -translate-x-1/2 rounded-full bg-blue-600 px-1.5 py-0.5 text-[9px] font-bold leading-none text-white" data-testid="own-bar-tag">
+                <span className="pointer-events-none absolute -top-6 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-blue-600 px-2 py-0.5 text-[10px] font-extrabold leading-none tracking-wide text-white shadow-md ring-2 ring-white" data-testid="own-bar-tag">
                   {t("You")}
                 </span>
               )}

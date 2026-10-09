@@ -502,7 +502,7 @@ export function RepQuote({
     return (
       <div className="rounded-lg border border-dashed border-zinc-200 bg-zinc-50 px-4 py-4 text-sm text-zinc-400" data-testid={`spotlight-${kind}`} data-empty="1">
         <div className="mb-1 text-[11px] font-bold uppercase tracking-wide text-zinc-400">{title}</div>
-        {t("No")} {t(nounS).toLowerCase()} {t("qualifies yet.")}
+        {t("No data")}
       </div>
     );
   }
