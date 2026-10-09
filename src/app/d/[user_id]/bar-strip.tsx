@@ -83,7 +83,7 @@ export function BarStrip({
               }}
               onClick={() => onClick(b)}
               onDoubleClick={() => onDoubleClick?.(b)}
-              className="relative min-w-0 flex-1 cursor-pointer rounded-t-full transition-opacity"
+              className="relative min-w-0 flex-1 cursor-pointer rounded-t-[4px] transition-opacity"
               style={{
                 height: `${Math.max(4, pct)}%`,
                 // like the ranking rows: a soft gradient into the colour, rounded top

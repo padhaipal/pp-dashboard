@@ -249,6 +249,9 @@ describe("Find tab — staff table", () => {
     expect(calls[0].url).toBe("/api/proxy/users/staff?q=&offset=0&limit=100");
     // name, students, mobile, UDISE code, dashboard + share links (teachers only), note
     expect(rows[0].textContent).toContain("Asha");
+    // the geo entity type column
+    expect(within(rows[0]).getByTestId("staff-type").textContent).toBe("school");
+    expect(within(rows[1]).getByTestId("staff-type").textContent).toBe("block");
     expect(rows[0].textContent).toContain("8");
     expect(rows[0].textContent).toContain("919876543210");
     expect(rows[0].textContent).toContain("09270904601");

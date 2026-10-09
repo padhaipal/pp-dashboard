@@ -73,3 +73,4 @@
  - Bars above the map: rounded gradient bars on a light track; the student pop-up's 7-day activity: rounded gradient bars on per-day tracks.
  - Student pop-up Time tab: `MvpStudentTrend unit="min"` (a line like the test tabs, axis fits the minutes, no pass line, `minutes-chart`).
  - No "Generate report" button.
+ - Bars above the map: top corners 4 px (`rounded-t-[4px]`; full rounding looked like domes).
