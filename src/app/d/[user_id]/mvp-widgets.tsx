@@ -326,10 +326,32 @@ const fmtDay = (iso: string) => {
 };
 const shiftDay = (iso: string, days: number) => new Date(new Date(`${iso}T00:00:00Z`).getTime() + days * 86400000).toISOString().slice(0, 10);
 
+// A round axis top at or above `max` (1, 2, 5 × 10ⁿ steps of five), at least 10.
+function niceTop(max: number): number {
+  const raw = Math.max(10, max) / 5;
+  const p = 10 ** Math.floor(Math.log10(raw));
+  const m = raw / p;
+  return (m <= 1 ? 1 : m <= 2 ? 2 : m <= 5 ? 5 : 10) * p * 5;
+}
+
 // pass-rate-over-time line for one entity (inline styles so it rasterises for the PDF).
 // `passMark` = the dotted line (%). Areas: the 80 % NIPUN target; a
 // student's own score chart: the test's pass mark (PASS_MARK_PCT).
-export function MvpStudentTrend({ series, label, passMark = 80 }: { series: SeriesPoint[]; label?: string; passMark?: number }) {
+// `unit` "min": the y-axis is minutes (fits the data), no pass line, the
+// last point labelled "12 min" — the student pop-up's Time tab.
+export function MvpStudentTrend({
+  series,
+  label,
+  passMark = 80,
+  unit = "pct",
+  testId,
+}: {
+  series: SeriesPoint[];
+  label?: string;
+  passMark?: number | null;
+  unit?: "pct" | "min";
+  testId?: string;
+}) {
   const W = 860,
     H = 220,
     mL = 40,
@@ -340,8 +362,11 @@ export function MvpStudentTrend({ series, label, passMark = 80 }: { series: Seri
     ih = H - mT - mB;
   const pts = series.filter((s) => s.pass_rate != null);
   const n = series.length;
+  const minutes = unit === "min";
+  const top = minutes ? niceTop(Math.max(0, ...pts.map((p) => p.pass_rate ?? 0))) : 100;
+  const ticks = minutes ? Array.from({ length: 6 }, (_, i) => Math.round((top / 5) * i)) : [0, 20, 40, 60, 80, 100];
   const x = (i: number) => mL + (n <= 1 ? iw / 2 : (i / (n - 1)) * iw),
-    y = (v: number) => mT + ih - (v / 100) * ih;
+    y = (v: number) => mT + ih - (v / top) * ih;
   let d = "";
   let pen = false;
   series.forEach((s, i) => {
@@ -355,8 +380,8 @@ export function MvpStudentTrend({ series, label, passMark = 80 }: { series: Seri
   const last = pts.length ? pts[pts.length - 1] : null;
   const lastIdx = last ? series.lastIndexOf(last) : -1;
   return (
-    <svg viewBox={"0 0 " + W + " " + H} className="w-full" style={{ maxHeight: 240 }} data-rep-chart="entity-trend">
-      {[0, 20, 40, 60, 80, 100].map((g) => (
+    <svg viewBox={"0 0 " + W + " " + H} className="w-full" style={{ maxHeight: 240 }} data-rep-chart="entity-trend" data-testid={testId}>
+      {ticks.map((g) => (
         <g key={g}>
           <line x1={mL} x2={W - mR} y1={y(g)} y2={y(g)} stroke="#f1f5f9" />
           <text x={mL - 5} y={y(g) + 3} textAnchor="end" fontSize="9" fill="#94a3b8">
@@ -364,7 +389,7 @@ export function MvpStudentTrend({ series, label, passMark = 80 }: { series: Seri
           </text>
         </g>
       ))}
-      <line x1={mL} x2={W - mR} y1={y(passMark)} y2={y(passMark)} stroke="#ef4444" strokeWidth={1.3} strokeDasharray="5 3" data-testid="student-pass-mark" />
+      {passMark != null && !minutes && <line x1={mL} x2={W - mR} y1={y(passMark)} y2={y(passMark)} stroke="#ef4444" strokeWidth={1.3} strokeDasharray="5 3" data-testid="student-pass-mark" />}
       {label && (
         <text transform={`translate(12 ${mT + ih / 2}) rotate(-90)`} textAnchor="middle" fontSize="8.5" fill="#64748b">
           {label}
@@ -377,10 +402,10 @@ export function MvpStudentTrend({ series, label, passMark = 80 }: { series: Seri
       ) : (
         <>
           <path d={d} fill="none" stroke="#2563eb" strokeWidth="2.6" />
-          {series.map((s, i) => (s.pass_rate == null ? null : <circle key={i} cx={x(i)} cy={y(s.pass_rate)} r="3" fill="#2563eb" />))}
+          {series.map((s, i) => (s.pass_rate == null ? null : <circle key={i} cx={x(i)} cy={y(s.pass_rate)} r="3" fill="#2563eb" data-testid="trend-point" />))}
           {last && last.pass_rate != null && (
             <text x={x(lastIdx) - 4} y={y(last.pass_rate) - 8} textAnchor="end" fontSize="11" fontWeight="800" fill="#2563eb">
-              {last.pass_rate.toFixed(1)}%
+              {minutes ? `${Math.round(last.pass_rate)} min` : `${last.pass_rate.toFixed(1)}%`}
             </text>
           )}
         </>
@@ -483,18 +508,25 @@ export function MvpStudentActivity({ series }: { series: SeriesPoint[] }) {
   const tail = series.slice(-7);
   const max = Math.max(1, ...tail.map((s) => s.n));
   const x = (i: number) => 4 + i * (bw + gap);
+  // like the ranking rows: a light track per day, a rounded gradient bar on it
   return (
-    <svg viewBox={"0 0 " + W + " " + H} className="h-14 w-auto" aria-label="activity, last 7 days">
+    <svg viewBox={"0 0 " + W + " " + H} className="h-14 w-auto" aria-label="activity, last 7 days" data-testid="activity-chart">
+      <defs>
+        <linearGradient id="act-fill" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0" stopColor="#16a34a" />
+          <stop offset="1" stopColor="#86efac" />
+        </linearGradient>
+      </defs>
       {tail.map((s, i) => {
         const practised = s.n > 0;
-        const v = practised ? 8 + Math.round((s.n / max) * 30) : 0;
-        return practised ? (
-          <rect key={i} x={x(i)} y={base - 6 - v} width={bw} height={v + 12} rx={9} fill="#34d399" />
-        ) : (
-          <rect key={i} x={x(i)} y={base + 2} width={bw} height={7} rx={3.5} fill="#fda4af" />
+        const v = practised ? 8 + Math.round((s.n / max) * 34) : 0;
+        return (
+          <g key={i}>
+            <rect x={x(i)} y={6} width={bw} height={base - 6 + 8} rx={bw / 2} fill="#f4f4f5" />
+            {practised ? <rect x={x(i)} y={base + 8 - v} width={bw} height={v} rx={bw / 2} fill="url(#act-fill)" /> : <rect x={x(i) + bw / 2 - 3} y={base + 2} width={6} height={6} rx={3} fill="#fca5a5" />}
+          </g>
         );
       })}
-      <line x1={0} x2={W} y1={base} y2={base} stroke="#a1a1aa" strokeWidth={1.5} strokeDasharray="5 4" />
     </svg>
   );
 }
@@ -920,7 +952,16 @@ export function MvpTeacherModal({
                   <>
                     {usageNow?.error && <p className="text-sm text-red-600">{usageNow.error}</p>}
                     {!usageNow && <ChartLoading t={t} />}
-                    {usageNow?.history && <MvpMinutesChart points={usageNow.history.points} label={t("Active minutes")} t={t} />}
+                    {/* Time: the student's active minutes each day as a line, like the test tabs */}
+                    {usageNow?.history && (
+                      <MvpStudentTrend
+                        series={usageNow.history.points.map((p) => ({ date: p.date, pass_rate: p.minutes, n: 0, mean: null }))}
+                        label={t("Active minutes")}
+                        unit="min"
+                        passMark={null}
+                        testId="minutes-chart"
+                      />
+                    )}
                   </>
                 ) : mMetric !== "letters" ? (
                   <>

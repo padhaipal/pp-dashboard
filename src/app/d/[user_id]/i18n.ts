@@ -66,6 +66,7 @@ const HI: Record<string, string> = {
   "Weekly trend": "साप्ताहिक रुझान",
   Average: "औसत",
   "Most improved": "सर्वाधिक सुधार",
+  "No data": "कोई डेटा नहीं",
   "vs 7 days ago": "7 दिन पहले की तुलना में",
   "This is you. Double-click your": "यह आप हैं। अपने परिणाम देखने के लिए अपने",
   "to see your own results.": "पर डबल-क्लिक करें।",

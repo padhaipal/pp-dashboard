@@ -332,6 +332,9 @@ export function GeoMap(props: GeoMapProps) {
   );
 
   const ownXY = ownXYOf(areas, projected);
+  // the viewer's own label's box (district → blocks drawn as labels): others must not cover it
+  const ownLabelPt = childType !== "school" ? projected.find((p) => p.child.id === ownId) : undefined;
+  const ownLabelBox = ownLabelPt ? labelBox(ownLabelPt.child.name, ownLabelPt.xy, 12 / tf.k) : null;
 
   // ---- interactions ----
   const showTip = (e: React.MouseEvent, title: string, sub: string | null) => {
@@ -399,6 +402,11 @@ export function GeoMap(props: GeoMapProps) {
         style={{ cursor: dragging ? "grabbing" : "default" }}
         data-testid="map-svg"
       >
+        <defs>
+          <filter id="own-shadow" x="-30%" y="-30%" width="160%" height="160%">
+            <feDropShadow dx="0" dy="1" stdDeviation="1.4" floodColor="#1e3a8a" floodOpacity="0.35" />
+          </filter>
+        </defs>
         <g transform={`translate(${tf.x},${tf.y}) scale(${k})`} style={{ transition: dragging ? "none" : "transform .25s ease" }}>
           {/* street/landmark underlay (district + block views only) */}
           {tiles && (
@@ -418,6 +426,8 @@ export function GeoMap(props: GeoMapProps) {
             return (
               <g key={a.child.id}>
                 {areaFill(a.d, a.child, a.incomplete, fillOf)}
+                {/* own area: a soft blue halo under a crisp outline */}
+                {own && <path d={a.d} fill="none" stroke="#60a5fa" strokeOpacity={0.5} strokeWidth={7 / k} strokeLinejoin="round" pointerEvents="none" data-testid="own-halo" />}
                 <path
                   d={a.d}
                   fill="none"
@@ -425,8 +435,9 @@ export function GeoMap(props: GeoMapProps) {
                   data-code={a.child.code}
                   data-id={a.child.id}
                   data-incomplete={a.incomplete ? "true" : undefined}
-                  stroke={own ? "#2563eb" : on ? "#0f172a" : "#ffffff"}
-                  strokeWidth={(own ? 3.2 : on ? 1.6 : 0.6) / k}
+                  stroke={own ? "#1d4ed8" : on ? "#0f172a" : "#ffffff"}
+                  strokeWidth={(own ? 2 : on ? 1.6 : 0.6) / k}
+                  strokeLinejoin="round"
                   data-own={own ? "1" : undefined}
                   style={{ cursor: a.incomplete ? "not-allowed" : "pointer" }}
                   onMouseEnter={(e) => {
@@ -455,20 +466,30 @@ export function GeoMap(props: GeoMapProps) {
 
           {/* the viewer's own area / label: a blue "You" tag above it */}
           {ownXY && (
-            <g pointerEvents="none" data-testid="own-tag">
-              <rect x={ownXY[0] - 22 / k} y={ownXY[1] - 30 / k} width={44 / k} height={16 / k} rx={8 / k} fill="#2563eb" />
-              <text x={ownXY[0]} y={ownXY[1] - 18.5 / k} textAnchor="middle" fontSize={10 / k} fontWeight="700" fill="#ffffff">
+            <g pointerEvents="none" data-testid="own-tag" filter="url(#own-shadow)">
+              <rect x={ownXY[0] - 20 / k} y={ownXY[1] - 36 / k} width={40 / k} height={18 / k} rx={9 / k} fill="#2563eb" stroke="#ffffff" strokeWidth={1.5 / k} />
+              <path d={`M${ownXY[0] - 5 / k} ${ownXY[1] - 18.6 / k} L${ownXY[0]} ${ownXY[1] - 13 / k} L${ownXY[0] + 5 / k} ${ownXY[1] - 18.6 / k} Z`} fill="#2563eb" />
+              <text x={ownXY[0]} y={ownXY[1] - 23.5 / k} textAnchor="middle" fontSize={10 / k} fontWeight="800" letterSpacing={0.4 / k} fill="#ffffff">
                 {t("You")}
               </text>
             </g>
           )}
           {/* labels (blocks; districts without a boundary file) */}
           {childType !== "school" &&
-            projected.map((p) => {
+            [...projected]
+              // the viewer's own label last, i.e. on top
+              .sort((a, b) => Number(a.child.id === ownId) - Number(b.child.id === ownId))
+              .map((p) => {
               const on = hoverId === p.child.id || selectedId === p.child.id;
               const fs = 12 / k;
               const [t1, t2] = tipFor(p.child, false);
+              const isOwn = p.child.id === ownId;
+              // a label that would sit on the viewer's own is not drawn (hover still finds it in the bars)
+              if (!isOwn && !on && ownLabelBox && boxesOverlap(labelBox(p.child.name, p.xy, fs), ownLabelBox)) return null;
+              const box = labelBox(p.child.name, p.xy, fs);
               return (
+                <g key={p.child.id}>
+                {isOwn && <rect x={box[0]} y={box[1]} width={box[2] - box[0]} height={box[3] - box[1]} rx={(box[3] - box[1]) / 2} fill="#ffffff" stroke="#2563eb" strokeWidth={1.5 / k} filter="url(#own-shadow)" pointerEvents="none" data-testid="own-label-pill" />}
                 <text
                   key={p.child.id}
                   x={p.xy[0]}
@@ -478,9 +499,9 @@ export function GeoMap(props: GeoMapProps) {
                   fontSize={fs}
                   fontWeight="700"
                   fill={fillOf(p.child)}
-                  stroke={p.child.id === ownId ? "#2563eb" : on ? "#0f172a" : "#ffffff"}
-                  strokeWidth={p.child.id === ownId ? fs / 4 : fs / (on ? 10 : 8)}
-                  data-own={p.child.id === ownId ? "1" : undefined}
+                  stroke={isOwn ? "none" : on ? "#0f172a" : "#ffffff"}
+                  strokeWidth={fs / (on ? 10 : 8)}
+                  data-own={isOwn ? "1" : undefined}
                   paintOrder="stroke"
                   data-id={p.child.id}
                   style={{ cursor: "pointer", userSelect: "none" }}
@@ -503,6 +524,7 @@ export function GeoMap(props: GeoMapProps) {
                 >
                   {p.child.name}
                 </text>
+                </g>
               );
             })}
 
@@ -638,3 +660,12 @@ export function DrillHint({ x, y, text, onDismiss, t = same }: { x: number | str
     </div>
   );
 }
+
+// A text label's box (x0, y0, x1, y1) around its centre, from a rough glyph
+// width; padded so a neighbour's label never touches it.
+export function labelBox(name: string, xy: [number, number], fs: number): [number, number, number, number] {
+  const w = name.length * fs * 0.62 + fs * 1.2,
+    h = fs * 1.7;
+  return [xy[0] - w / 2, xy[1] - h / 2, xy[0] + w / 2, xy[1] + h / 2];
+}
+export const boxesOverlap = (a: [number, number, number, number], b: [number, number, number, number]) => a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3];

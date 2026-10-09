@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { boxesOverlap, labelBox } from "./geo-map";
 import { TeacherDashboard } from "./teacher-dashboard";
 import { RepTrend } from "./report-card-modal";
 import { MvpMinutesChart } from "./mvp-widgets";
@@ -28,6 +29,14 @@ const drillIntoUp = async () => {
   fireEvent.dblClick(up);
   await waitFor(() => expect(screen.getByTestId("location-title").textContent).toContain("Uttar Pradesh"));
 };
+
+describe("map label boxes", () => {
+  it("overlap only when the boxes intersect", () => {
+    const a = labelBox("KAKORI", [100, 100], 12);
+    expect(boxesOverlap(a, labelBox("MAL", [110, 104], 12))).toBe(true);
+    expect(boxesOverlap(a, labelBox("MAL", [100, 140], 12))).toBe(false);
+  });
+});
 
 describe("TeacherDashboard", () => {
   afterEach(() => {
@@ -93,6 +102,8 @@ describe("TeacherDashboard", () => {
     expect(top.querySelector('[data-testid="rank-row"]')?.getAttribute("data-id")).toBe("g-09");
     // the trend has its own Yesterday / 7 / 30 days / All time toggle, on 30 days
     expect(within(screen.getByTestId("trend-window-toggle")).getByRole("button", { name: "Last 30 days" }).getAttribute("aria-pressed")).toBe("true");
+    // …directly under the Performance metric toggle, not inside the trend's card
+    expect(screen.getByTestId("trend-window-toggle").closest('[class*="rounded-2xl border"]')).toBeNull();
     expect(top.textContent).toContain("72%");
     expect(top.textContent).toContain("60%");
     // no students-active / change / as-of tiles
@@ -176,6 +187,10 @@ describe("TeacherDashboard", () => {
     const ownBar = await screen.findByTestId("own-bar-tag");
     expect(ownBar.textContent).toBe("You");
     expect(ownBar.parentElement?.getAttribute("data-own")).toBe("1");
+    // their block's label sits on a white pill, and a neighbour that would cover it is not drawn
+    expect(await screen.findByTestId("own-label-pill")).toBeDefined();
+    const ownLabel = document.querySelector('[data-testid="geo-map"] text[data-own="1"]')!;
+    expect(ownLabel.textContent).toBe("KAKORI");
     // first visit: a callout points at their own block and asks them to drill in; dismissing it sticks
     const hint = await screen.findByTestId("drill-hint");
     expect(hint.textContent).toContain("This is you. Double-click your block");
@@ -448,7 +463,8 @@ describe("TeacherDashboard", () => {
     expect(screen.queryByText(/Spotlight/, { selector: "div" })).toBeNull();
     expect(screen.queryByRole("link", { name: /Spotlight/ })).toBeNull();
     expect((screen.getByRole("button", { name: "Up a level" }) as HTMLButtonElement).disabled).toBe(false);
-    expect((screen.getByRole("button", { name: /Generate report/ }) as HTMLButtonElement).disabled).toBe(false);
+    // no report button any more (2026-10)
+    expect(screen.queryByRole("button", { name: /Generate report/ })).toBeNull();
 
     // click a tile → the student's dashboard modal: title, chart toggles, one sentence per voice note with audio
     fireEvent.click(tiles[0]);
@@ -811,8 +827,10 @@ describe("TeacherDashboard — Time metric", () => {
     await waitFor(() => expect(calls).toContain("/api/proxy/users/s-1/usage-history?range=30&viewer=u-sch"));
     const chart = await within(dialog).findByTestId("minutes-chart");
     expect(chart.textContent).toContain("Active minutes");
-    // one bar per day that had activity (the idle day has none)
-    expect(chart.querySelectorAll('[data-testid="minutes-bar"]')).toHaveLength(2);
+    // a line like the test tabs: one point per day (the idle day at 0), the last labelled in minutes
+    expect(chart.querySelectorAll('[data-testid="trend-point"]')).toHaveLength(3);
+    expect(chart.textContent).toContain("8 min");
+    expect(chart.querySelector('[data-testid="student-pass-mark"]')).toBeNull();
     expect(chart.textContent).toContain("15 Sept");
     // its range toggle refetches
     fireEvent.click(within(dialog).getByRole("button", { name: "All time" }));

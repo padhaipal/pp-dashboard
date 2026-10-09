@@ -65,3 +65,11 @@
  - Trend: a window with ≤ 2 dates (Yesterday) draws dots (`trend-dot`) for every line and the average.
  - Rankings level toggle (`rank-level-toggle`): only once drilled in (`stack.length > 1`) and when more than one level lies below (`levelsBelow(entity.type)`: e.g. a block → School · Teacher · Student; a state → District · Block · School · Teacher · Student). Default = the nearest level (the page's own children, ranked locally as before); a deeper level fetches `GET geo-entities/:id/rankings?level=&metric=[&window=]` (`rankingsUrl`). Teachers show "name · number"; students their name, no number. The pick resets on every drill.
  - Double-click on a ranking row from a deeper level pushes its `path` (from pp-sketch) onto the drill stack: an area opens its own view, a teacher their class, a student their teacher's class. Nearest-level rows behave as before (drill into the child / open the student).
+
+17.) 2026-10 (polish).
+ - Own highlight: map area = soft blue halo (`own-halo`) under a 2-unit blue outline; "You" tag = shadowed pill with a caret; own LABEL (district → blocks) = white pill with blue border, drawn last, and any other label whose box (`labelBox`) would overlap it is not drawn (`boxesOverlap`); bar = white+blue double ring and a shadowed "You" pill; teacher card = `ring-2 ring-blue-500 ring-offset-2` + gradient tag.
+ - Empty rankings / spotlight: "No data".
+ - Performance section: metric toggle, then the trend's window toggle directly under it (outside the card); the CSV link stays by "Trend".
+ - Bars above the map: rounded gradient bars on a light track; the student pop-up's 7-day activity: rounded gradient bars on per-day tracks.
+ - Student pop-up Time tab: `MvpStudentTrend unit="min"` (a line like the test tabs, axis fits the minutes, no pass line, `minutes-chart`).
+ - No "Generate report" button.
