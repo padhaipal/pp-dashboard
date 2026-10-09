@@ -212,6 +212,44 @@ describe("TeacherDashboard", () => {
     await waitFor(() => expect(screen.queryByTestId("teacher-card")).not.toBeNull());
   });
 
+  it("rankings level toggle: none at the home level; once drilled in, every level below (nearest first) and a deeper level is fetched from pp-sketch", async () => {
+    const base = makeFetch({ scoresById: { "g-09": SCORES } }).fn;
+    const rankCalls: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (url.includes("/rankings?")) {
+          rankCalls.push(url);
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              level: "teacher",
+              as_of: "2026-09-10",
+              top: [{ id: "t-9", name: "Meera", sub: "919800000009", value: 80, delta: 5 }],
+              most_improved: [{ id: "t-9", name: "Meera", sub: "919800000009", value: 80, delta: 5 }],
+            }),
+          } as unknown as Response;
+        }
+        return base(input, init);
+      }),
+    );
+    render(<TeacherDashboard profile={PROFILE} incompleteStates={[]} />);
+    await pickNipunG3();
+    await screen.findByTestId("most-improved");
+    expect(screen.queryByTestId("rank-level-toggle")).toBeNull();
+    await drillIntoUp();
+    const toggle = await screen.findByTestId("rank-level-toggle");
+    expect(within(toggle).getAllByRole("button").map((b) => b.textContent)).toEqual(["District", "Block", "School", "Teacher", "Student"]);
+    expect(within(toggle).getByRole("button", { name: "District" }).getAttribute("aria-pressed")).toBe("true");
+    expect(rankCalls).toHaveLength(0);
+    fireEvent.click(within(toggle).getByRole("button", { name: "Teacher" }));
+    await waitFor(() => expect(rankCalls[0]).toContain("/api/proxy/geo-entities/g-09/rankings?level=teacher&metric=nipun_g3"));
+    // teachers listed with their number
+    await waitFor(() => expect(screen.getByTestId("top-performing").textContent).toContain("Meera · 919800000009"));
+  });
+
   it("builds the CSV link from the current metric and range (range bar lives in the Performance card)", async () => {
     const { fn } = makeFetch();
     vi.stubGlobal("fetch", vi.fn(fn));

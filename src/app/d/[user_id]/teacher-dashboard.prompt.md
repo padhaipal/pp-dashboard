@@ -63,3 +63,4 @@
  - Bar strip: a single item draws nothing, but the strip keeps its height (no jump when toggling).
  - Map: private schools are not drawn (no school-kind legend).
  - Trend: a window with ≤ 2 dates (Yesterday) draws dots (`trend-dot`) for every line and the average.
+ - Rankings level toggle (`rank-level-toggle`): only once drilled in (`stack.length > 1`) and when more than one level lies below (`levelsBelow(entity.type)`: e.g. a block → School · Teacher · Student; a state → District · Block · School · Teacher · Student). Default = the nearest level (the page's own children, ranked locally as before); a deeper level fetches `GET geo-entities/:id/rankings?level=&metric=[&window=]` (`rankingsUrl`). Teachers show "name · number"; students their name, no number. The pick resets on every drill.

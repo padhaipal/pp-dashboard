@@ -414,6 +414,21 @@ export const scoresUrl = (id: string, metric: Metric, range: Range, window?: Tim
   `/api/proxy/geo-entities/${encodeURIComponent(id)}/scores?metric=${metric}&range=${range}${windowQs(metric, window)}`;
 export const csvUrl = (id: string, metric: Metric, range: Range, window?: TimeWindow) =>
   `/api/proxy/geo-entities/${encodeURIComponent(id)}/scores.csv?metric=${metric}&range=${range}${windowQs(metric, window)}`;
+// GET geo-entities/:id/rankings — most improved / top performing among the
+// `level` entities below `:id` (teachers with their number in `sub`).
+export type RankLevel = "state" | "district" | "block" | "school" | "teacher" | "student";
+export type RankRow = { id: string; name: string; sub: string | null; value: number | null; delta: number | null };
+export type RankingsResponse = { level: RankLevel; as_of: string | null; top: RankRow[]; most_improved: RankRow[] };
+export const rankingsUrl = (id: string, level: RankLevel, metric: Metric, window?: TimeWindow) =>
+  `/api/proxy/geo-entities/${encodeURIComponent(id)}/rankings?level=${level}&metric=${metric}${windowQs(metric, window)}`;
+// Every level below an entity, nearest first (a teacher's class: students).
+const LEVEL_ORDER: RankLevel[] = ["state", "district", "block", "school", "teacher", "student"];
+export const levelsBelow = (type: GeoType | "teacher"): RankLevel[] => {
+  if (type === "country") return LEVEL_ORDER;
+  const i = LEVEL_ORDER.indexOf(type as RankLevel);
+  return i < 0 ? [] : LEVEL_ORDER.slice(i + 1);
+};
+export const RANK_LEVEL_LABEL: Record<RankLevel, string> = { state: "State", district: "District", block: "Block", school: "School", teacher: "Teacher", student: "Student" };
 export const spotlightUrl = (id: string, metric: Metric, range: Range, window?: TimeWindow) =>
   `/api/proxy/geo-entities/${encodeURIComponent(id)}/spotlight?metric=${metric}&range=${range}${windowQs(metric, window)}`;
 // student modal "Time" chart: the student's active minutes per day

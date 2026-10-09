@@ -66,6 +66,12 @@ import {
   csvUrl,
   fmtDurationParts,
   fmtRatio,
+  levelsBelow,
+  rankingsUrl,
+  RANK_LEVEL_LABEL,
+  type RankLevel,
+  type RankRow,
+  type RankingsResponse,
 } from "./dashboard-types";
 import { withViewer } from "./viewer-url";
 import { ViewerProvider } from "./viewer-context";
@@ -390,6 +396,33 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
       .sort((a, b) => (b.delta ?? 0) - (a.delta ?? 0))
       .slice(0, 5);
   }, [inClass, students, geoChildren, timeMode, isUsageMetric]);
+  // Rankings at another level (drilled in only): the toggle above them picks
+  // any level below this entity; the nearest one is the children above.
+  const rankOptions = stack.length > 1 && entity ? levelsBelow(entity.type) : [];
+  const [rankPick, setRankPick] = useState<{ entityId: string; level: RankLevel } | null>(null);
+  const rankLevel: RankLevel | null = rankOptions.length > 1 ? (rankPick && rankPick.entityId === entity?.id ? rankPick.level : rankOptions[0]) : null;
+  const deeper = rankLevel !== null && rankLevel !== rankOptions[0];
+  const [ranked, setRanked] = useState<{ key: string; data: RankingsResponse | null } | null>(null);
+  const rankWin = metric === "usage" ? timeWindow : undefined;
+  const rankKey = deeper && entity ? `${entity.id}|${rankLevel}|${metric}|${rankWin ?? ""}` : null;
+  useEffect(() => {
+    if (!rankKey || !entity || !rankLevel) return;
+    let cancelled = false;
+    fetch(withViewer(rankingsUrl(entity.id, rankLevel, metric, rankWin), profile.id))
+      .then(async (r) => (r.ok ? ((await r.json()) as RankingsResponse) : null))
+      .catch(() => null)
+      .then((data) => {
+        if (!cancelled) setRanked({ key: rankKey, data });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [rankKey, entity, rankLevel, metric, rankWin, profile.id]);
+  const rankedNow = deeper && ranked && ranked.key === rankKey ? ranked.data : null;
+  // a teacher's number beside their name; students carry no number here
+  const rankName = (r: RankRow) => (r.sub ? `${r.name} · ${r.sub}` : r.name);
+  const shownImproved: ImprovedRow[] = deeper ? (rankedNow?.most_improved ?? []).map((r) => ({ id: r.id, name: rankName(r), delta: r.delta })) : improvedRows;
+  const shownTop: ImprovedRow[] = deeper ? (rankedNow?.top ?? []).map((r) => ({ id: r.id, name: rankName(r), delta: r.value })) : topRows;
   // Figures after the ranking bars: minutes in Time mode, else % (or minutes for legacy usage).
   const fmtRank = (v: number) => (timeMode ? fmtDuration(v, t) : isUsageMetric ? fmtMinutes(v) : `${Math.round(v)}%`);
   const fmtDelta = (v: number) => (timeMode ? fmtRatio(v) : `${v >= 0 ? "+" : ""}${v.toFixed(1)}${isUsageMetric ? ` ${t("min")}` : "%"}`);
@@ -673,17 +706,35 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                         />
                       </div>
                       {/* most improved (change vs the range / the Time window before) and top performing, side by side */}
+                      {/* drilled in: which level to rank (the children by default, or any level below) */}
+                      {rankOptions.length > 1 && entity && (
+                        <div className="flex justify-center border-t border-zinc-100 pt-5">
+                          <div className="inline-flex flex-wrap justify-center gap-1 rounded-full bg-zinc-100 p-1 text-xs font-semibold ring-1 ring-zinc-200" role="group" aria-label="Ranking level" data-testid="rank-level-toggle">
+                            {rankOptions.map((l) => (
+                              <button
+                                key={l}
+                                type="button"
+                                aria-pressed={rankLevel === l}
+                                onClick={() => setRankPick({ entityId: entity.id, level: l })}
+                                className={"rounded-full px-3.5 py-1.5 transition " + (rankLevel === l ? "bg-zinc-900 text-white shadow-sm" : "text-zinc-600 hover:bg-white")}
+                              >
+                                {t(RANK_LEVEL_LABEL[l])}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                       {/* most improved (left) and top performing (right): both by the selected metric / Time window */}
-                      <div className="grid grid-cols-1 gap-6 border-t border-zinc-100 pt-5 md:grid-cols-2">
+                      <div className={"grid grid-cols-1 gap-6 md:grid-cols-2" + (rankOptions.length > 1 ? "" : " border-t border-zinc-100 pt-5")}>
                         <div data-testid="most-improved">
                           <div className="mb-3 text-base font-semibold text-zinc-800">{t("Most improved")}</div>
-                          {improvedRows.length === 0 && <p className="py-2 text-sm text-zinc-400">{t("Nobody has improved yet.")}</p>}
-                          <RankBars rows={improvedRows} kind="improved" format={fmtDelta} hoverId={hoverId} setHoverId={setHoverId} selId={selId} onSelect={select} onPick={pickRow} />
+                          {shownImproved.length === 0 && <p className="py-2 text-sm text-zinc-400">{t("Nobody has improved yet.")}</p>}
+                          <RankBars rows={shownImproved} kind="improved" format={fmtDelta} hoverId={hoverId} setHoverId={setHoverId} selId={selId} onSelect={select} onPick={pickRow} />
                         </div>
                         <div data-testid="top-performing">
                           <div className="mb-3 text-base font-semibold text-zinc-800">{t("Top performing")}</div>
-                          {topRows.length === 0 && <p className="py-2 text-sm text-zinc-400">{t("No results in this window")}</p>}
-                          <RankBars rows={topRows} kind="top" format={fmtRank} hoverId={hoverId} setHoverId={setHoverId} selId={selId} onSelect={select} onPick={pickRow} />
+                          {shownTop.length === 0 && <p className="py-2 text-sm text-zinc-400">{t("No results in this window")}</p>}
+                          <RankBars rows={shownTop} kind="top" format={fmtRank} hoverId={hoverId} setHoverId={setHoverId} selId={selId} onSelect={select} onPick={pickRow} />
                         </div>
                       </div>
                     </div>

@@ -10,6 +10,8 @@ export const PUBLIC_ALLOWED: { pattern: RegExp; methods: string[] }[] = [
   { pattern: /^users\/[^/]+\/profile$/, methods: ["PATCH"] },
   { pattern: /^geo-entities\/[^/]+\/scores(\.csv)?$/, methods: ["GET"] },
   { pattern: /^geo-entities\/[^/]+\/spotlight$/, methods: ["GET"] },
+  // most improved / top performing at a deeper level (the rankings' level toggle)
+  { pattern: /^geo-entities\/[^/]+\/rankings$/, methods: ["GET"] },
   // Student modal on /d: score history, recent voice notes and one note's
   // audio bytes (403 from pp-sketch unless the viewer may hear it).
   { pattern: /^users\/[^/]+\/literacy-test-scores$/, methods: ["GET"] },

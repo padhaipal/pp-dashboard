@@ -8,6 +8,7 @@ describe("proxy public allowlist", () => {
     expect(isPublicAllowed("geo-entities/g1/scores", "GET")).toBe(true);
     expect(isPublicAllowed("geo-entities/g1/scores.csv", "GET")).toBe(true);
     expect(isPublicAllowed("geo-entities/g1/spotlight", "GET")).toBe(true);
+    expect(isPublicAllowed("geo-entities/g1/rankings", "GET")).toBe(true);
   });
 
   it("accepts the student-modal reads (history, media, audio) — GET only", () => {
