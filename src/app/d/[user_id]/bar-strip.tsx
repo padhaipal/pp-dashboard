@@ -15,6 +15,8 @@ export type BarItem = {
   value: number | null; // null = not using Lifteracy / unscored (grey stub)
   display: string; // formatted value for the hover card
   color: string;
+  // more lines for the hover card: [label, value]
+  extra?: [string, string][];
 };
 
 // Children without any engagement are grey stubs; past this many they only
@@ -49,7 +51,9 @@ export function BarStrip({
   const [localHover, setLocalHover] = useState<string | null>(null);
   // Ranked by value; at most MAX_GREY of the grey (no engagement) stubs.
   let grey = 0;
-  const bars = [...items].sort((a, b) => (b.value ?? -1) - (a.value ?? -1)).filter((b) => b.value != null || grey++ < MAX_GREY);
+  // One item (a lone teacher / student) ranks against nothing: the strip
+  // stays, empty, at its height so toggling metrics never makes the page jump.
+  const bars = items.length <= 1 ? [] : [...items].sort((a, b) => (b.value ?? -1) - (a.value ?? -1)).filter((b) => b.value != null || grey++ < MAX_GREY);
   const hovIdx = hoverId != null ? bars.findIndex((b) => b.id === hoverId) : -1;
   const hov = hovIdx >= 0 ? bars[hovIdx] : null;
   const showCard = hov && localHover === hov.id; // only for a hover that started on a bar
@@ -103,22 +107,35 @@ export function BarStrip({
       </div>
       {showCard && (
         <div
-          className="pointer-events-none absolute z-40 w-48 -translate-x-1/2 rounded-lg border border-zinc-200 bg-white p-2 shadow-xl"
-          style={{ left: `max(96px, min(calc(100% - 96px), ${((hovIdx + 0.5) / bars.length) * 100}%))`, bottom: 132 }}
+          className="pointer-events-none absolute z-40 w-64 -translate-x-1/2 rounded-2xl border border-zinc-200 bg-white p-3 shadow-xl"
+          style={{ left: `max(128px, min(calc(100% - 128px), ${((hovIdx + 0.5) / bars.length) * 100}%))`, top: "100%", marginTop: 8 }}
           data-testid="bar-card"
         >
-          <div className="flex items-center gap-2">
-            <div className="min-w-0">
-              <div className="truncate text-xs font-semibold text-zinc-900">{hov.name}</div>
-              {hov.sub && <div className="truncate text-[10px] text-zinc-500">{hov.sub}</div>}
+          <div className="flex items-start gap-2.5">
+            <span className={"flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold " + (hovIdx === 0 ? "bg-amber-400 text-white" : "bg-zinc-200 text-zinc-700")}>{hovIdx + 1}</span>
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-bold text-zinc-900">{hov.name}</div>
+              {hov.sub && <div className="truncate text-[11px] text-zinc-500">{hov.sub}</div>}
             </div>
-            <span className="ml-auto rounded px-1 py-0.5 text-[10px] font-bold text-white" style={{ background: hov.value == null ? "#9ca3af" : hov.color }}>
+          </div>
+          <div className="mt-2 flex items-center justify-between gap-2">
+            <span className="rounded-full px-2.5 py-1 text-sm font-extrabold text-white" style={{ background: hov.value == null ? "#9ca3af" : hov.color }}>
               {hov.display}
             </span>
+            <span className="text-[11px] text-zinc-500">
+              {t("Rank")} <b className="text-zinc-800">#{hovIdx + 1}</b> {t("of")} {bars.length}
+            </span>
           </div>
-          <div className="mt-1.5 text-[10px] text-zinc-600">
-            {t("Rank")} <b>#{hovIdx + 1}</b> {t("of")} {bars.length}
-          </div>
+          {!!hov.extra?.length && (
+            <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1 border-t border-zinc-100 pt-2 text-[11px]">
+              {hov.extra.map(([k, v]) => (
+                <div key={k} className="contents">
+                  <dt className="text-zinc-500">{k}</dt>
+                  <dd className="text-right font-semibold text-zinc-800">{v}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
         </div>
       )}
     </div>

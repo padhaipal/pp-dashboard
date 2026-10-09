@@ -181,6 +181,8 @@ export const TEST_SCORES = {
     ],
     // m-3 is the one listed tap that counted; m-4 was never awaited (not listed)
     counted_message_ids: ["m-3", "m-4", "m-old"],
+    // the whole bin: m-3 plus older answers not in this page of the feed
+    bin_message_ids: ["m-older", "m-old", "m-3", "m-4"],
   },
   // one answer so far (the tap m-3), 20 needed
   mpl_b: { status: "insufficient_data", attempts_available: 1, counted_message_ids: ["m-3"] },
@@ -266,13 +268,13 @@ export function timeScores(window: TimeWindow): ScoresResponse {
     ...SCORES,
     metric: "usage",
     window,
-    root: { ...SCORES.root, delta: 2, ...tf(w.root) },
-    // deltas = minutes vs the window before; only a rise ranks as most improved
+    root: { ...SCORES.root, delta: 1.2, ...tf(w.root) },
+    // deltas = minutes this window ÷ the window before; only a rise (> 1) ranks as most improved
     children: [
-      { ...CHILD_UP, delta: 7, bin: "high", ...tf(w.up) },
-      { ...CHILD_AP, delta: -2, bin: "mid", ...tf(w.ap) },
+      { ...CHILD_UP, delta: 1.8, bin: "high", ...tf(w.up) },
+      { ...CHILD_AP, delta: 0.6, bin: "mid", ...tf(w.ap) },
     ],
-    most_improved: [{ ...CHILD_UP, delta: 7, bin: "high", ...tf(w.up) }],
+    most_improved: [{ ...CHILD_UP, delta: 1.8, bin: "high", ...tf(w.up) }],
     time_delta_days: window === "yesterday" ? 1 : 7,
   };
 }
@@ -283,10 +285,10 @@ export function timeScoresClass(window: TimeWindow): ScoresResponse {
     ...SCORES_CLASS,
     metric: "usage",
     window,
-    root: { ...SCORES_CLASS.root, delta: 3, ...tf(w.root) },
+    root: { ...SCORES_CLASS.root, delta: 1.1, ...tf(w.root) },
     children: [
-      { ...STUDENTS[0], score: w.s1[0], delta: 5, ...tf(w.s1) },
-      { ...STUDENTS[1], score: w.s2[0], delta: -2, ...tf(w.s2) },
+      { ...STUDENTS[0], score: w.s1[0], delta: 1.5, ...tf(w.s1) },
+      { ...STUDENTS[1], score: w.s2[0], delta: 0.6, ...tf(w.s2) },
     ],
     time_delta_days: window === "yesterday" ? 1 : 7,
   };

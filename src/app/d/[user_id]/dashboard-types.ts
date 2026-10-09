@@ -127,7 +127,12 @@ export type StudentChild = TimeFields & {
 export type TestSnapshotPoint = { at: string; score: number; passed: boolean };
 // counted_message_ids: the interactions (media ids) behind `latest` and the
 // history point before it — or, while insufficient, every answer so far.
-export type SnapshotTestScore = { status: "ok" | "insufficient_data"; attempts_available: number; latest?: TestSnapshotPoint; history?: TestSnapshotPoint[]; counted_message_ids?: string[] };
+// bin_message_ids: every answer in the test's pool (first attempts at its questions), chronological.
+export type SnapshotTestScore = { status: "ok" | "insufficient_data"; attempts_available: number; latest?: TestSnapshotPoint; history?: TestSnapshotPoint[]; counted_message_ids?: string[]; bin_message_ids?: string[] };
+// The media feed answers 100 interactions a page (pp-sketch users/:id/media).
+export const MEDIA_PAGE = 100;
+// At most this many pages are walked to find a test's older answers.
+export const MEDIA_MAX_PAGES = 10;
 export type LiteracyTestScores = { nipun_grade_2: SnapshotTestScore; nipun_grade_3: SnapshotTestScore; mpl_b: SnapshotTestScore };
 // No test history for "usage" (undefined → empty series).
 export const TEST_KEY_OF: Partial<Record<Metric, keyof LiteracyTestScores>> = { nipun_g2: "nipun_grade_2", nipun_g3: "nipun_grade_3", mpl_b: "mpl_b" };
@@ -349,6 +354,16 @@ export function fmtDuration(minutes: number | null | undefined, t: (s: string) =
   if (m < TIME_HOURS_FROM_MINUTES) return `${m} ${t("min")}`;
   return `${Number((minutes / 60).toFixed(1))} ${t("hours")}`;
 }
+// fmtDuration split for display: the number big, the unit in the caption
+// under it ("5.6" / "hours all time").
+export function fmtDurationParts(minutes: number | null | undefined, t: (s: string) => string = (s) => s): { value: string; unit: string } {
+  if (minutes == null) return { value: "—", unit: "" };
+  const m = Math.round(minutes);
+  if (m < TIME_HOURS_FROM_MINUTES) return { value: String(m), unit: t("min") };
+  return { value: String(Number((minutes / 60).toFixed(1))), unit: t("hours") };
+}
+// Time "most improved": this window ÷ the window before ("×1.8").
+export const fmtRatio = (r: number): string => `×${Number(r.toFixed(1))}`;
 // An average per day — always minutes, never hours: one decimal under 10
 // ("0.4 min per day"), whole minutes from 10 up.
 export function fmtPerDay(minutes: number | null | undefined, t: (s: string) => string = (s) => s): string {
@@ -399,6 +414,23 @@ export const scoresUrl = (id: string, metric: Metric, range: Range, window?: Tim
   `/api/proxy/geo-entities/${encodeURIComponent(id)}/scores?metric=${metric}&range=${range}${windowQs(metric, window)}`;
 export const csvUrl = (id: string, metric: Metric, range: Range, window?: TimeWindow) =>
   `/api/proxy/geo-entities/${encodeURIComponent(id)}/scores.csv?metric=${metric}&range=${range}${windowQs(metric, window)}`;
+// GET geo-entities/:id/rankings — most improved / top performing among the
+// `level` entities below `:id` (teachers with their number in `sub`).
+export type RankLevel = "state" | "district" | "block" | "school" | "teacher" | "student";
+// path: refs from just below the entity down to the row's own view (a geo
+// entity, a teacher's class, or a student's teacher's class) — the drill of a double-click.
+export type RankRow = { id: string; name: string; sub: string | null; value: number | null; delta: number | null; path?: GeoRef[] };
+export type RankingsResponse = { level: RankLevel; as_of: string | null; top: RankRow[]; most_improved: RankRow[] };
+export const rankingsUrl = (id: string, level: RankLevel, metric: Metric, window?: TimeWindow) =>
+  `/api/proxy/geo-entities/${encodeURIComponent(id)}/rankings?level=${level}&metric=${metric}${windowQs(metric, window)}`;
+// Every level below an entity, nearest first (a teacher's class: students).
+const LEVEL_ORDER: RankLevel[] = ["state", "district", "block", "school", "teacher", "student"];
+export const levelsBelow = (type: GeoType | "teacher"): RankLevel[] => {
+  if (type === "country") return LEVEL_ORDER;
+  const i = LEVEL_ORDER.indexOf(type as RankLevel);
+  return i < 0 ? [] : LEVEL_ORDER.slice(i + 1);
+};
+export const RANK_LEVEL_LABEL: Record<RankLevel, string> = { state: "State", district: "District", block: "Block", school: "School", teacher: "Teacher", student: "Student" };
 export const spotlightUrl = (id: string, metric: Metric, range: Range, window?: TimeWindow) =>
   `/api/proxy/geo-entities/${encodeURIComponent(id)}/spotlight?metric=${metric}&range=${range}${windowQs(metric, window)}`;
 // student modal "Time" chart: the student's active minutes per day
@@ -409,7 +441,7 @@ export const testScoresUrl = (id: string) => `/api/proxy/users/${encodeURICompon
 // letter-score chart (ScoreChart on /user/[id]) — every score row + the learnt bins
 export const letterScoresUrl = (id: string) => `/api/proxy/users/${encodeURIComponent(id)}/scores`;
 export const letterBinsUrl = (id: string) => `/api/proxy/scores/letter-bins?users=${encodeURIComponent(id)}`;
-export const mediaUrl = (id: string) => `/api/proxy/users/${encodeURIComponent(id)}/media`;
+export const mediaUrl = (id: string, offset = 0) => `/api/proxy/users/${encodeURIComponent(id)}/media${offset ? `?offset=${offset}` : ""}`;
 export const audioUrl = (mediaId: string) => `/api/proxy/media-meta-data/${encodeURIComponent(mediaId)}/audio`;
 
 // ------------------------------------------------------------------ formatting

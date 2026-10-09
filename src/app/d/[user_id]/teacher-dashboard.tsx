@@ -17,7 +17,7 @@
 // recordings the viewer is not directly above. Rows say so in `pii`.
 
 import Image from "next/image";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import { randomSeed, seedFor } from "./avatar";
 import {
   ACCENT,
@@ -55,7 +55,6 @@ import {
   type Metric,
   type PublicProfile,
   type Range,
-  rangeSuffix,
   type ScoresResponse,
   type SpotlightResponse,
   type StudentChild,
@@ -65,14 +64,22 @@ import {
   lastDays,
   WINDOW_DAYS,
   csvUrl,
+  fmtDurationParts,
+  fmtRatio,
+  levelsBelow,
+  rankingsUrl,
+  RANK_LEVEL_LABEL,
+  type RankLevel,
+  type RankRow,
+  type RankingsResponse,
 } from "./dashboard-types";
 import { withViewer } from "./viewer-url";
 import { ViewerProvider } from "./viewer-context";
 import { BarStrip, type BarItem } from "./bar-strip";
-import { GeoMap } from "./geo-map";
+import { DrillHint, GeoMap } from "./geo-map";
 import { isLang, LANG_STORAGE_KEY, makeT, type Lang, type T } from "./i18n";
 import { AvatarImg, EditableStudentName, MvpLangToggle, MvpMetricToggle, MvpShareBar, MvpTeacherModal, MvpTimeWindowToggle, MvpTrend, type ModalSubject } from "./mvp-widgets";
-import { ReportCardModal, RepKpis, RepMeta, RepQuote, RepTrend, type ImprovedRow, type ReportData } from "./report-card-modal";
+import { ReportCardModal, RepKpis, RepQuote, RepTrend, type ImprovedRow, type ReportData } from "./report-card-modal";
 
 export type TeacherDashboardProps = {
   profile: PublicProfile;
@@ -100,6 +107,9 @@ async function serverMessage(res: Response): Promise<string> {
 // teacher can tell students apart. Deliberately uncensored.
 const withPhone = (name: string, phone: string | undefined) => (phone ? `${name} · ${phone}` : name);
 const studentSub = (s: StudentChild, t: T) => (s.phone ? `${t("Student")} · ${s.phone}` : t("Student"));
+
+// localStorage: the first-visit drill-down callout was dismissed.
+const DRILL_HINT_KEY = "pp-drill-hint-dismissed";
 
 const toRef = (c: GeoRef): GeoRef => ({ id: c.id, type: c.type, code: c.code, name: c.name, has_boundary: c.has_boundary, lat: c.lat, lng: c.lng });
 
@@ -163,6 +173,26 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
       }
     }, 0);
     return () => clearTimeout(id);
+  }, []);
+  // First-visit callout pointing at the viewer's own area: shown until dismissed.
+  const [hintOpen, setHintOpen] = useState(false);
+  useEffect(() => {
+    const id = setTimeout(() => {
+      try {
+        if (window.localStorage.getItem(DRILL_HINT_KEY) !== "1") setHintOpen(true);
+      } catch {
+        setHintOpen(true);
+      }
+    }, 0);
+    return () => clearTimeout(id);
+  }, []);
+  const dismissHint = useCallback(() => {
+    setHintOpen(false);
+    try {
+      window.localStorage.setItem(DRILL_HINT_KEY, "1");
+    } catch {
+      // storage unavailable
+    }
   }, []);
   const setLang = useCallback((l: Lang) => {
     setLangState(l);
@@ -251,6 +281,9 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
   }, []);
   const canUp = stack.length > 1;
   const select = useCallback((c: { id: string }) => setSelId((cur) => (cur === c.id ? null : c.id)), []);
+  // An area's / teacher's details pop-up (was opened from the Detail card,
+  // removed 2026-10): a single click on its bar, held back a moment so a
+  // double-click (drill) does not also open it.
   const openChild = useCallback(
     (c: Child) => {
       if (!childType || childType === "student") return;
@@ -258,6 +291,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
     },
     [childType],
   );
+  const barClickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const openStudent = useCallback((s: StudentChild) => setModal({ kind: "student", student: s }), []);
   // A student renamed anywhere (tile, modal header) → every copy on the page follows.
   const renameStudent = useCallback((studentId: string, name: string) => {
@@ -274,10 +308,6 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
   // (the parent an official opens on is the last ancestor — not listed twice)
   const titleSegments = [...(startsAtParent(profile) ? profile.ancestors.slice(0, -1) : profile.ancestors), ...stack].reverse().map((a) => t(displayName(a.name, a.type)));
   const locationTitle = titleSegments.join("  -  ");
-  const detailChild = useMemo(() => {
-    const pick = (id: string | null) => (id ? geoChildren.find((c) => c.id === id) ?? null : null);
-    return pick(hoverId) ?? pick(selId) ?? (spotlight?.top?.child ?? null) ?? geoChildren[0] ?? null;
-  }, [hoverId, selId, geoChildren, spotlight]);
 
   // Bars under the map card: every child of this level (or every student in
   // the class) with its metric value — pass rate at geo levels, score % or
@@ -294,6 +324,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
               value: s.time_total ?? null,
               display: fmtDuration(s.time_total, t),
               color: windowColor(s.time_total, timeWindow),
+              extra: [[t("vs the window before"), s.delta == null ? "—" : fmtRatio(s.delta)]] as [string, string][],
             }))
           : geoChildren.map((c) => ({
               id: c.id,
@@ -302,6 +333,11 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
               value: c.using_lifteracy ? (c.time_sum ?? null) : null,
               display: c.using_lifteracy ? fmtDuration(c.time_sum, t) : t("Not using Lifteracy"),
               color: windowFill(c, timeWindow),
+              extra: [
+                [t("Students"), String(c.students ?? c.n)],
+                [t("Per student"), fmtDuration(c.time_total, t)],
+                [t("vs the window before"), c.delta == null ? "—" : fmtRatio(c.delta)],
+              ] as [string, string][],
             }))
         : inClass
         ? students.map((s) => {
@@ -337,7 +373,8 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
       inClass
         ? students
             // Time: only a rise in minutes is an improvement (as pp-sketch ranks areas)
-            .filter((s) => s.delta != null && (!timeMode || s.delta > 0))
+            // Time: delta = this window ÷ the one before; only a rise (> 1) counts
+            .filter((s) => s.delta != null && (!timeMode || s.delta > 1))
             .sort((a, b) => (b.delta ?? 0) - (a.delta ?? 0))
             .slice(0, 5)
             .map((s) => ({ id: s.student_id, name: withPhone(s.name ?? UNNAMED, s.phone), delta: s.delta }))
@@ -359,10 +396,38 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
       .sort((a, b) => (b.delta ?? 0) - (a.delta ?? 0))
       .slice(0, 5);
   }, [inClass, students, geoChildren, timeMode, isUsageMetric]);
+  // Rankings at another level (drilled in only): the toggle above them picks
+  // any level below this entity; the nearest one is the children above.
+  const rankOptions = stack.length > 1 && entity ? levelsBelow(entity.type) : [];
+  const [rankPick, setRankPick] = useState<{ entityId: string; level: RankLevel } | null>(null);
+  const rankLevel: RankLevel | null = rankOptions.length > 1 ? (rankPick && rankPick.entityId === entity?.id ? rankPick.level : rankOptions[0]) : null;
+  const deeper = rankLevel !== null && rankLevel !== rankOptions[0];
+  const [ranked, setRanked] = useState<{ key: string; data: RankingsResponse | null } | null>(null);
+  const rankWin = metric === "usage" ? timeWindow : undefined;
+  const rankKey = deeper && entity ? `${entity.id}|${rankLevel}|${metric}|${rankWin ?? ""}` : null;
+  useEffect(() => {
+    if (!rankKey || !entity || !rankLevel) return;
+    let cancelled = false;
+    fetch(withViewer(rankingsUrl(entity.id, rankLevel, metric, rankWin), profile.id))
+      .then(async (r) => (r.ok ? ((await r.json()) as RankingsResponse) : null))
+      .catch(() => null)
+      .then((data) => {
+        if (!cancelled) setRanked({ key: rankKey, data });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [rankKey, entity, rankLevel, metric, rankWin, profile.id]);
+  const rankedNow = deeper && ranked && ranked.key === rankKey ? ranked.data : null;
+  // a teacher's number beside their name; students carry no number here
+  const rankName = (r: RankRow) => (r.sub ? `${r.name} · ${r.sub}` : r.name);
+  const shownImproved: ImprovedRow[] = deeper ? (rankedNow?.most_improved ?? []).map((r) => ({ id: r.id, name: rankName(r), delta: r.delta })) : improvedRows;
+  const shownTop: ImprovedRow[] = deeper ? (rankedNow?.top ?? []).map((r) => ({ id: r.id, name: rankName(r), delta: r.value })) : topRows;
   // Figures after the ranking bars: minutes in Time mode, else % (or minutes for legacy usage).
   const fmtRank = (v: number) => (timeMode ? fmtDuration(v, t) : isUsageMetric ? fmtMinutes(v) : `${Math.round(v)}%`);
-  const fmtDelta = (v: number) => `${v >= 0 ? "+" : ""}${v.toFixed(1)}${timeMode || isUsageMetric ? ` ${t("min")}` : "%"}`;
-  const deltaSuffix = timeMode ? timeDeltaSuffix(scores?.time_delta_days, t) : rangeSuffix(range, t);
+  const fmtDelta = (v: number) => (timeMode ? fmtRatio(v) : `${v >= 0 ? "+" : ""}${v.toFixed(1)}${isUsageMetric ? ` ${t("min")}` : "%"}`);
+  // NIPUN / MPL-B changes are always against 7 days back (pp-sketch TEST_DELTA_DAYS).
+  const deltaSuffix = timeMode ? timeDeltaSuffix(scores?.time_delta_days, t) : t("vs 7 days ago");
 
   const reportData: ReportData | null =
     scores && childType && entity
@@ -385,7 +450,16 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
       : null;
 
   // Double-click on a ranking row: open the student, or drill into the area.
+  // A row from a deeper level drills straight to its own view (pp-sketch's
+  // path: an area, a teacher's class, a student's teacher's class).
   const pickRow = (r: ImprovedRow) => {
+    const deep = deeper ? [...(rankedNow?.top ?? []), ...(rankedNow?.most_improved ?? [])].find((x) => x.id === r.id) : undefined;
+    if (deep?.path?.length) {
+      setStack((st) => [...st, ...deep.path!.map(toRef)]);
+      setHoverId(null);
+      setSelId(null);
+      return;
+    }
     if (inClass) {
       const s = students.find((x) => x.student_id === r.id);
       if (s) openStudent(s);
@@ -484,17 +558,18 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                   totalN={geoChildren.length}
                   showUsing={childType !== "teacher" && childType !== "student"}
                   timeWindow={timeMode ? timeWindow : undefined}
-                  ageBand={ageBandOf(metric, scores.age_band)}
+                  // the teacher's own class: "of students pass …" (no age band)
+                  ageBand={inClass ? null : ageBandOf(metric, scores.age_band)}
                   t={t}
                 />
               )}
             </div>
 
             {/* bars: every child ranked — ABOVE the map (2026-10) */}
-            {scores && !emptyRoot && barItems.length > 0 && (
+            {scores && (
               <div className="mx-auto mt-6 shrink-0" style={{ width: "min(calc(100% - 3rem), 69rem)" }} data-testid="bar-strip-wrap">
                 <BarStrip
-                  items={barItems}
+                  items={emptyRoot ? [] : barItems}
                   max={barMax}
                   hoverId={hoverId}
                   setHoverId={setHoverId}
@@ -505,10 +580,14 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                       if (st) openStudent(st);
                     } else {
                       const c = geoChildren.find((x) => x.id === b.id);
-                      if (c) select(c);
+                      if (!c) return;
+                      select(c);
+                      if (barClickTimer.current) clearTimeout(barClickTimer.current);
+                      barClickTimer.current = setTimeout(() => openChild(c), 260);
                     }
                   }}
                   onDoubleClick={(b) => {
+                    if (barClickTimer.current) clearTimeout(barClickTimer.current);
                     if (inClass) return;
                     const c = geoChildren.find((x) => x.id === b.id);
                     if (c) drill(c);
@@ -526,7 +605,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
               data-testid="map-card"
             >
               {entity.type === "school" ? (
-                scores && <TeacherCards teachers={geoChildren} metric={metric} range={range} time={timeMode} timeWindow={timeWindow} timeCaption={timeSuffix} selId={selId} ownId={ownId} onSelect={select} onDrill={drill} onClear={() => setSelId(null)} onUp={up} t={t} />
+                scores && <TeacherCards teachers={geoChildren} metric={metric} range={range} time={timeMode} timeWindow={timeWindow} timeCaption={timeSuffix} selId={selId} ownId={ownId} onOpen={openChild} drillHint={hintOpen && ownId ? t("This is you. Double-click your card to see your class.") : null} onDismissHint={dismissHint} onSelect={select} onDrill={drill} onClear={() => setSelId(null)} onUp={up} t={t} />
               ) : entity.type === "teacher" ? (
                 scores && <StudentTiles students={students} metric={metric} time={timeMode} timeWindow={timeWindow} timeCaption={timeSuffix} onOpen={openStudent} onRename={renameStudent} onUp={up} t={t}
                     hoverId={hoverId}
@@ -546,6 +625,8 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                   onUp={up}
                   ownId={ownId}
                   timeWindow={timeWindow}
+                  drillHint={hintOpen && ownId ? `${t("This is you. Double-click your")} ${t(nounS).toLowerCase()} ${t("to see your own results.")}` : null}
+                  onDismissHint={dismissHint}
                   metricLabel={metricLabel}
                   time={timeMode}
                   t={t}
@@ -577,25 +658,6 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
 
             {scores && !emptyRoot && childType && (
               <>
-                {/* metadata card — between the map and the trend graph; hidden in the class view */}
-                {!inClass && (
-                  <section className="py-10">
-                    <div className="mx-auto max-w-6xl px-6">
-                      <div className={"mb-6 " + H} style={{ color: ACCENT }}>
-                        {t(nounS)} {t("Detail")}
-                      </div>
-                      <div
-                        className={CARD + " cursor-pointer"}
-                        title={`Click for details · double-click to open this ${nounS.toLowerCase()}`}
-                        onDoubleClick={() => detailChild && drill(detailChild)}
-                        onClick={() => detailChild && openChild(detailChild)}
-                      >
-                        <RepMeta child={detailChild} metricLabel={metricLabel} officer={officer} range={range} time={timeMode} timeWindow={timeWindow} t={t} />
-                      </div>
-                    </div>
-                  </section>
-                )}
-
                 {/* Performance — trend + most improved */}
                 <section id="rep-perf" className="scroll-mt-16 bg-blue-50 py-10">
                   <div className="mx-auto max-w-6xl px-6">
@@ -653,17 +715,35 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                         />
                       </div>
                       {/* most improved (change vs the range / the Time window before) and top performing, side by side */}
+                      {/* drilled in: which level to rank (the children by default, or any level below) */}
+                      {rankOptions.length > 1 && entity && (
+                        <div className="flex justify-center border-t border-zinc-100 pt-5">
+                          <div className="inline-flex flex-wrap justify-center gap-1 rounded-full bg-zinc-100 p-1 text-xs font-semibold ring-1 ring-zinc-200" role="group" aria-label="Ranking level" data-testid="rank-level-toggle">
+                            {rankOptions.map((l) => (
+                              <button
+                                key={l}
+                                type="button"
+                                aria-pressed={rankLevel === l}
+                                onClick={() => setRankPick({ entityId: entity.id, level: l })}
+                                className={"rounded-full px-3.5 py-1.5 transition " + (rankLevel === l ? "bg-zinc-900 text-white shadow-sm" : "text-zinc-600 hover:bg-white")}
+                              >
+                                {t(RANK_LEVEL_LABEL[l])}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                       {/* most improved (left) and top performing (right): both by the selected metric / Time window */}
-                      <div className="grid grid-cols-1 gap-6 border-t border-zinc-100 pt-5 md:grid-cols-2">
+                      <div className={"grid grid-cols-1 gap-6 md:grid-cols-2" + (rankOptions.length > 1 ? "" : " border-t border-zinc-100 pt-5")}>
                         <div data-testid="most-improved">
                           <div className="mb-3 text-base font-semibold text-zinc-800">{t("Most improved")}</div>
-                          {improvedRows.length === 0 && <p className="py-2 text-sm text-zinc-400">{t("Nobody has improved yet.")}</p>}
-                          <RankBars rows={improvedRows} kind="improved" format={fmtDelta} hoverId={hoverId} setHoverId={setHoverId} selId={selId} onSelect={select} onPick={pickRow} />
+                          {shownImproved.length === 0 && <p className="py-2 text-sm text-zinc-400">{t("Nobody has improved yet.")}</p>}
+                          <RankBars rows={shownImproved} kind="improved" format={fmtDelta} hoverId={hoverId} setHoverId={setHoverId} selId={selId} onSelect={select} onPick={pickRow} />
                         </div>
                         <div data-testid="top-performing">
                           <div className="mb-3 text-base font-semibold text-zinc-800">{t("Top performing")}</div>
-                          {topRows.length === 0 && <p className="py-2 text-sm text-zinc-400">{t("No results in this window")}</p>}
-                          <RankBars rows={topRows} kind="top" format={fmtRank} hoverId={hoverId} setHoverId={setHoverId} selId={selId} onSelect={select} onPick={pickRow} />
+                          {shownTop.length === 0 && <p className="py-2 text-sm text-zinc-400">{t("No results in this window")}</p>}
+                          <RankBars rows={shownTop} kind="top" format={fmtRank} hoverId={hoverId} setHoverId={setHoverId} selId={selId} onSelect={select} onPick={pickRow} />
                         </div>
                       </div>
                     </div>
@@ -680,7 +760,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                       <div className={CARD}>
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                           <RepQuote kind="top" entry={spotlight?.top ?? null} nounS={nounS} officer={officer} range={range} time={timeMode} t={t} />
-                          <RepQuote kind="improved" entry={spotlight?.most_improved ?? null} nounS={nounS} officer={officer} range={range} time={timeMode} deltaSuffix={timeMode ? deltaSuffix : undefined} t={t} />
+                          <RepQuote kind="improved" entry={spotlight?.most_improved ?? null} nounS={nounS} officer={officer} range={range} time={timeMode} deltaSuffix={deltaSuffix} t={t} />
                         </div>
                       </div>
                     </div>
@@ -737,9 +817,11 @@ function HoverLabel({ child, time = false, t }: { child: Child | null; time?: bo
 // per teacher (avatar ring, name, "Teacher · N students", score, trend).
 // Single click pins the row into the Detail card; double-click opens the class.
 function TeacherCards({
+  onOpen,
+  drillHint = null,
+  onDismissHint,
   teachers,
   metric,
-  range,
   time,
   timeWindow,
   timeCaption,
@@ -762,6 +844,10 @@ function TeacherCards({
   selId: string | null;
   // the viewer's own card (a teacher among the school's teachers)
   ownId?: string | null;
+  drillHint?: string | null;
+  onDismissHint?: () => void;
+  // a single click also opens the teacher's details pop-up
+  onOpen?: (c: Child) => void;
   onSelect: (c: Child) => void;
   onDrill: (c: Child) => void;
   onClear: () => void;
@@ -770,29 +856,34 @@ function TeacherCards({
   t: T;
 }) {
   const short = t(METRIC_BY[metric].short);
+  const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   return (
     <div className="absolute inset-0 z-10 overflow-y-auto bg-[#eaf0f6] p-3 sm:p-5" onClick={onClear} onDoubleClick={() => onUp?.()} data-testid="teacher-cards">
       <div className="mx-auto flex max-w-3xl flex-col gap-3">
         {!teachers.length && <p className="py-10 text-center text-sm text-zinc-400">{t("No teachers yet.")}</p>}
         {teachers.map((c) => {
           const col = time ? windowColor(c.time_total, timeWindow) : nipColor(c.pass_rate);
-          const big = time ? fmtDuration(c.time_sum, t) : fmtPctInt(c.pass_rate);
+          const parts = fmtDurationParts(c.time_sum, t);
+          const big = time ? parts.value : fmtPctInt(c.pass_rate);
           const own = ownId === c.id;
-          const caption = time ? (timeCaption ?? "") : metric === "usage" ? t("5+ min yesterday") : short;
+          const caption = time ? `${parts.unit} ${timeCaption ?? ""}` : metric === "usage" ? t("5+ min yesterday") : short;
           const on = selId === c.id;
           return (
             <div
               key={c.id}
-              className={"relative flex cursor-pointer items-center gap-3 rounded-xl px-3 py-3 shadow-sm transition hover:shadow-md sm:gap-4 sm:px-5 sm:py-4" + (own ? " ring-4 ring-blue-600" : on ? " ring-2 ring-blue-500" : "")}
+              className={"relative flex cursor-pointer items-center gap-3 rounded-2xl px-3 py-3 shadow-sm transition hover:shadow-md sm:gap-4 sm:px-5 sm:py-4" + (own ? " ring-4 ring-blue-600" : on ? " ring-2 ring-blue-500" : "")}
               data-own={own ? "1" : undefined}
               style={{ background: col + "1f", border: "1px solid " + col + "55" }}
               title="Double-click for this teacher's class"
               onClick={(e) => {
                 e.stopPropagation();
                 onSelect(c);
+                if (clickTimer.current) clearTimeout(clickTimer.current);
+                clickTimer.current = setTimeout(() => onOpen?.(c), 260);
               }}
               onDoubleClick={(e) => {
                 e.stopPropagation();
+                if (clickTimer.current) clearTimeout(clickTimer.current);
                 onDrill(c);
               }}
               data-testid="teacher-card"
@@ -802,6 +893,7 @@ function TeacherCards({
                   {t("You")}
                 </span>
               )}
+              {own && drillHint && <DrillHint x="50%" y={-6} text={drillHint} onDismiss={onDismissHint} t={t} />}
               <AvatarImg seed={c.official?.avatar_seed ?? c.id} size={64} className="h-12 w-12 sm:h-16 sm:w-16" ring={col} />
               <div className="min-w-0 flex-1">
                 <div className="truncate text-[15px] font-bold leading-tight text-zinc-900 sm:text-lg">{c.name}</div>
@@ -824,7 +916,7 @@ function TeacherCards({
                   </div>
                   <div className={time ? "text-[12px] font-semibold leading-tight text-zinc-600" : "text-[10px] leading-tight text-zinc-500"}>{caption}</div>
                 </div>
-                {!time && <MvpTrend delta={c.delta} suffix={rangeSuffix(range, t)} />}
+                {!time && <MvpTrend delta={c.delta} suffix={t("vs 7 days ago")} />}
               </div>
             </div>
           );
@@ -878,7 +970,7 @@ function StudentTiles({
           return (
             <div
               key={s.student_id}
-              className="flex cursor-pointer flex-col items-center justify-center gap-0.5 rounded-xl px-2 py-3 text-center shadow-sm transition hover:shadow-md"
+              className="flex cursor-pointer flex-col items-center justify-center gap-0.5 rounded-2xl px-2 py-3 text-center shadow-sm transition hover:shadow-md"
               style={{ background: col, color: fg }}
               title="Click for this student's dashboard"
               onClick={() => onOpen(s)}
@@ -903,9 +995,11 @@ function StudentTiles({
                   {s.phone}
                 </div>
               )}
-              <div className="text-xl font-extrabold tabular-nums sm:text-2xl">{time ? fmtDuration(s.time_total, t) : isUsage ? fmtMinutes(s.score) : fmtPctInt(pct)}</div>
+              <div className="text-2xl font-extrabold tabular-nums sm:text-3xl">{time ? fmtDurationParts(s.time_total, t).value : isUsage ? fmtMinutes(s.score) : fmtPctInt(pct)}</div>
               {time ? (
-                <div className="text-[9px] font-semibold opacity-90">{timeCaption}</div>
+                <div className="text-[10px] font-semibold opacity-90">
+                  {fmtDurationParts(s.time_total, t).unit} {timeCaption}
+                </div>
               ) : (
                 <>
                   <div className="text-[9px] font-semibold opacity-90">{isUsage ? t("min yesterday") : short}</div>

@@ -13,7 +13,7 @@ const winPressed = (name: string) => [winBtn(name).getAttribute("aria-pressed")]
 // The page opens on Time; tests about the test-score metrics pick one first.
 const pickNipunG3 = async () => {
   fireEvent.click((await screen.findAllByRole("button", { name: "NIPUN grade 3 proxy" }))[0]);
-  await waitFor(() => expect(screen.getByTestId("rep-meta").textContent).toContain("Latest NIPUN grade 3 proxy"));
+  await waitFor(() => expect(pressed("NIPUN grade 3 proxy")[0]).toBe("true"));
 };
 
 // The home level is for ranking against peers: no headline figures until a
@@ -53,7 +53,6 @@ describe("TeacherDashboard", () => {
     expect(screen.getByRole("button", { name: "हिं" })).toBeDefined();
     // no numeric root card, no detail/performance/spotlight sections
     expect(screen.queryByTestId("root-kpis")).toBeNull();
-    expect(screen.queryByTestId("rep-meta")).toBeNull();
     // up-a-level is disabled at the user's own level
     expect((screen.getByRole("button", { name: "Up a level" }) as HTMLButtonElement).disabled).toBe(true);
   });
@@ -100,12 +99,11 @@ describe("TeacherDashboard", () => {
     expect(kpis.textContent).not.toContain("students active");
     expect(kpis.textContent).not.toContain("as of");
     // section headings (the nav carries the same words as links)
-    expect(screen.getByText("State Detail", { selector: "div" })).toBeDefined();
+    // no Detail section any more (2026-10)
+    expect(screen.queryByText("State Detail", { selector: "div" })).toBeNull();
     expect(screen.getByText("State Performance", { selector: "div" })).toBeDefined();
     expect(screen.getByText("DGSE Spotlight", { selector: "div" })).toBeDefined();
     expect(screen.getByText("Your Profile", { selector: "div" })).toBeDefined();
-    // the detail card shows the top state with mvp2's single "Latest {metric}" figure
-    expect(screen.getByTestId("rep-meta").textContent).toContain("Latest NIPUN grade 3 proxy");
     // mvp2 has no latest-bars chart and no children table on the page
     expect(document.querySelector('svg[data-rep-chart="latest"]')).toBeNull();
     expect(screen.queryByTestId("children-table")).toBeNull();
@@ -178,6 +176,12 @@ describe("TeacherDashboard", () => {
     const ownBar = await screen.findByTestId("own-bar-tag");
     expect(ownBar.textContent).toBe("You");
     expect(ownBar.parentElement?.getAttribute("data-own")).toBe("1");
+    // first visit: a callout points at their own block and asks them to drill in; dismissing it sticks
+    const hint = await screen.findByTestId("drill-hint");
+    expect(hint.textContent).toContain("This is you. Double-click your block");
+    fireEvent.click(screen.getByTestId("drill-hint-dismiss"));
+    expect(screen.queryByTestId("drill-hint")).toBeNull();
+    expect(window.localStorage.getItem("pp-drill-hint-dismissed")).toBe("1");
     expect((screen.getByRole("button", { name: "Up a level" }) as HTMLButtonElement).disabled).toBe(true);
   });
 
@@ -208,6 +212,61 @@ describe("TeacherDashboard", () => {
     await waitFor(() => expect(screen.queryByTestId("teacher-card")).not.toBeNull());
   });
 
+  it("rankings level toggle: none at the home level; once drilled in, every level below (nearest first) and a deeper level is fetched from pp-sketch", async () => {
+    const base = makeFetch({ scoresById: { "g-09": SCORES } }).fn;
+    const rankCalls: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (url.includes("/rankings?")) {
+          rankCalls.push(url);
+          return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+              level: "teacher",
+              as_of: "2026-09-10",
+              top: [
+                {
+                  id: "t-9",
+                  name: "Meera",
+                  sub: "919800000009",
+                  value: 80,
+                  delta: 5,
+                  path: [
+                    { id: "g-0901", type: "district", code: "0901", name: "LUCKNOW", has_boundary: true, lat: null, lng: null },
+                    { id: "g-090101", type: "block", code: "090101", name: "KAKORI", has_boundary: false, lat: null, lng: null },
+                    { id: "g-s9", type: "school", code: "09010100109", name: "P.S. GWALPUR", has_boundary: false, lat: null, lng: null },
+                    { id: "t-9", type: "teacher", code: "", name: "Meera", has_boundary: false, lat: null, lng: null },
+                  ],
+                },
+              ],
+              most_improved: [{ id: "t-9", name: "Meera", sub: "919800000009", value: 80, delta: 5 }],
+            }),
+          } as unknown as Response;
+        }
+        return base(input, init);
+      }),
+    );
+    render(<TeacherDashboard profile={PROFILE} incompleteStates={[]} />);
+    await pickNipunG3();
+    await screen.findByTestId("most-improved");
+    expect(screen.queryByTestId("rank-level-toggle")).toBeNull();
+    await drillIntoUp();
+    const toggle = await screen.findByTestId("rank-level-toggle");
+    expect(within(toggle).getAllByRole("button").map((b) => b.textContent)).toEqual(["District", "Block", "School", "Teacher", "Student"]);
+    expect(within(toggle).getByRole("button", { name: "District" }).getAttribute("aria-pressed")).toBe("true");
+    expect(rankCalls).toHaveLength(0);
+    fireEvent.click(within(toggle).getByRole("button", { name: "Teacher" }));
+    await waitFor(() => expect(rankCalls[0]).toContain("/api/proxy/geo-entities/g-09/rankings?level=teacher&metric=nipun_g3"));
+    // teachers listed with their number
+    await waitFor(() => expect(screen.getByTestId("top-performing").textContent).toContain("Meera · 919800000009"));
+    // double-click: straight to the teacher's class, via district → block → school
+    fireEvent.dblClick(within(screen.getByTestId("top-performing")).getByTestId("rank-row"));
+    await waitFor(() => expect(screen.getByTestId("location-title").textContent).toBe("Meera  -  P.S. GWALPUR  -  Kakori  -  Lucknow  -  Uttar Pradesh  -  India"));
+  });
+
   it("builds the CSV link from the current metric and range (range bar lives in the Performance card)", async () => {
     const { fn } = makeFetch();
     vi.stubGlobal("fetch", vi.fn(fn));
@@ -236,8 +295,8 @@ describe("TeacherDashboard", () => {
     const cards = await screen.findAllByTestId("teacher-card");
     expect(calls.filter((u) => u.startsWith("/api/proxy/")).every((u) => u.includes("viewer=u-sch"))).toBe(true);
 
-    // the teacher's own modal (opened from the Detail card) shows her (masked) number
-    fireEvent.click(screen.getByTestId("rep-meta"));
+    // the teacher's own modal (a click on her card) shows her (masked) number
+    fireEvent.click(cards[0]);
     const teacherDialog = await screen.findByRole("dialog");
     expect(within(teacherDialog).getByTestId("official-phone").textContent).toBe("9...2");
     fireEvent.click(within(teacherDialog).getByRole("button", { name: /Close/ }));
@@ -277,6 +336,36 @@ describe("TeacherDashboard", () => {
     expect(calls.some((u) => u.includes("/media-meta-data/m-1/audio"))).toBe(false);
   });
 
+  it("student modal: a test's older answers are fetched from the next pages of the feed until the whole bin is listed", async () => {
+    const voice = (i: number) => ({ id: `v-${i}`, created_at: new Date(Date.now() - i * 60_000).toISOString(), has_audio: false, answer: "घर", answer_correct: true });
+    const oldTap = { id: "m-older", kind: "tap", created_at: "2026-08-01T10:00:00Z", has_audio: false, answer: "स्कूल", answer_correct: true, tap: { question: "पुराना?", chosen: "स्कूल", correct: "स्कूल" } };
+    const base = makeFetch({ scoresById: { "g-sch": SCORES_SCHOOL, "t-1": SCORES_CLASS } }).fn;
+    const mediaCalls: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (/\/users\/[^/]+\/media/.test(url)) {
+          mediaCalls.push(url);
+          const offset = Number(new URLSearchParams(url.split("?")[1] ?? "").get("offset") ?? 0);
+          const media = offset === 0 ? Array.from({ length: 100 }, (_, i) => voice(i)) : offset === 100 ? [oldTap] : [];
+          return { ok: true, status: 200, json: async () => ({ user: { name: "Rani Devi", pii: "full" }, media }) } as unknown as Response;
+        }
+        return base(input, init);
+      }),
+    );
+    render(<TeacherDashboard profile={PROFILE_SCHOOL} incompleteStates={[]} />);
+    fireEvent.dblClick(await screen.findByTestId("teacher-card"));
+    fireEvent.click((await screen.findAllByTestId("student-tile"))[0]);
+    const dialog = await screen.findByRole("dialog");
+    // the bin's m-older is not on the first page → page 2 (offset 100) is fetched, then it stops
+    await waitFor(() => expect(mediaCalls.some((u) => u.includes("offset=100"))).toBe(true));
+    expect(mediaCalls.some((u) => u.includes("offset=200"))).toBe(false);
+    fireEvent.click(within(dialog).getByRole("button", { name: "NIPUN grade 3 proxy" }));
+    await waitFor(() => expect(within(screen.getByTestId("student-sentences")).getAllByTestId("tap-sentence")).toHaveLength(1));
+    expect(screen.getByTestId("student-sentences").textContent).toContain("पुराना?");
+  });
+
   it("school → teacher cards; double-click → the class (student tiles, 'Student Performance' only); tile → the student modal", async () => {
     const { fn, calls } = makeFetch({ scoresById: { "g-sch": SCORES_SCHOOL, "t-1": SCORES_CLASS } });
     vi.stubGlobal("fetch", vi.fn(fn));
@@ -291,19 +380,15 @@ describe("TeacherDashboard", () => {
     expect(cards[0].textContent).toContain("Asha");
     expect(cards[0].textContent).toContain("Teacher · 4 students");
     expect(cards[0].textContent).toContain("75%");
-    expect(cards[0].textContent).toContain("+2.0% last 30 days");
+    expect(cards[0].textContent).toContain("+2.0% vs 7 days ago");
     // teachers get their referral link right under the map card + bar strip (officials never do — see the country test)
     const shareBar = screen.getByTestId("share-bar");
     // the bar strip sits ABOVE the map card (2026-10)
     expect(shareBar.previousElementSibling?.getAttribute("data-testid")).toBe("map-card");
     expect(shareBar.previousElementSibling?.previousElementSibling?.getAttribute("data-testid")).toBe("bar-strip-wrap");
-    // one bar per teacher under the map; hovering it marks the bar hot and shows the card
-    const teacherBars = document.querySelectorAll('[data-testid="bar-strip"] [data-testid="bar"]');
-    expect(teacherBars).toHaveLength(1);
-    fireEvent.mouseEnter(teacherBars[0]);
-    expect(teacherBars[0].getAttribute("data-hot")).toBe("1");
-    expect(screen.getByTestId("bar-card").textContent).toContain("Rank");
-    fireEvent.mouseLeave(screen.getByTestId("bar-strip"));
+    // a lone teacher ranks against nothing: the strip stays (same height) but draws no bars
+    expect(document.querySelectorAll('[data-testid="bar-strip"] [data-testid="bar"]')).toHaveLength(0);
+    expect(screen.getByTestId("bar-strip")).toBeDefined();
     expect(screen.getByTestId("share-link").textContent).toBe("lifteracy.ai/d/u1");
     // the website's "See Lifteracy in Action" clip is embedded, with a quiet share row for it
     expect(screen.queryByRole("link", { name: /What is Lifteracy\?/ })).toBeNull();
@@ -319,11 +404,8 @@ describe("TeacherDashboard", () => {
     // no headline figures at the home level; Tom (u-sch) has no card in this fixture, so no "You" tag
     expect(screen.queryByTestId("root-kpis")).toBeNull();
     expect(screen.queryByTestId("own-card-tag")).toBeNull();
-    expect(screen.getByText("Teacher Detail", { selector: "div" })).toBeDefined();
     expect(screen.getByText("Teacher Performance", { selector: "div" })).toBeDefined();
     expect(screen.getByText("Teacher Spotlight", { selector: "div" })).toBeDefined();
-    expect(screen.getByTestId("rep-meta").textContent).toContain("Asha");
-    expect(screen.getByTestId("rep-meta").textContent).toContain("Latest NIPUN grade 3 proxy");
 
     // double-click the teacher → the class view
     fireEvent.dblClick(cards[0]);
@@ -408,7 +490,9 @@ describe("TeacherDashboard", () => {
     // …and narrows the interaction list to the answers that counted toward
     // that test (counted_message_ids): the tap m-3 only, with a note
     const sentencesOf = () => screen.getByTestId("student-sentences");
-    expect(screen.getByTestId("test-interactions-note").textContent).toBe("The answers behind this student's current and previous NIPUN grade 3 proxy score.");
+    expect(screen.getByTestId("test-interactions-note").textContent).toBe("4 answers count toward NIPUN grade 3 proxy; the ones marked are behind this student's current and previous score.");
+    // the answer behind the score is tagged
+    expect(within(sentencesOf()).getAllByTestId("counted-tag")).toHaveLength(1);
     expect(sentencesOf().querySelectorAll('[data-testid="tap-sentence"]').length).toBe(1);
     expect(sentencesOf().querySelectorAll('[data-testid="audio-button"]').length).toBe(0);
     expect(sentencesOf().textContent).not.toContain("the student said");
@@ -437,6 +521,22 @@ describe("TeacherDashboard", () => {
     // up → back to the teacher cards
     fireEvent.click(screen.getByRole("button", { name: "Up a level" }));
     expect((await screen.findAllByTestId("teacher-card")).length).toBe(1);
+  });
+
+  it("trend: a single date (the Yesterday window) draws dots — the average and each line — instead of an invisible line", () => {
+    const { container } = render(
+      <RepTrend
+        series={[{ date: "2026-10-08", pass_rate: null, n: 4, mean: 10, total: 40 }]}
+        metric="usage"
+        label="Total minutes"
+        students={[
+          { id: "a", label: "A", points: [{ date: "2026-10-08", value: 30 }] },
+          { id: "b", label: "B", points: [{ date: "2026-10-08", value: 10 }] },
+        ]}
+      />,
+    );
+    // two line dots + the average's dot (the average of the lines: 20)
+    expect(container.querySelectorAll('[data-testid="trend-dot"]')).toHaveLength(3);
   });
 
   it("trend axis follows the metric: minutes without a target for usage, 80% target only for NIPUN", () => {
@@ -500,7 +600,7 @@ describe("TeacherDashboard", () => {
     window.localStorage.removeItem("lifteracy-dashboard-lang");
   });
 
-  it("block level: private schools are diamonds, government schools dots, with a legend and tooltip hint", async () => {
+  it("block level: government schools as dots, private schools not drawn", async () => {
     const block = { ...PROFILE, geo_entity: { id: "g-blk", type: "block" as const, code: "090101", name: "SADAR", has_boundary: false, lat: 26.85, lng: 80.95 } };
     const school = (id: string, code: string, name: string, lat: number, lng: number, management_group: "government" | "private") => ({
       ...CHILD_UP,
@@ -529,26 +629,15 @@ describe("TeacherDashboard", () => {
     vi.stubGlobal("fetch", vi.fn(fn));
     const { container } = render(<TeacherDashboard profile={block} incompleteStates={[]} />);
 
-    const priv = await waitFor(() => {
-      const el = container.querySelector('rect[data-id="g-s2"]');
-      if (!el) throw new Error("not drawn yet");
-      return el;
+    // government schools are drawn; private schools are not (2026-10), and there is no school-kind legend
+    await waitFor(() => {
+      if (!container.querySelector('circle[data-id="g-s1"]')) throw new Error("not drawn yet");
     });
-    expect(priv.getAttribute("data-management")).toBe("private");
-    expect(container.querySelector('circle[data-id="g-s1"]')).not.toBeNull();
-    expect(container.querySelector('rect[data-id="g-s1"]')).toBeNull();
-    // grey dot first in document order, coloured dots after it (on top)
+    expect(container.querySelector('[data-testid="geo-map"] [data-id="g-s2"]')).toBeNull();
+    expect(screen.queryByTestId("school-kind-legend")).toBeNull();
     const order = [...container.querySelectorAll('[data-testid="geo-map"] [data-id]')].map((el) => el.getAttribute("data-id"));
-    expect(order).toContain("g-s0");
+    // grey dot first in document order, coloured dots after it (on top)
     expect(order.indexOf("g-s0")).toBeLessThan(order.indexOf("g-s1"));
-    expect(order.indexOf("g-s0")).toBeLessThan(order.indexOf("g-s2"));
-    // same colour scale for both (score colour, not a management colour)
-    expect(priv.getAttribute("fill")).toBe(container.querySelector('circle[data-id="g-s1"]')!.getAttribute("fill"));
-    const legend = screen.getByTestId("school-kind-legend").textContent ?? "";
-    expect(legend).toContain("Government school");
-    expect(legend).toContain("Private school");
-    fireEvent.mouseEnter(priv);
-    expect(screen.getByRole("tooltip").textContent).toContain("private school");
     // no border at block level, tiles underneath
     expect(screen.getByTestId("tile-underlay")).toBeDefined();
   });
@@ -617,12 +706,12 @@ describe("TeacherDashboard — Time metric", () => {
     expect(winPressed("Last seven days")).toEqual(["false"]);
     expect(winPressed("Yesterday")).toEqual(["false"]);
     await waitFor(() => expect(calls).toContain("/api/proxy/geo-entities/g-in/scores?metric=usage&range=30&window=all&viewer=u1"));
-    await waitFor(() => expect(screen.getByTestId("root-kpis").textContent).toContain("2.5 hours"));
+    await waitFor(() => expect(screen.getByTestId("kpi-pass").textContent).toBe("2.5hours all time"));
 
     // Last seven days: refetch — the previous figures stay on screen meanwhile (no blank / loading line)
     fireEvent.click(winBtn("Last seven days"));
     expect(winPressed("Last seven days")).toEqual(["true"]);
-    expect(screen.getByTestId("root-kpis").textContent).toContain("2.5 hours");
+    expect(screen.getByTestId("kpi-pass").textContent).toBe("2.5hours all time");
     expect(screen.queryByText("Loading your dashboard…")).toBeNull();
     expect(document.querySelector('#rep-perf [data-testid="time-window-toggle"]')).toBeNull();
     expect(screen.queryByRole("button", { name: /week/i })).toBeNull();
@@ -630,25 +719,19 @@ describe("TeacherDashboard — Time metric", () => {
     expect(calls).toContain("/api/proxy/geo-entities/g-09/spotlight?metric=usage&range=30&window=7d&viewer=u1");
 
     // headline: the total per student only (no minutes per day), coloured by the per-day average (5.4 → green)
-    await waitFor(() => expect(screen.getByTestId("root-kpis").textContent).toContain("38 min"));
+    // the number big, its unit + window under it
+    await waitFor(() => expect(screen.getByTestId("kpi-pass").textContent).toBe("38min last seven days"));
     const kpis = screen.getByTestId("root-kpis");
     expect(kpis.textContent).not.toContain("per day");
-    expect(kpis.textContent).toContain("total time · last seven days");
     expect(kpis.textContent).not.toContain("72%");
     expect(screen.queryByTestId("kpi-per-day")).toBeNull();
     // 38 min per student in seven days clears the 35-minute mark → green
-    expect((screen.getByText("total time · last seven days").previousElementSibling as HTMLElement).style.color).toBe("rgb(22, 163, 74)");
+    expect((screen.getByText("min last seven days").previousElementSibling as HTMLElement).style.color).toBe("rgb(22, 163, 74)");
 
-    // detail card: the top state's total, no per-day figure, no trend arrow
-    const meta = screen.getByTestId("rep-meta");
-    expect(meta.textContent).toContain("49 min");
-    expect(meta.textContent).not.toContain("per day");
-    expect(meta.textContent).toContain("Time · last seven days · per student");
-    expect(meta.querySelector('[data-testid="mvp-trend"]')).toBeNull();
 
     // most improved (minutes vs the previous 7 days) and top performing (minutes) side by side; both spotlight cards
     expect(screen.getByTestId("most-improved").textContent).toContain("Most improved");
-    expect(screen.getByTestId("most-improved").textContent).toContain("+7.0 min");
+    expect(screen.getByTestId("most-improved").textContent).toContain("×1.8");
     expect(screen.getByTestId("top-performing").textContent).toContain("Top performing");
     expect(screen.getByTestId("top-performing").textContent).toContain("49 min");
     // the improved card is there in Time mode too (empty in this fixture: nobody qualifies yet)
@@ -674,17 +757,15 @@ describe("TeacherDashboard — Time metric", () => {
     // Yesterday: refetch, new figures (4 min per day → amber)
     fireEvent.click(winBtn("Yesterday"));
     await waitFor(() => expect(calls).toContain("/api/proxy/geo-entities/g-09/scores?metric=usage&range=30&window=yesterday&viewer=u1"));
-    await waitFor(() => expect(screen.getByTestId("root-kpis").textContent).toContain("total time · yesterday"));
-    expect(screen.getByTestId("root-kpis").textContent).toContain("4 min");
+    await waitFor(() => expect(screen.getByTestId("kpi-pass").textContent).toBe("4min yesterday"));
     // 4 minutes yesterday: some time, under the 5-minute mark → amber
-    expect((screen.getByText("total time · yesterday").previousElementSibling as HTMLElement).style.color).toBe("rgb(245, 158, 11)");
+    expect((screen.getByText("min yesterday").previousElementSibling as HTMLElement).style.color).toBe("rgb(245, 158, 11)");
     expect(winPressed("Yesterday")).toEqual(["true"]);
 
     // All time: totals of 120 minutes and more are shown in hours, the average stays in minutes
     fireEvent.click(within(screen.getAllByTestId("time-window-toggle")[0]).getByRole("button", { name: "All time" }));
-    await waitFor(() => expect(screen.getByTestId("root-kpis").textContent).toContain("2.5 hours"));
+    await waitFor(() => expect(screen.getByTestId("kpi-pass").textContent).toBe("2.5hours all time"));
     expect(screen.getByTestId("root-kpis").textContent).not.toContain("per day");
-    expect(screen.getByTestId("rep-meta").textContent).toContain("25 hours");
 
     // leaving Time hides the window toggle and brings the pass-rate view back
     fireEvent.click(screen.getAllByRole("button", { name: "NIPUN grade 3 proxy" })[0]);
@@ -702,26 +783,26 @@ describe("TeacherDashboard — Time metric", () => {
 
     fireEvent.click(screen.getAllByRole("button", { name: "Time" })[0]);
     fireEvent.click(winBtn("Last seven days"));
-    await waitFor(() => expect(screen.getAllByTestId("student-tile")[0].textContent).toContain("84 min"));
+    await waitFor(() => expect(screen.getAllByTestId("student-tile")[0].textContent).toContain("84min last seven days"));
     const tiles = screen.getAllByTestId("student-tile");
     // coloured by the window's marks (last seven days: 84 min ≥ 35 → green; 3 min < 10 → red); the figure is the total, captioned by the window
     expect(tiles[0].textContent).not.toContain("per day");
     expect(tiles[0].textContent).toContain("last seven days");
     expect((tiles[0] as HTMLElement).style.background).toBe("rgb(22, 163, 74)");
-    expect(tiles[1].textContent).toContain("3 min");
+    expect(tiles[1].textContent).toContain("3min last seven days");
     expect((tiles[1] as HTMLElement).style.background).toBe("rgb(220, 38, 38)");
     for (const tile of tiles) expect(tile.textContent).not.toMatch(/[▲▼→]/);
     // the strip has no caption text (2026-10)
     expect(screen.getByTestId("bar-strip").textContent).not.toContain("click a bar");
     // the class ranks its own students: only the rise counts as improved; top by total minutes
     expect(screen.getByTestId("most-improved").querySelectorAll('[data-testid="rank-row"]').length).toBe(1);
-    expect(screen.getByTestId("most-improved").textContent).toContain("+5.0 min");
+    expect(screen.getByTestId("most-improved").textContent).toContain("×1.5");
     expect(screen.getByTestId("top-performing").querySelectorAll('[data-testid="rank-row"]').length).toBe(2);
 
     // all time: 119 minutes stays in minutes, 120 becomes hours
     fireEvent.click(within(screen.getAllByTestId("time-window-toggle")[0]).getByRole("button", { name: "All time" }));
-    await waitFor(() => expect(screen.getAllByTestId("student-tile")[0].textContent).toContain("119 min"));
-    expect(screen.getAllByTestId("student-tile")[1].textContent).toContain("2 hours");
+    await waitFor(() => expect(screen.getAllByTestId("student-tile")[0].textContent).toContain("119min all time"));
+    expect(screen.getAllByTestId("student-tile")[1].textContent).toContain("2hours all time");
 
     // the student's pop-up: pick Time → the daily active-minutes chart
     fireEvent.click(screen.getAllByTestId("student-tile")[0]);

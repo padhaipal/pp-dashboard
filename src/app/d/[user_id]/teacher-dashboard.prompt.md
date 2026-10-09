@@ -52,3 +52,16 @@
  - "Most improved" (left) / "Top performing" (right): plain headings; rows are `RankBars` (rank badge, name, gradient bar on a track, value pill; ≤ 5; `rank-row` with `data-id`).
  - The bar strip has no caption row.
  - Block view fits ALL schools again (`clusterPoints` removed at the user's request).
+
+16.) 2026-10 (layout polish, ratios, onboarding callout).
+ - Time figures: the number big, the unit + window under it (`fmtDurationParts`: "5.6" / "hours all time") — headline KPIs (`kpi-pass`, `kpi-using`), teacher cards, student tiles.
+ - KPIs side by side on every screen; the number is `text-3xl` on phones (the title's size), `sm:text-5xl`; white rounded cards. Toggles are pill segmented controls.
+ - The teacher's own class: "of students pass the {metric}" (no age band); every other level keeps the age band.
+ - Most improved — Time: `delta` is a RATIO (this window ÷ the one before, `fmtRatio` "×1.8"; null without a "before"); all time compares the last 30 days. Tests: `delta` vs 7 days back ("vs 7 days ago" on card arrows / spotlight).
+ - First visit: a dismissible blue callout (`DrillHint`, localStorage `pp-drill-hint-dismissed`) points at the viewer's own area on the map (or their own teacher card) asking them to double-click it.
+ - The "{noun} Detail" section is gone; an area's / teacher's details pop-up opens on a single click of its bar or teacher card (held back 260 ms so a double-click drills instead). The bar hover card is larger: rank badge, value pill, students / per student / ratio.
+ - Bar strip: a single item draws nothing, but the strip keeps its height (no jump when toggling).
+ - Map: private schools are not drawn (no school-kind legend).
+ - Trend: a window with ≤ 2 dates (Yesterday) draws dots (`trend-dot`) for every line and the average.
+ - Rankings level toggle (`rank-level-toggle`): only once drilled in (`stack.length > 1`) and when more than one level lies below (`levelsBelow(entity.type)`: e.g. a block → School · Teacher · Student; a state → District · Block · School · Teacher · Student). Default = the nearest level (the page's own children, ranked locally as before); a deeper level fetches `GET geo-entities/:id/rankings?level=&metric=[&window=]` (`rankingsUrl`). Teachers show "name · number"; students their name, no number. The pick resets on every drill.
+ - Double-click on a ranking row from a deeper level pushes its `path` (from pp-sketch) onto the drill stack: an area opens its own view, a teacher their class, a student their teacher's class. Nearest-level rows behave as before (drill into the child / open the student).
