@@ -63,6 +63,10 @@ export type GeoMapProps = {
   ownId?: string | null;
   // Time mode: the window the colours are marked for (windowColor).
   timeWindow?: TimeWindow;
+  // First visit: a callout pointing at the viewer's own area, asking them to
+  // drill in; null hides it.
+  drillHint?: string | null;
+  onDismissHint?: () => void;
   metricLabel: string;
   // Time mode: areas / labels / dots are coloured by minutes per student per
   // day (green past 5, amber for some, red for none) and the tooltip shows
@@ -121,7 +125,7 @@ export function areaFill(d: string, child: Child, incomplete: boolean, fill: (c:
 type Tip = { x: number; y: number; title: string; sub: string | null };
 
 export function GeoMap(props: GeoMapProps) {
-  const { entity, childType, childrenRows, incompleteStates, hoverId, setHoverId, selectedId, onSelect, onDrill, onUp, ownId = null, timeWindow = "all", metricLabel, time = false, t = same } = props;
+  const { entity, childType, childrenRows, incompleteStates, hoverId, setHoverId, selectedId, onSelect, onDrill, onUp, ownId = null, timeWindow = "all", drillHint = null, onDismissHint, metricLabel, time = false, t = same } = props;
   const fillOf = time ? (c: Child) => windowFill(c, timeWindow) : childFill;
   const wrapRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 640, h: 420 });
@@ -208,6 +212,8 @@ export function GeoMap(props: GeoMapProps) {
       }
     } else if (childType === "school") {
       for (const c of childrenRows) {
+        // private schools are not drawn (2026-10)
+        if (isPrivateSchool(c)) continue;
         if (c.lat != null && c.lng != null) out.push({ child: c, lat: c.lat, lng: c.lng, jittered: false });
         else if (entity.lat != null && entity.lng != null) {
           const [lat, lng] = jitterLatLng(c.code, entity.lat, entity.lng);
@@ -311,6 +317,9 @@ export function GeoMap(props: GeoMapProps) {
 
   const outlineD = useMemo(() => (ready && ready.outline && proj ? ringsToPath(exteriorRings(ready.outline, project)) : ""), [ready, proj, project]);
 
+  // Where the viewer's own child sits (an area's centre, or its label / dot).
+  const ownXYOf = (areasNow: { child: Child; c: [number, number] }[], pts: { child: Child; xy: [number, number] }[]): [number, number] | null =>
+    ownId ? (areasNow.find((a) => a.child.id === ownId)?.c ?? pts.find((p) => p.child.id === ownId)?.xy ?? null) : null;
   const projected = useMemo(
     () =>
       points
@@ -321,6 +330,8 @@ export function GeoMap(props: GeoMapProps) {
         .filter((p): p is NonNullable<typeof p> => p !== null),
     [points, project],
   );
+
+  const ownXY = ownXYOf(areas, projected);
 
   // ---- interactions ----
   const showTip = (e: React.MouseEvent, title: string, sub: string | null) => {
@@ -442,18 +453,15 @@ export function GeoMap(props: GeoMapProps) {
             );
           })}
 
-          {/* the viewer's own area: a blue "You" tag at its centre */}
-          {ownId &&
-            areas
-              .filter((a) => a.child.id === ownId)
-              .map((a) => (
-                <g key={`own-${a.child.id}`} pointerEvents="none" data-testid="own-tag">
-                  <rect x={a.c[0] - 22 / k} y={a.c[1] - 24 / k} width={44 / k} height={16 / k} rx={8 / k} fill="#2563eb" />
-                  <text x={a.c[0]} y={a.c[1] - 12.5 / k} textAnchor="middle" fontSize={10 / k} fontWeight="700" fill="#ffffff">
-                    {t("You")}
-                  </text>
-                </g>
-              ))}
+          {/* the viewer's own area / label: a blue "You" tag above it */}
+          {ownXY && (
+            <g pointerEvents="none" data-testid="own-tag">
+              <rect x={ownXY[0] - 22 / k} y={ownXY[1] - 30 / k} width={44 / k} height={16 / k} rx={8 / k} fill="#2563eb" />
+              <text x={ownXY[0]} y={ownXY[1] - 18.5 / k} textAnchor="middle" fontSize={10 / k} fontWeight="700" fill="#ffffff">
+                {t("You")}
+              </text>
+            </g>
+          )}
           {/* labels (blocks; districts without a boundary file) */}
           {childType !== "school" &&
             projected.map((p) => {
@@ -470,8 +478,9 @@ export function GeoMap(props: GeoMapProps) {
                   fontSize={fs}
                   fontWeight="700"
                   fill={fillOf(p.child)}
-                  stroke={on ? "#0f172a" : "#ffffff"}
-                  strokeWidth={fs / (on ? 10 : 8)}
+                  stroke={p.child.id === ownId ? "#2563eb" : on ? "#0f172a" : "#ffffff"}
+                  strokeWidth={p.child.id === ownId ? fs / 4 : fs / (on ? 10 : 8)}
+                  data-own={p.child.id === ownId ? "1" : undefined}
                   paintOrder="stroke"
                   data-id={p.child.id}
                   style={{ cursor: "pointer", userSelect: "none" }}
@@ -562,6 +571,9 @@ export function GeoMap(props: GeoMapProps) {
         </div>
       )}
 
+      {drillHint && ownXY && (
+        <DrillHint x={tf.x + ownXY[0] * k} y={tf.y + ownXY[1] * k - 30} text={drillHint} onDismiss={onDismissHint} t={t} />
+      )}
       {/* zoom — top-right, clear of the legend (bottom-left) and the up button (bottom-right) */}
       <div className="absolute right-2 top-2 z-20 flex flex-col overflow-hidden rounded-lg border border-zinc-300 bg-white shadow-md" data-testid="map-zoom">
         <button type="button" onClick={() => zoomBy(1.4)} className="h-8 w-8 text-base font-bold text-zinc-700 hover:bg-zinc-100" aria-label="Zoom in">
@@ -605,19 +617,24 @@ export function GeoMap(props: GeoMapProps) {
           </div>
         )}
         {/* block level: marker shape = management (colour stays the score) */}
-        {childType === "school" && (
-          <div className="mt-1.5 space-y-0.5 border-t border-zinc-200 pt-1.5 text-zinc-500" data-testid="school-kind-legend">
-            <div className="flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-zinc-400" />
-              {t("Government school")}
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rotate-45 rounded-[2px] bg-zinc-400" />
-              {t("Private school")}
-            </div>
-          </div>
-        )}
       </div>
+    </div>
+  );
+}
+
+// A dismissible callout with an arrow pointing down at (x, y): used on the
+// map (the viewer's own area) and over the viewer's own teacher card.
+export function DrillHint({ x, y, text, onDismiss, t = same }: { x: number | string; y: number | string; text: string; onDismiss?: () => void; t?: T }) {
+  return (
+    <div className="absolute z-30 w-60 -translate-x-1/2 -translate-y-full" style={{ left: x, top: y }} data-testid="drill-hint" onClick={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
+      <div className="relative rounded-2xl bg-blue-600 p-3 pr-8 text-[13px] font-semibold leading-snug text-white shadow-xl ring-4 ring-blue-600/20">
+        {text}
+        <button type="button" aria-label={t("Dismiss")} className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-white/20 text-xs hover:bg-white/30" onClick={() => onDismiss?.()} data-testid="drill-hint-dismiss">
+          ✕
+        </button>
+        <span className="absolute -bottom-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 bg-blue-600" />
+      </div>
+      <div className="mx-auto mt-1 h-6 w-0.5 animate-pulse bg-blue-600" />
     </div>
   );
 }

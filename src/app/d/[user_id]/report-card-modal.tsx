@@ -14,6 +14,7 @@ import {
   CHILD_NOUN,
   CHILD_OFFICER,
   fmtDuration,
+  fmtDurationParts,
   fmtPct,
   fmtPctInt,
   METRIC_BY,
@@ -81,8 +82,8 @@ export function RepKpis({
   t?: T;
 }) {
   const card = (big: string, label: string, color: string, key: string, sub?: string) => (
-    <div key={key} className="flex-1 rounded-xl bg-zinc-50 px-4 py-6 text-center">
-      <div className="whitespace-nowrap text-5xl font-extrabold tracking-tight" style={{ color }}>
+    <div key={key} className="min-w-0 flex-1 rounded-2xl bg-white px-3 py-5 text-center shadow-sm ring-1 ring-zinc-200 sm:px-4 sm:py-6" data-testid={`kpi-${key}`}>
+      <div className="whitespace-nowrap text-3xl font-extrabold tracking-tight tabular-nums sm:text-5xl" style={{ color }}>
         {big}
       </div>
       {sub && (
@@ -90,13 +91,13 @@ export function RepKpis({
           {sub}
         </div>
       )}
-      <div className="mt-1.5 text-sm font-medium leading-tight text-zinc-500">{label}</div>
+      <div className="mt-1.5 text-xs font-medium leading-tight text-zinc-500 sm:text-sm">{label}</div>
     </div>
   );
   return (
-    <div className="flex flex-col gap-3 sm:flex-row" data-testid="root-kpis">
+    <div className="flex flex-row gap-3" data-testid="root-kpis">
       {timeWindow
-        ? card(fmtDuration(root.time_sum, t), `${t("total time")} · ${timeWindowSuffix(timeWindow, t)}`, windowColor(root.time_total, timeWindow), "pass")
+        ? card(fmtDurationParts(root.time_sum, t).value, `${fmtDurationParts(root.time_sum, t).unit} ${timeWindowSuffix(timeWindow, t)}`, windowColor(root.time_total, timeWindow), "pass")
         : card(
             fmtPctInt(root.pass_rate),
             ageBand ? `${t("of")} ${ageBandLabel(ageBand)} ${t("year old students pass the")} ${metricLabel}` : `${t("of students pass the")} ${metricLabel}`,
@@ -264,6 +265,14 @@ export function RepTrend({
               </g>
             );
           })}
+          {/* a window with one or two dates (Yesterday) has no line to draw: dots instead */}
+          {n <= 2 &&
+            ordered.flatMap(({ s }) =>
+              s.points
+                .filter((q) => byDate.has(q.date) && q.value != null)
+                .map((q) => <circle key={`${s.id}-${q.date}`} cx={x(byDate.get(q.date)!)} cy={y(q.value!)} r={mobile ? 4 : 3} fill={hot === s.id ? "#2563eb" : "#94a3b8"} opacity={hot != null && hot !== s.id ? 0.3 : 0.9} data-testid="trend-dot" />),
+            )}
+          {n <= 2 && rootPts.filter((p) => p.v != null).map((p) => <circle key={`root-${p.i}`} cx={x(p.i)} cy={y(p.v!)} r={mobile ? 6 : 5} fill="#1e3a5f" data-testid="trend-dot" />)}
           {li >= 0 && (
             <>
               <path d={d} fill="none" stroke="#1e3a5f" strokeWidth={mobile ? 3.8 : 2.8} pointerEvents="none" opacity={hot != null ? 0.55 : 1} />

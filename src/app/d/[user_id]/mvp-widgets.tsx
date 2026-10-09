@@ -142,14 +142,14 @@ export function MvpMetricToggle<M extends string = Metric>({
 }) {
   const opts = (options ?? METRICS) as { key: M; label: string }[];
   return (
-    <div className="inline-flex overflow-hidden rounded-lg border border-zinc-300 bg-white text-xs font-semibold shadow-sm" role="group" aria-label="Metric">
+    <div className="inline-flex flex-wrap justify-center gap-1 rounded-full bg-zinc-100 p-1 text-xs font-semibold ring-1 ring-zinc-200" role="group" aria-label="Metric">
       {opts.map((m) => (
         <button
           key={m.key}
           type="button"
           onClick={() => setMetric(m.key)}
           aria-pressed={metric === m.key}
-          className={"px-3 py-1.5 transition " + (metric === m.key ? "bg-blue-600 text-white" : "text-zinc-600 hover:bg-zinc-50")}
+          className={"rounded-full px-3.5 py-1.5 transition " + (metric === m.key ? "bg-blue-600 text-white shadow-sm" : "text-zinc-600 hover:bg-white")}
         >
           {t(m.label)}
         </button>
@@ -175,14 +175,14 @@ export function MvpTimeWindowToggle({
   t?: T;
 }) {
   return (
-    <div className="inline-flex overflow-hidden rounded-lg border border-zinc-300 bg-white text-xs font-semibold shadow-sm" role="group" aria-label={label} data-testid={testId}>
+    <div className="inline-flex flex-wrap justify-center gap-1 rounded-full bg-zinc-100 p-1 text-xs font-semibold ring-1 ring-zinc-200" role="group" aria-label={label} data-testid={testId}>
       {TIME_WINDOWS.map((w) => (
         <button
           key={w.key}
           type="button"
           onClick={() => setWindow(w.key)}
           aria-pressed={window === w.key}
-          className={"px-3 py-1.5 transition " + (window === w.key ? "bg-zinc-900 text-white" : "text-zinc-600 hover:bg-zinc-50")}
+          className={"rounded-full px-3.5 py-1.5 transition " + (window === w.key ? "bg-zinc-900 text-white shadow-sm" : "text-zinc-600 hover:bg-white")}
         >
           {t(w.label)}
         </button>

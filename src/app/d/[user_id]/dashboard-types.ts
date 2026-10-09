@@ -354,6 +354,16 @@ export function fmtDuration(minutes: number | null | undefined, t: (s: string) =
   if (m < TIME_HOURS_FROM_MINUTES) return `${m} ${t("min")}`;
   return `${Number((minutes / 60).toFixed(1))} ${t("hours")}`;
 }
+// fmtDuration split for display: the number big, the unit in the caption
+// under it ("5.6" / "hours all time").
+export function fmtDurationParts(minutes: number | null | undefined, t: (s: string) => string = (s) => s): { value: string; unit: string } {
+  if (minutes == null) return { value: "—", unit: "" };
+  const m = Math.round(minutes);
+  if (m < TIME_HOURS_FROM_MINUTES) return { value: String(m), unit: t("min") };
+  return { value: String(Number((minutes / 60).toFixed(1))), unit: t("hours") };
+}
+// Time "most improved": this window ÷ the window before ("×1.8").
+export const fmtRatio = (r: number): string => `×${Number(r.toFixed(1))}`;
 // An average per day — always minutes, never hours: one decimal under 10
 // ("0.4 min per day"), whole minutes from 10 up.
 export function fmtPerDay(minutes: number | null | undefined, t: (s: string) => string = (s) => s): string {
