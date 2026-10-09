@@ -181,6 +181,8 @@ export const TEST_SCORES = {
     ],
     // m-3 is the one listed tap that counted; m-4 was never awaited (not listed)
     counted_message_ids: ["m-3", "m-4", "m-old"],
+    // the whole bin: m-3 plus older answers not in this page of the feed
+    bin_message_ids: ["m-older", "m-old", "m-3", "m-4"],
   },
   // one answer so far (the tap m-3), 20 needed
   mpl_b: { status: "insufficient_data", attempts_available: 1, counted_message_ids: ["m-3"] },

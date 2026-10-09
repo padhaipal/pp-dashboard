@@ -26,6 +26,8 @@ import {
   scoresUrl,
   TEST_KEY_OF,
   TEST_QUESTION_COUNT,
+  MEDIA_PAGE,
+  MEDIA_MAX_PAGES,
   PASS_MARK_PCT,
   testScoresUrl,
   type Child,
@@ -738,9 +740,24 @@ export function MvpTeacherModal({
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return (await res.json()) as J;
     };
-    Promise.all([getJson<LiteracyTestScores>(withViewer(testScoresUrl(studentId), viewerId)).catch(() => null), getJson<UserMedia>(withViewer(mediaUrl(studentId), viewerId)).catch(() => null)]).then(([tests, media]) => {
+    Promise.all([getJson<LiteracyTestScores>(withViewer(testScoresUrl(studentId), viewerId)).catch(() => null), getJson<UserMedia>(withViewer(mediaUrl(studentId), viewerId)).catch(() => null)]).then(async ([tests, media]) => {
       if (cancelled) return;
       setStudent({ id: studentId, tests, media: media ? media.media : null, pii: media?.user.pii ?? "masked", error: !tests && !media ? "Could not load this student" : null });
+      // A test's answers can be older than the newest page: walk older pages
+      // (up to MEDIA_MAX_PAGES) until every answer in every test's bin is loaded.
+      if (!tests || !media) return;
+      const wanted = new Set(Object.values(tests).flatMap((s) => s?.bin_message_ids ?? []));
+      let rows = media.media;
+      let page = media.media;
+      for (let p = 1; p < MEDIA_MAX_PAGES && page.length >= MEDIA_PAGE; p++) {
+        const have = new Set(rows.map((r) => r.id));
+        if ([...wanted].every((id) => have.has(id))) break;
+        const next = await getJson<UserMedia>(withViewer(mediaUrl(studentId, p * MEDIA_PAGE), viewerId)).catch(() => null);
+        if (cancelled || !next) return;
+        page = next.media;
+        rows = [...rows, ...page];
+        setStudent((cur) => (cur && cur.id === studentId ? { ...cur, media: rows } : cur));
+      }
     });
     return () => {
       cancelled = true;
@@ -791,19 +808,22 @@ export function MvpTeacherModal({
   // there are not enough yet / none at all.
   const testMetric2 = mMetric !== "letters" && mMetric !== "usage" ? mMetric : null;
   const testScore = testMetric2 && st?.tests ? st.tests[TEST_KEY_OF[testMetric2]!] : null;
-  // null = no filter (letters / Time, or a pp-sketch without counted ids)
+  // A test tab lists EVERY answer in the test's bin (bin_message_ids; an
+  // older pp-sketch only sends counted_message_ids) and marks the ones behind
+  // the current / previous score. null = no filter (letters / Time).
   const counted = testScore?.counted_message_ids ? new Set(testScore.counted_message_ids) : null;
+  const bin = testScore?.bin_message_ids ? new Set(testScore.bin_message_ids) : counted;
   const allRows = studentModalRows(st?.media ?? []);
-  const rows = counted ? allRows.filter((r) => counted.has(r.id)) : allRows;
+  const rows = bin ? allRows.filter((r) => bin.has(r.id)) : allRows;
   const testNote = (() => {
-    if (!testMetric2 || !testScore || !counted) return null;
+    if (!testMetric2 || !testScore || !bin) return null;
     const label = t(METRIC_BY[testMetric2].label);
-    if (counted.size === 0) return `${t("No questions counting toward")} ${label} ${t("answered yet.")}`;
+    if (bin.size === 0) return `${t("No questions counting toward")} ${label} ${t("answered yet.")}`;
     if (testScore.status === "insufficient_data") {
       const need = `${testMetric2 === "mpl_b" ? t("at least") + " " : ""}${TEST_QUESTION_COUNT[testMetric2]}`;
       return `${t("These answers count toward")} ${label}${t(", but")} ${need} ${t("are needed before a score can be calculated.")}`;
     }
-    return `${t("The answers behind this student's current and previous")} ${label} ${t("score.")}`;
+    return `${bin.size} ${t("answers count toward")} ${label}${t("; the ones marked are behind this student's current and previous score.")}`;
   })();
 
   return (
@@ -933,7 +953,12 @@ export function MvpTeacherModal({
                 if (row.kind === "tap") {
                   // a comprehension flow answer: no recording, the question and the option chosen instead
                   return (
-                    <div key={row.id} className="py-3 text-sm leading-relaxed text-zinc-700" data-testid="tap-sentence">
+                    <div key={row.id} className="py-3 text-sm leading-relaxed text-zinc-700" data-testid="tap-sentence" data-counted={testScore?.status === "ok" && counted?.has(row.id) ? "1" : undefined}>
+                      {testScore?.status === "ok" && counted?.has(row.id) && (
+                        <span className="mr-2 inline-block rounded-full bg-blue-50 px-2 py-0.5 align-middle text-[10px] font-bold uppercase tracking-wide text-blue-700" data-testid="counted-tag">
+                          {t("in score")}
+                        </span>
+                      )}
                       {t("At")} <span className="font-semibold">{w.time}</span> {t("on")} <span className="font-semibold">{w.day}</span> {t(w.week)} {t("the student was asked")}{" "}
                       <span className="font-semibold text-zinc-900">“{row.tap?.question ? clip(row.tap.question, MAX_TAP_CHARS) : "—"}”</span> {t("and chose")}{" "}
                       <span className="font-semibold text-zinc-900">“{row.tap?.chosen ? clip(row.tap.chosen, MAX_TAP_CHARS) : "—"}”</span> {t("and the correct answer was")}{" "}

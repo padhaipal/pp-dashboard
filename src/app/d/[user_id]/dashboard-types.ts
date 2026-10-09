@@ -127,7 +127,12 @@ export type StudentChild = TimeFields & {
 export type TestSnapshotPoint = { at: string; score: number; passed: boolean };
 // counted_message_ids: the interactions (media ids) behind `latest` and the
 // history point before it — or, while insufficient, every answer so far.
-export type SnapshotTestScore = { status: "ok" | "insufficient_data"; attempts_available: number; latest?: TestSnapshotPoint; history?: TestSnapshotPoint[]; counted_message_ids?: string[] };
+// bin_message_ids: every answer in the test's pool (first attempts at its questions), chronological.
+export type SnapshotTestScore = { status: "ok" | "insufficient_data"; attempts_available: number; latest?: TestSnapshotPoint; history?: TestSnapshotPoint[]; counted_message_ids?: string[]; bin_message_ids?: string[] };
+// The media feed answers 100 interactions a page (pp-sketch users/:id/media).
+export const MEDIA_PAGE = 100;
+// At most this many pages are walked to find a test's older answers.
+export const MEDIA_MAX_PAGES = 10;
 export type LiteracyTestScores = { nipun_grade_2: SnapshotTestScore; nipun_grade_3: SnapshotTestScore; mpl_b: SnapshotTestScore };
 // No test history for "usage" (undefined → empty series).
 export const TEST_KEY_OF: Partial<Record<Metric, keyof LiteracyTestScores>> = { nipun_g2: "nipun_grade_2", nipun_g3: "nipun_grade_3", mpl_b: "mpl_b" };
@@ -409,7 +414,7 @@ export const testScoresUrl = (id: string) => `/api/proxy/users/${encodeURICompon
 // letter-score chart (ScoreChart on /user/[id]) — every score row + the learnt bins
 export const letterScoresUrl = (id: string) => `/api/proxy/users/${encodeURIComponent(id)}/scores`;
 export const letterBinsUrl = (id: string) => `/api/proxy/scores/letter-bins?users=${encodeURIComponent(id)}`;
-export const mediaUrl = (id: string) => `/api/proxy/users/${encodeURIComponent(id)}/media`;
+export const mediaUrl = (id: string, offset = 0) => `/api/proxy/users/${encodeURIComponent(id)}/media${offset ? `?offset=${offset}` : ""}`;
 export const audioUrl = (mediaId: string) => `/api/proxy/media-meta-data/${encodeURIComponent(mediaId)}/audio`;
 
 // ------------------------------------------------------------------ formatting

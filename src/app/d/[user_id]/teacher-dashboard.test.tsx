@@ -277,6 +277,36 @@ describe("TeacherDashboard", () => {
     expect(calls.some((u) => u.includes("/media-meta-data/m-1/audio"))).toBe(false);
   });
 
+  it("student modal: a test's older answers are fetched from the next pages of the feed until the whole bin is listed", async () => {
+    const voice = (i: number) => ({ id: `v-${i}`, created_at: new Date(Date.now() - i * 60_000).toISOString(), has_audio: false, answer: "घर", answer_correct: true });
+    const oldTap = { id: "m-older", kind: "tap", created_at: "2026-08-01T10:00:00Z", has_audio: false, answer: "स्कूल", answer_correct: true, tap: { question: "पुराना?", chosen: "स्कूल", correct: "स्कूल" } };
+    const base = makeFetch({ scoresById: { "g-sch": SCORES_SCHOOL, "t-1": SCORES_CLASS } }).fn;
+    const mediaCalls: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (/\/users\/[^/]+\/media/.test(url)) {
+          mediaCalls.push(url);
+          const offset = Number(new URLSearchParams(url.split("?")[1] ?? "").get("offset") ?? 0);
+          const media = offset === 0 ? Array.from({ length: 100 }, (_, i) => voice(i)) : offset === 100 ? [oldTap] : [];
+          return { ok: true, status: 200, json: async () => ({ user: { name: "Rani Devi", pii: "full" }, media }) } as unknown as Response;
+        }
+        return base(input, init);
+      }),
+    );
+    render(<TeacherDashboard profile={PROFILE_SCHOOL} incompleteStates={[]} />);
+    fireEvent.dblClick(await screen.findByTestId("teacher-card"));
+    fireEvent.click((await screen.findAllByTestId("student-tile"))[0]);
+    const dialog = await screen.findByRole("dialog");
+    // the bin's m-older is not on the first page → page 2 (offset 100) is fetched, then it stops
+    await waitFor(() => expect(mediaCalls.some((u) => u.includes("offset=100"))).toBe(true));
+    expect(mediaCalls.some((u) => u.includes("offset=200"))).toBe(false);
+    fireEvent.click(within(dialog).getByRole("button", { name: "NIPUN grade 3 proxy" }));
+    await waitFor(() => expect(within(screen.getByTestId("student-sentences")).getAllByTestId("tap-sentence")).toHaveLength(1));
+    expect(screen.getByTestId("student-sentences").textContent).toContain("पुराना?");
+  });
+
   it("school → teacher cards; double-click → the class (student tiles, 'Student Performance' only); tile → the student modal", async () => {
     const { fn, calls } = makeFetch({ scoresById: { "g-sch": SCORES_SCHOOL, "t-1": SCORES_CLASS } });
     vi.stubGlobal("fetch", vi.fn(fn));
@@ -408,7 +438,9 @@ describe("TeacherDashboard", () => {
     // …and narrows the interaction list to the answers that counted toward
     // that test (counted_message_ids): the tap m-3 only, with a note
     const sentencesOf = () => screen.getByTestId("student-sentences");
-    expect(screen.getByTestId("test-interactions-note").textContent).toBe("The answers behind this student's current and previous NIPUN grade 3 proxy score.");
+    expect(screen.getByTestId("test-interactions-note").textContent).toBe("4 answers count toward NIPUN grade 3 proxy; the ones marked are behind this student's current and previous score.");
+    // the answer behind the score is tagged
+    expect(within(sentencesOf()).getAllByTestId("counted-tag")).toHaveLength(1);
     expect(sentencesOf().querySelectorAll('[data-testid="tap-sentence"]').length).toBe(1);
     expect(sentencesOf().querySelectorAll('[data-testid="audio-button"]').length).toBe(0);
     expect(sentencesOf().textContent).not.toContain("the student said");
