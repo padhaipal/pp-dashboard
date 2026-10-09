@@ -964,6 +964,7 @@ function FindTab() {
               <thead className="bg-zinc-50">
                 <tr>
                   <th className={th}>Name</th>
+                  <th className={th}>Type</th>
                   <th className={th}>Students</th>
                   <th className={th}>Mobile</th>
                   <th className={th}>UDISE code</th>
@@ -984,6 +985,7 @@ function FindTab() {
                         {u.deleted_at !== null && <span className="ml-1.5 rounded bg-zinc-200 px-1.5 py-0.5 text-zinc-700">Deactivated</span>}
                       </div>
                     </td>
+                    <td className={td + " capitalize"} data-testid="staff-type">{u.geo_entity_type ?? "—"}</td>
                     <td className={td + " tabular-nums"}>{u.students}</td>
                     <td className={td + " whitespace-nowrap font-mono text-xs"}>{u.external_id}</td>
                     <td className={td + " whitespace-nowrap font-mono text-xs"}>{u.geo_code ?? "—"}</td>
