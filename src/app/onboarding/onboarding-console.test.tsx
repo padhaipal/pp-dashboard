@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { OnboardingConsole } from "./onboarding-console";
 
 const GEO = {
@@ -215,5 +215,61 @@ describe("OnboardingConsole update mode", () => {
     expect(await screen.findByText(/deactivated account \(Asha\)/)).toBeDefined();
     expect(screen.getByText(/next level up the Lifteracy hierarchy/)).toBeDefined();
     expect((screen.getByRole("button", { name: "Create user" }) as HTMLButtonElement).disabled).toBe(true);
+  });
+});
+
+describe("Find tab — staff table", () => {
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
+  const TEACHER = { ...EXISTING, geo_code: "09270904601", students: 8, share_link: "https://dashboard.padhaipal.com/r/919876543210", link: "https://dashboard.padhaipal.com/d/u1" };
+  const BEO = { ...EXISTING, id: "u2", name: "Ravi", role_title: "BEO", geo_entity_type: "block", geo_entity_name: "KAKORI", geo_code: "092711", students: 87, share_link: null, link: "https://dashboard.padhaipal.com/d/u2", external_id: "919800000002" };
+
+  it("lists every staff account on open (no search needed), searches, pages, and saves a note on blur", async () => {
+    const calls: { url: string; init?: RequestInit }[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        calls.push({ url, init });
+        if (url.startsWith("/api/proxy/users/staff?")) {
+          const q = new URLSearchParams(url.split("?")[1]);
+          const rows = q.get("q") === "kak" ? [BEO] : [TEACHER, BEO];
+          return jsonResponse(200, { total: q.get("q") === "kak" ? 1 : 250, offset: Number(q.get("offset")), limit: 100, rows });
+        }
+        if (url === "/api/proxy/users/u1" && init?.method === "PATCH") return jsonResponse(200, {});
+        return jsonResponse(404, { message: `unmocked ${url}` });
+      }),
+    );
+    render(<OnboardingConsole />);
+    fireEvent.click(screen.getByRole("tab", { name: "Find" }));
+    const rows = await screen.findAllByTestId("staff-row");
+    expect(rows).toHaveLength(2);
+    expect(calls[0].url).toBe("/api/proxy/users/staff?q=&offset=0&limit=100");
+    // name, students, mobile, UDISE code, dashboard + share links (teachers only), note
+    expect(rows[0].textContent).toContain("Asha");
+    expect(rows[0].textContent).toContain("8");
+    expect(rows[0].textContent).toContain("919876543210");
+    expect(rows[0].textContent).toContain("09270904601");
+    expect(within(rows[0]).getAllByRole("link").map((a) => a.getAttribute("href"))).toEqual([TEACHER.link, TEACHER.share_link]);
+    expect(within(rows[1]).getAllByRole("link")).toHaveLength(1);
+    expect(screen.getByTestId("staff-range").textContent).toBe("1–2 of 250");
+    // next page
+    fireEvent.click(screen.getByRole("button", { name: "Next →" }));
+    await waitFor(() => expect(calls.some((c) => c.url.includes("offset=100"))).toBe(true));
+    // search (by block name) resets to the first page
+    fireEvent.change(screen.getByLabelText("Staff search"), { target: { value: "kak" } });
+    await waitFor(() => expect(calls.some((c) => c.url === "/api/proxy/users/staff?q=kak&offset=0&limit=100")).toBe(true));
+    await waitFor(() => expect(screen.getAllByTestId("staff-row")).toHaveLength(1));
+    // clear the search → everyone again; edit Asha's note
+    fireEvent.change(screen.getByLabelText("Staff search"), { target: { value: "" } });
+    await waitFor(() => expect(screen.getAllByTestId("staff-row")).toHaveLength(2));
+    const note = screen.getByLabelText("Notes for Asha");
+    fireEvent.change(note, { target: { value: "called 3 Oct" } });
+    fireEvent.blur(note);
+    await waitFor(() => expect(calls.some((c) => c.url === "/api/proxy/users/u1" && c.init?.method === "PATCH")).toBe(true));
+    const patch = calls.find((c) => c.url === "/api/proxy/users/u1" && c.init?.method === "PATCH")!;
+    expect(JSON.parse(String(patch.init!.body))).toEqual({ new_staff_notes: "called 3 Oct" });
   });
 });

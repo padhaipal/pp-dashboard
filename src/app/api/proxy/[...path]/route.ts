@@ -39,6 +39,8 @@ const ADMIN_ALLOWED: { pattern: RegExp; methods: string[] }[] = [
   { pattern: /^geo-entities\/[^/]+\/descendants$/, methods: ["GET"] },
   { pattern: /^users\/staff-create$/, methods: ["POST"] },
   { pattern: /^users\/lookup$/, methods: ["GET"] },
+  // the onboarding console's staff table
+  { pattern: /^users\/staff$/, methods: ["GET"] },
   // PATCH on users/:id is already allowed above.
   { pattern: /^users\/[^/]+$/, methods: ["GET"] },
 ];

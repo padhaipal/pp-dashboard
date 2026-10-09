@@ -830,86 +830,189 @@ function EditPanel({
   );
 }
 
+// One page of GET users/staff: every staff account with its figures and links.
+type StaffListRow = StaffUser & { geo_code: string | null; students: number; share_link: string | null };
+type StaffList = { total: number; offset: number; limit: number; rows: StaffListRow[] };
+export const STAFF_PAGE = 100;
+
+// A link cell: open in a new tab + copy.
+function LinkCell({ href, label }: { href: string; label: string }) {
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    if (!copied) return;
+    const t = setTimeout(() => setCopied(false), 1500);
+    return () => clearTimeout(t);
+  }, [copied]);
+  return (
+    <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+      <a href={href} target="_blank" rel="noreferrer" className="text-emerald-700 underline decoration-emerald-300 hover:text-emerald-900">
+        {label}
+      </a>
+      <button
+        type="button"
+        className="rounded border border-zinc-300 px-1.5 text-[11px] text-zinc-600 hover:bg-zinc-50"
+        onClick={() => navigator.clipboard?.writeText(href).then(() => setCopied(true)).catch(() => setCopied(false))}
+      >
+        {copied ? "Copied" : "Copy"}
+      </button>
+    </span>
+  );
+}
+
+// The editable note: saved (PATCH users/:id { new_staff_notes }) when the
+// field loses focus with a changed value.
+function NoteCell({ row, onSaved }: { row: StaffListRow; onSaved: () => void }) {
+  const [value, setValue] = useState(row.staff_notes ?? "");
+  const [status, setStatus] = useState<"" | "saving" | "saved" | string>("");
+  const save = () => {
+    if (value.trim() === (row.staff_notes ?? "").trim()) return;
+    setStatus("saving");
+    fetch(`/api/proxy/users/${encodeURIComponent(row.id)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ new_staff_notes: value.trim() }),
+    })
+      .then(async (res) => {
+        if (!res.ok) throw new Error(await serverMessage(res));
+        setStatus("saved");
+        onSaved();
+      })
+      .catch((err: Error) => setStatus(`Not saved — ${err.message}`));
+  };
+  return (
+    <div>
+      <textarea
+        value={value}
+        onChange={(e) => {
+          setValue(e.target.value);
+          setStatus("");
+        }}
+        onBlur={save}
+        rows={1}
+        aria-label={`Notes for ${row.name ?? row.external_id}`}
+        className="w-48 resize-y rounded border border-zinc-200 px-2 py-1 text-xs focus:border-emerald-500 focus:outline-none"
+      />
+      {status && <div className={"text-[11px] " + (status.startsWith("Not saved") ? "text-red-600" : "text-zinc-400")}>{status === "saving" ? "Saving…" : status === "saved" ? "Saved" : status}</div>}
+    </div>
+  );
+}
+
 function FindTab() {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<{ key: string; rows: StaffUser[] } | null>(null);
+  const [offset, setOffset] = useState(0);
+  const [data, setData] = useState<{ key: string; list: StaffList } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [listVersion, setListVersion] = useState(0);
   const debounced = useDebounced(query.trim(), 300);
-  const key = `${debounced}#${listVersion}`;
-  const rows = results?.key === key ? results.rows : null;
+  const key = `${debounced}#${offset}#${listVersion}`;
+  const list = data?.key === key ? data.list : null;
 
+  // Every staff account, paged; an empty search lists everyone.
   useEffect(() => {
-    if (debounced.length < 2) return;
     let cancelled = false;
-    const params = new URLSearchParams({ q: debounced });
-    fetch(`/api/proxy/users/lookup?${params.toString()}`)
+    const params = new URLSearchParams({ q: debounced, offset: String(offset), limit: String(STAFF_PAGE) });
+    const k = `${debounced}#${offset}#${listVersion}`;
+    fetch(`/api/proxy/users/staff?${params.toString()}`)
       .then(async (res) => {
         if (!res.ok) throw new Error(await serverMessage(res));
-        return (await res.json()) as StaffUser[];
+        return (await res.json()) as StaffList;
       })
-      .then((data) => {
+      .then((l) => {
         if (cancelled) return;
-        setResults({ key: `${debounced}#${listVersion}`, rows: data.filter((u) => isStaffRole(u.role)) });
+        setData({ key: k, list: { ...l, rows: l.rows.filter((u) => isStaffRole(u.role)) } });
         setError(null);
       })
       .catch((err: Error) => {
         if (cancelled) return;
-        setResults({ key: `${debounced}#${listVersion}`, rows: [] });
+        setData({ key: k, list: { total: 0, offset, limit: STAFF_PAGE, rows: [] } });
         setError(err.message);
       });
     return () => {
       cancelled = true;
     };
-  }, [debounced, listVersion]);
+  }, [debounced, offset, listVersion]);
 
   if (editingId) {
     return (
-      <EditPanel
-        key={editingId}
-        id={editingId}
-        onBack={() => setEditingId(null)}
-        onChanged={() => setListVersion((v) => v + 1)}
-      />
+      <div className="max-w-xl">
+        <EditPanel key={editingId} id={editingId} onBack={() => setEditingId(null)} onChanged={() => setListVersion((v) => v + 1)} />
+      </div>
     );
   }
 
+  const th = "px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-zinc-500";
+  const td = "px-3 py-2 align-top text-sm";
   return (
     <div className="space-y-3">
       <input
         value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search by name or phone"
+        onChange={(e) => {
+          setQuery(e.target.value);
+          setOffset(0);
+        }}
+        placeholder="Search by name, phone, role, school / block / district or UDISE code"
         aria-label="Staff search"
-        className={inputCls}
+        className={inputCls + " max-w-xl"}
       />
       {error && <p className="text-xs text-red-600">{error}</p>}
-      {rows && rows.length === 0 && !error && <p className="text-xs text-zinc-400">No matches</p>}
-      {rows && rows.length > 0 && (
-        <ul className="border border-zinc-200 rounded divide-y divide-zinc-100 bg-white">
-          {rows.map((u) => (
-            <li key={u.id}>
-              <button
-                type="button"
-                onClick={() => setEditingId(u.id)}
-                className="w-full text-left px-3 py-2 text-sm hover:bg-emerald-50 flex items-center justify-between gap-3"
-              >
-                <span className="min-w-0">
-                  <span className="font-medium text-zinc-900">{u.name ?? "(no name)"}</span>
-                  <span className="text-zinc-500"> · {u.external_id}</span>
-                  {u.role_title && <span className="text-zinc-500"> · {u.role_title}</span>}
-                  {u.geo_entity_name && <span className="text-zinc-500"> · {u.geo_entity_name}</span>}
-                </span>
-                {u.deleted_at !== null && (
-                  <span className="shrink-0 text-xs px-1.5 py-0.5 rounded bg-zinc-200 text-zinc-700">
-                    Deactivated
-                  </span>
-                )}
+      {list && list.rows.length === 0 && !error && <p className="text-xs text-zinc-400">No matches</p>}
+      {list && list.rows.length > 0 && (
+        <>
+          <div className="overflow-x-auto rounded border border-zinc-200 bg-white" data-testid="staff-table">
+            <table className="min-w-full divide-y divide-zinc-100">
+              <thead className="bg-zinc-50">
+                <tr>
+                  <th className={th}>Name</th>
+                  <th className={th}>Students</th>
+                  <th className={th}>Mobile</th>
+                  <th className={th}>UDISE code</th>
+                  <th className={th}>Dashboard</th>
+                  <th className={th}>Teacher share link</th>
+                  <th className={th}>Notes</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-100">
+                {list.rows.map((u) => (
+                  <tr key={u.id} data-testid="staff-row" className={u.deleted_at !== null ? "bg-zinc-50 text-zinc-400" : ""}>
+                    <td className={td}>
+                      <button type="button" onClick={() => setEditingId(u.id)} className="text-left font-medium text-zinc-900 hover:text-emerald-700">
+                        {u.name ?? "(no name)"}
+                      </button>
+                      <div className="text-xs text-zinc-500">
+                        {[u.role_title, u.geo_entity_name].filter(Boolean).join(" · ")}
+                        {u.deleted_at !== null && <span className="ml-1.5 rounded bg-zinc-200 px-1.5 py-0.5 text-zinc-700">Deactivated</span>}
+                      </div>
+                    </td>
+                    <td className={td + " tabular-nums"}>{u.students}</td>
+                    <td className={td + " whitespace-nowrap font-mono text-xs"}>{u.external_id}</td>
+                    <td className={td + " whitespace-nowrap font-mono text-xs"}>{u.geo_code ?? "—"}</td>
+                    <td className={td}>
+                      <LinkCell href={u.link} label="Open" />
+                    </td>
+                    <td className={td}>{u.share_link ? <LinkCell href={u.share_link} label="Open" /> : <span className="text-zinc-300">—</span>}</td>
+                    <td className={td}>
+                      <NoteCell key={`${u.id}#${u.staff_notes ?? ""}`} row={u} onSaved={() => setListVersion((v) => v + 1)} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="flex items-center justify-between text-xs text-zinc-500">
+            <span data-testid="staff-range">
+              {list.offset + 1}–{list.offset + list.rows.length} of {list.total}
+            </span>
+            <span className="flex gap-2">
+              <button type="button" disabled={offset === 0} onClick={() => setOffset(Math.max(0, offset - STAFF_PAGE))} className="rounded border border-zinc-300 px-2 py-1 disabled:opacity-40">
+                ← Previous
               </button>
-            </li>
-          ))}
-        </ul>
+              <button type="button" disabled={offset + STAFF_PAGE >= list.total} onClick={() => setOffset(offset + STAFF_PAGE)} className="rounded border border-zinc-300 px-2 py-1 disabled:opacity-40">
+                Next →
+              </button>
+            </span>
+          </div>
+        </>
       )}
     </div>
   );
@@ -938,7 +1041,8 @@ export function OnboardingConsole() {
           Find
         </button>
       </div>
-      <div className="p-4 max-w-xl">{tab === "create" ? <CreateTab /> : <FindTab />}</div>
+      {/* Find is a wide table; Create stays a narrow form */}
+      <div className={"p-4 " + (tab === "create" ? "max-w-xl" : "")}>{tab === "create" ? <CreateTab /> : <FindTab />}</div>
     </div>
   );
 }
