@@ -151,17 +151,16 @@ export type MediaRow = {
   kind?: "voice" | "tap" | "onboarding";
   created_at: string;
   has_audio: boolean;
-  // voice-note length (ms), shown in place of the player when the viewer
-  // may not hear the recording
-  duration_ms?: number | null;
   // voice: the word / passage asked for; tap: the correct option's text
   answer: string | null;
   // tap: null = the lesson was not waiting for that tap (nothing recorded)
   answer_correct: boolean | null;
   tap?: { question: string | null; chosen: string | null; correct: string | null } | null;
 };
-// `user.pii` says whether the recordings may be played by this viewer
-// (GET media-meta-data/:id/audio answers 403 otherwise).
+// `user.pii` = whether the name came back as stored or masked. Whether a
+// recording may be played is pp-sketch's call per request (GET
+// media-meta-data/:id/audio: the student's teacher and the officials above
+// them; 403 otherwise).
 export type UserMedia = { user: { name: string | null; pii?: PiiVisibility }; media: MediaRow[] };
 
 // What the student modal lists and counts as activity: voice notes and the
