@@ -48,11 +48,9 @@ import {
   type UserMedia,
   UNNAMED,
   isPiiFull,
-  type PiiVisibility,
 } from "./dashboard-types";
 import { useViewerId } from "./viewer-context";
 import { withViewer } from "./viewer-url";
-import { MaskedAudio, SampleAudioModal } from "./masked-audio";
 import { LANGS, type Lang, type T } from "./i18n";
 import { useIsMobile } from "./use-is-mobile";
 import { IconCopy } from "./icons";
@@ -644,9 +642,13 @@ const MAX_TAP_CHARS = 80;
 const clip = (s: string, max: number) => (s.length > max ? s.slice(0, max) + "…" : s);
 
 // "▶ audio" — plays the note through the proxy; one <audio> per button, created on first click.
+// pp-sketch decides per viewer whether the recording may be played (the
+// student's teacher and the officials above them; 403 otherwise) — a refused
+// or broken clip turns the button into a disabled "🔒 audio".
 function AudioButton({ mediaId, t }: { mediaId: string; t: T }) {
   const ref = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
+  const [unavailable, setUnavailable] = useState(false);
   const viewerId = useViewerId();
   useEffect(
     () => () => {
@@ -660,11 +662,28 @@ function AudioButton({ mediaId, t }: { mediaId: string; t: T }) {
       a.onended = () => setPlaying(false);
       a.onpause = () => setPlaying(false);
       a.onplay = () => setPlaying(true);
+      a.onerror = () => {
+        setPlaying(false);
+        setUnavailable(true);
+      };
       ref.current = a;
     }
     if (ref.current.paused) ref.current.play().catch(() => setPlaying(false));
     else ref.current.pause();
   };
+  if (unavailable) {
+    return (
+      <button
+        type="button"
+        disabled
+        title={t("Recording not available")}
+        className="mx-0.5 inline-flex items-center rounded-md border border-zinc-200 px-2 py-0.5 align-middle text-xs text-zinc-400"
+        data-testid="audio-button-unavailable"
+      >
+        🔒 {t("audio")}
+      </button>
+    );
+  }
   return (
     <button
       type="button"
@@ -733,11 +752,7 @@ export function MvpTeacherModal({
   const testMetric: Metric = mMetric === "letters" ? metric : mMetric;
   // `metric` = the metric this answer was fetched for (drawn as such while the next one loads).
   const [data, setData] = useState<{ key: string; childId: string; metric: Metric; scores: ScoresResponse | null; error: string | null } | null>(null);
-  // `pii` = whether this viewer may play the recordings (pp-sketch, per
-  // users/:id/media); masked until the feed says otherwise.
-  const [student, setStudent] = useState<{ id: string; tests: LiteracyTestScores | null; media: MediaRow[] | null; pii: PiiVisibility; error: string | null } | null>(null);
-  // A masked recording was pressed → the sample-clip explainer.
-  const [sampleOpen, setSampleOpen] = useState(false);
+  const [student, setStudent] = useState<{ id: string; tests: LiteracyTestScores | null; media: MediaRow[] | null; error: string | null } | null>(null);
   const viewerId = useViewerId();
   // Student + Time: the student's active minutes per day for the chosen range.
   const [usage, setUsage] = useState<{ key: string; history: UsageHistory | null; error: string | null } | null>(null);
@@ -774,7 +789,7 @@ export function MvpTeacherModal({
     };
     Promise.all([getJson<LiteracyTestScores>(withViewer(testScoresUrl(studentId), viewerId)).catch(() => null), getJson<UserMedia>(withViewer(mediaUrl(studentId), viewerId)).catch(() => null)]).then(async ([tests, media]) => {
       if (cancelled) return;
-      setStudent({ id: studentId, tests, media: media ? media.media : null, pii: media?.user.pii ?? "masked", error: !tests && !media ? "Could not load this student" : null });
+      setStudent({ id: studentId, tests, media: media ? media.media : null, error: !tests && !media ? "Could not load this student" : null });
       // A test's answers can be older than the newest page: walk older pages
       // (up to MEDIA_MAX_PAGES) until every answer in every test's bin is loaded.
       if (!tests || !media) return;
@@ -913,7 +928,6 @@ export function MvpTeacherModal({
             ✕ {t("Close")}
           </button>
         </div>
-        {sampleOpen && <SampleAudioModal onClose={() => setSampleOpen(false)} t={t} />}
 
         <div className="bg-white">
           {/* chart with its own picker: letter scores (students, default) or a metric + range */}
@@ -1013,11 +1027,7 @@ export function MvpTeacherModal({
                   <div key={row.id} className="py-3 text-sm leading-relaxed text-zinc-700">
                     {t("At")} <span className="font-semibold">{w.time}</span> {t("on")} <span className="font-semibold">{w.day}</span> {t(w.week)} {t("the student said")}{" "}
                     {row.has_audio ? (
-                      isPiiFull(st?.pii) ? (
-                        <AudioButton mediaId={row.id} t={t} />
-                      ) : (
-                        <MaskedAudio mediaId={row.id} durationMs={row.duration_ms} onRequest={() => setSampleOpen(true)} t={t} />
-                      )
+                      <AudioButton mediaId={row.id} t={t} />
                     ) : (
                       <span className="italic text-zinc-400">{t("nothing (no recording)")}</span>
                     )}{" "}

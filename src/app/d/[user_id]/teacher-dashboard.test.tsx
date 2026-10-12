@@ -301,7 +301,7 @@ describe("TeacherDashboard", () => {
     expect(screen.getAllByRole("button", { name: "MPL-B proxy" })[0].getAttribute("aria-pressed")).toBe("true");
   });
 
-  it("a viewer who is not the students' teacher (e.g. the block official): masked names and phones, no renaming, recordings locked behind a sample clip; a peer teacher's phone is masked too", async () => {
+  it("a viewer who is not the students' teacher (e.g. the block official): masked names and phones, no renaming, but the recordings still play; a peer teacher's phone is masked too", async () => {
     const { fn, calls } = makeFetch({ scoresById: { "g-sch": SCORES_SCHOOL, "t-1": SCORES_CLASS_MASKED }, media: MEDIA_MASKED });
     vi.stubGlobal("fetch", vi.fn(fn));
     render(<TeacherDashboard profile={PROFILE_SCHOOL} incompleteStates={[]} />);
@@ -329,26 +329,17 @@ describe("TeacherDashboard", () => {
     expect(screen.queryByText("Rename")).toBeNull();
     expect(tiles[1].textContent).toContain("~");
 
-    // the student modal: masked title, no editing, the recording is a locked waveform with its length
+    // the student modal: masked title, no editing — but the recording is an
+    // ordinary play button: pp-sketch lets the officials above the teacher
+    // hear it (the viewer rides along on the audio URL)
     fireEvent.click(tiles[0]);
     const dialog = await screen.findByRole("dialog");
     expect(screen.getByTestId("student-modal-title").textContent).toContain("R...i");
     expect(screen.getByTestId("student-modal-title").querySelector('[data-testid="student-name"]')).toBeNull();
     expect(screen.getByTestId("student-modal-phone").textContent).toBe("9...1");
-    const locked = await within(dialog).findByTestId("masked-audio");
-    expect(within(dialog).queryByTestId("audio-button")).toBeNull();
-    expect(within(locked).getByTestId("masked-audio-duration").textContent).toBe("0:07");
-    expect(locked.querySelectorAll("rect").length).toBe(28);
-    expect(calls.some((u) => u.includes("/media-meta-data/m-1/audio"))).toBe(false);
-
-    // pressing it explains and offers the stand-in clip, never the real audio
-    fireEvent.click(locked);
-    const sample = await screen.findByTestId("sample-audio-modal");
-    expect(sample.textContent).toContain("This recording is private");
-    expect((within(sample).getByTestId("sample-audio") as HTMLAudioElement).getAttribute("src")).toBe("/sample-child-response.wav");
-    fireEvent.click(within(sample).getByRole("button", { name: /Close/ }));
-    expect(screen.queryByTestId("sample-audio-modal")).toBeNull();
-    expect(calls.some((u) => u.includes("/media-meta-data/m-1/audio"))).toBe(false);
+    const play = await within(dialog).findByTestId("audio-button");
+    expect(play.textContent).toContain("audio");
+    expect(within(dialog).queryByTestId("audio-button-unavailable")).toBeNull();
   });
 
   it("student modal: a test's older answers are fetched from the next pages of the feed until the whole bin is listed", async () => {

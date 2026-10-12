@@ -191,7 +191,7 @@ export const TEST_SCORES = {
 export const MEDIA = {
   user: { name: "Rani Devi", pii: "full" as const },
   media: [
-    { id: "m-1", created_at: new Date(Date.now() - 2 * 3600_000).toISOString(), has_audio: true, duration_ms: 7400, answer: "घर", answer_correct: true },
+    { id: "m-1", created_at: new Date(Date.now() - 2 * 3600_000).toISOString(), has_audio: true, answer: "घर", answer_correct: true },
     { id: "m-2", created_at: new Date(Date.now() - 26 * 3600_000).toISOString(), has_audio: false, answer: "मछली", answer_correct: false },
     // a comprehension flow tap: no recording, the question and the option chosen
     {
