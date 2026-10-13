@@ -30,6 +30,8 @@ import {
   type Child,
   type ChildType,
   type GeoRef,
+  verdictDecided,
+  verdictLabel,
 } from "./dashboard-types";
 import {
   bboxOf,
@@ -68,6 +70,8 @@ export type GeoMapProps = {
   drillHint?: string | null;
   onDismissHint?: () => void;
   metricLabel: string;
+  // the NIPUN verdict: schools coloured Pass / Fail / Not enough data, areas by their share of passing schools
+  verdict?: boolean;
   // Time mode: areas / labels / dots are coloured by minutes per student per
   // day (green past 5, amber for some, red for none) and the tooltip shows
   // the active time, not a pass rate.
@@ -125,7 +129,7 @@ export function areaFill(d: string, child: Child, incomplete: boolean, fill: (c:
 type Tip = { x: number; y: number; title: string; sub: string | null };
 
 export function GeoMap(props: GeoMapProps) {
-  const { entity, childType, childrenRows, incompleteStates, hoverId, setHoverId, selectedId, onSelect, onDrill, onUp, ownId = null, timeWindow = "all", drillHint = null, onDismissHint, metricLabel, time = false, t = same } = props;
+  const { entity, childType, childrenRows, incompleteStates, hoverId, setHoverId, selectedId, onSelect, onDrill, onUp, ownId = null, timeWindow = "all", drillHint = null, onDismissHint, metricLabel, time = false, verdict = false, t = same } = props;
   const fillOf = time ? (c: Child) => windowFill(c, timeWindow) : childFill;
   const wrapRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 640, h: 420 });
@@ -350,7 +354,11 @@ export function GeoMap(props: GeoMapProps) {
           (c.using_lifteracy
             ? time
               ? `${fmtDuration(c.time_sum, t)} · n=${c.n}`
-              : `${fmtPct(c.pass_rate)} · n=${c.n}`
+              : verdict
+                ? c.type === "school"
+                  ? verdictLabel(c.verdict?.school_passed, t)
+                  : `${c.verdict?.schools_pass ?? 0}/${verdictDecided(c.verdict)} ${t("schools pass NIPUN")}`
+                : `${fmtPct(c.pass_rate)} · n=${c.n}`
             : t("Not using Lifteracy")) + (isPrivateSchool(c) ? ` · ${t("private school")}` : ""),
         ];
 
@@ -620,12 +628,25 @@ export function GeoMap(props: GeoMapProps) {
               [timeMarkLabels(timeWindow, t)[2], "#dc2626"],
               [t("Not using Lifteracy"), UNCOVERED],
             ]
-          : [
-              ["≥80", "#16a34a"],
-              ["50–79", "#f59e0b"],
-              ["<50", "#dc2626"],
-              [t("Not using Lifteracy"), UNCOVERED],
-            ]
+          : verdict && childType === "school"
+            ? [
+                [t("Pass"), "#16a34a"],
+                [t("Fail"), "#dc2626"],
+                [t("Not enough data"), UNCOVERED],
+              ]
+            : verdict
+              ? [
+                  [`≥80% ${t("schools pass")}`, "#16a34a"],
+                  ["50–79%", "#f59e0b"],
+                  ["<50%", "#dc2626"],
+                  [t("Not enough data"), UNCOVERED],
+                ]
+              : [
+                  ["≥80", "#16a34a"],
+                  ["50–79", "#f59e0b"],
+                  ["<50", "#dc2626"],
+                  [t("Not using Lifteracy"), UNCOVERED],
+                ]
         ).map(([l, c]) => (
           <div key={l} className="flex items-center gap-1.5">
             <span className="h-2.5 w-2.5 rounded-full" style={{ background: c }} />

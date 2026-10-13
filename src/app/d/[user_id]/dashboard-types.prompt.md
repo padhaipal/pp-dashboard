@@ -11,3 +11,32 @@
 12.) `PASS_MARK_PCT` / `METRIC_AGE_BANDS` / `passMarkOf(metric, fromResponse)` / `ageBandOf(metric, fromResponse)` / `ageBandLabel([min, max))` (2026-10): the tests' pass marks (NIPUN 75 — three of four, passes AT it (2026-10, was 80); MPL-B 50, strictly above — strictly above) and age bands as pp-sketch decides them; the scores response's `pass_mark` / `age_band` win, these are the fallback for an older pp-sketch. Null for usage.
 13.) `SnapshotTestScore.counted_message_ids?` (2026-10): the interaction (media) ids behind the test's latest and previous history point — every answer so far while `insufficient_data` — which the student modal uses to list only the answers that count toward that test. `TEST_QUESTION_COUNT` (NIPUN 4, MPL-B 20) words the "not enough yet" note.
 14.) `ScoresResponse.children_series?` (geo + school levels: `{ id, points }` per child) and `time_delta_days?` (1 | 7; Time mode's `delta` on root / children / students = minutes vs the window before — yesterday vs the day before, the last seven days vs the seven before, all time compares the last seven days too); `timeDeltaSuffix(days, t)` → "vs the day before" / "vs the previous 7 days" (2026-10).
+
+## 2026-10: metric families, NIPUN grade 1 and the school verdict
+
+`Metric` gains `nipun_g1` (grade 1, age band [6, 7), 4 level-8 lessons) and
+`nipun` — the NIPUN school verdict (pp-sketch `metric=nipun`). `TestMetric`
+= the four per-student tests; `isTestMetric` / `isVerdictMetric` guard the
+`Record<TestMetric, …>` tables (`PASS_MARK_PCT`, `TEST_QUESTION_COUNT`,
+`METRIC_AGE_BANDS` — the fallback bands are now the single years pp-sketch
+uses: g1 6, g2 7, g3 8, MPL-B 10). `passMarkOf` / `ageBandOf` are null for
+usage and the verdict. `LiteracyTestScores.nipun_grade_1` is optional (an
+older pp-sketch omits it); `TEST_KEY_OF.nipun_g1` maps it.
+
+The page's toggle is a `Family` (`FAMILIES`: Time · NIPUN proxy · MPL-B
+proxy, with phone-width `short` labels) plus, for NIPUN, a `NipunView`
+(`NIPUN_VIEWS`: Grade 1 · Grade 2 · Grade 3 · Pass/Fail, default
+`DEFAULT_NIPUN_VIEW` = Pass/Fail). `metricFor(family, view)` is the API
+metric; `familyOf(metric)` the reverse. The student modal uses
+`MODAL_FAMILIES` (letters first) and `STUDENT_NIPUN_VIEWS` (no Pass/Fail —
+a student has no school verdict; `DEFAULT_STUDENT_NIPUN_VIEW` = Grade 2).
+
+Verdict rows: `RootStats.verdict` / `Child.verdict` (`VerdictStats`:
+`school_passed`, `schools_pass` / `_fail` / `_insufficient`, and `bands`
+on a school — `BandVerdict` {cohort, passers, needed, verdict}).
+`verdictDecided` = pass + fail (the share's denominator: schools without
+enough data are neither). `verdictLabel` / `verdictColor`: Pass green,
+Fail red, Not enough data grey (`UNCOVERED`).
+
+`DEFAULT_TIME_WINDOW` is now `30d`: the one window drives the Time figures
+AND the trend's x-axis / data range for every metric.

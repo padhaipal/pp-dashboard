@@ -7,7 +7,16 @@ import {
   childFill,
   csvUrl,
   DEFAULT_METRIC,
+  DEFAULT_NIPUN_VIEW,
   DEFAULT_TIME_WINDOW,
+  FAMILIES,
+  familyOf,
+  metricFor,
+  NIPUN_VIEWS,
+  STUDENT_NIPUN_VIEWS,
+  verdictColor,
+  verdictDecided,
+  verdictLabel,
   fmtDuration,
   fmtMinutes,
   fmtPerDay,
@@ -81,7 +90,10 @@ describe("school jitter", () => {
 describe("usage metric", () => {
   it("sits first in the toggle order, has no test history, and formats minutes", () => {
     expect(METRICS[0].key).toBe("usage");
-    expect(METRICS.map((m) => m.key)).toEqual(["usage", "nipun_g2", "nipun_g3", "mpl_b"]);
+    expect(METRICS.map((m) => m.key)).toEqual(["usage", "nipun_g1", "nipun_g2", "nipun_g3", "mpl_b", "nipun"]);
+    expect(METRIC_BY.nipun_g1.label).toBe("NIPUN grade 1 proxy");
+    expect(TEST_KEY_OF.nipun_g1).toBe("nipun_grade_1");
+    expect(TEST_KEY_OF.nipun).toBeUndefined();
     // the usage metric is called "Time" everywhere it is shown
     expect(METRIC_BY.usage.label).toBe("Time");
     expect(METRIC_BY.usage.short).toBe("Time");
@@ -105,7 +117,11 @@ describe("pass marks and age bands", () => {
     expect(passMarkOf("usage")).toBeNull();
     expect(passMarkOf("mpl_b", 60)).toBe(60);
     expect(passMarkOf("mpl_b", null)).toBe(50);
-    expect(ageBandOf("nipun_g2")).toEqual([7, 9]);
+    expect(passMarkOf("nipun_g1")).toBe(75);
+    expect(passMarkOf("nipun")).toBeNull();
+    expect(ageBandOf("nipun_g1")).toEqual([6, 7]);
+    expect(ageBandOf("nipun_g2")).toEqual([7, 8]);
+    expect(ageBandOf("nipun")).toBeNull();
     expect(ageBandOf("mpl_b", [9, 11])).toEqual([9, 11]);
     expect(ageBandOf("usage")).toBeNull();
     // the headline names one age: the band's lower bound
@@ -116,7 +132,7 @@ describe("pass marks and age bands", () => {
 });
 
 describe("Time windows", () => {
-  it("offers yesterday / last seven days / last 30 days / all time, defaulting to all time", () => {
+  it("offers yesterday / last seven days / last 30 days / all time, defaulting to the last 30 days", () => {
     expect(TIME_WINDOWS.map((w) => [w.key, w.label])).toEqual([
       ["yesterday", "Yesterday"],
       ["7d", "Last seven days"],
@@ -124,7 +140,7 @@ describe("Time windows", () => {
       ["all", "All time"],
     ]);
     expect(timeWindowSuffix("30d")).toBe("last 30 days");
-    expect(DEFAULT_TIME_WINDOW).toBe("all");
+    expect(DEFAULT_TIME_WINDOW).toBe("30d");
     expect(timeWindowSuffix("7d")).toBe("last seven days");
     expect(timeWindowSuffix("yesterday")).toBe("yesterday");
     expect(timeWindowSuffix("all", (s) => s.toUpperCase())).toBe("ALL TIME");
@@ -217,5 +233,40 @@ describe("trend window", () => {
     expect(rangeForWindow("all")).toBe("all");
     expect(rangeForWindow("30d")).toBe(30);
     expect(rangeForWindow("yesterday")).toBe(30);
+  });
+});
+
+describe("metric families (2026-10)", () => {
+  it("the toggle offers Time / NIPUN proxy / MPL-B proxy; NIPUN opens on Pass/Fail with Grade 1 / 2 / 3 beside it; the pair is the API metric", () => {
+    expect(FAMILIES.map((f) => f.key)).toEqual(["usage", "nipun", "mpl_b"]);
+    expect(FAMILIES.map((f) => f.label)).toEqual(["Time", "NIPUN proxy", "MPL-B proxy"]);
+    // phone-width labels
+    expect(FAMILIES.map((f) => f.short)).toEqual(["Time", "NIPUN", "MPL-B"]);
+    expect(NIPUN_VIEWS.map((v) => v.key)).toEqual(["nipun_g1", "nipun_g2", "nipun_g3", "nipun"]);
+    expect(NIPUN_VIEWS.map((v) => v.label)).toEqual(["Grade 1", "Grade 2", "Grade 3", "Pass/Fail"]);
+    expect(NIPUN_VIEWS.map((v) => v.short)).toEqual(["G1", "G2", "G3", "Pass/Fail"]);
+    expect(DEFAULT_NIPUN_VIEW).toBe("nipun");
+    // a student has no school verdict
+    expect(STUDENT_NIPUN_VIEWS.map((v) => v.key)).toEqual(["nipun_g1", "nipun_g2", "nipun_g3"]);
+    expect(metricFor("usage", "nipun_g2")).toBe("usage");
+    expect(metricFor("mpl_b", "nipun")).toBe("mpl_b");
+    expect(metricFor("nipun", "nipun_g1")).toBe("nipun_g1");
+    expect(metricFor("nipun", "nipun")).toBe("nipun");
+    expect(familyOf("nipun_g3")).toBe("nipun");
+    expect(familyOf("nipun")).toBe("nipun");
+    expect(familyOf("mpl_b")).toBe("mpl_b");
+    expect(familyOf("usage")).toBe("usage");
+  });
+
+  it("verdict words and colours: pass green, fail red, undecided grey; decided = pass + fail", () => {
+    expect(verdictLabel(true)).toBe("Pass");
+    expect(verdictLabel(false)).toBe("Fail");
+    expect(verdictLabel(null)).toBe("Not enough data");
+    expect(verdictLabel(undefined)).toBe("Not enough data");
+    expect(verdictColor(true)).toBe("#16a34a");
+    expect(verdictColor(false)).toBe("#dc2626");
+    expect(verdictColor(null)).toBe(UNCOVERED);
+    expect(verdictDecided({ school_passed: null, schools_pass: 3, schools_fail: 2, schools_insufficient: 9 })).toBe(5);
+    expect(verdictDecided(undefined)).toBe(0);
   });
 });
