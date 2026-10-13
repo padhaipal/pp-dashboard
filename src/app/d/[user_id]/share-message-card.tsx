@@ -10,7 +10,7 @@
 // The card keeps one height while loading so the page never jumps; when
 // pp-sketch refuses or fails, the card simply is not there.
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { shareMessageUrl, whatsappShareUrl, type ShareMessageResponse } from "./dashboard-types";
 import { withViewer } from "./viewer-url";
 import { IconCopy } from "./icons";
@@ -70,8 +70,10 @@ export function ShareMessageCard({
     return () => clearTimeout(id);
   }, [copied]);
 
-  const current = answer && answer.key === key ? answer : null;
-  const state: State = !current ? { status: "loading" } : current.message === null ? { status: "failed" } : { status: "ok", message: current.message };
+  const state: State = useMemo(() => {
+    const current = answer && answer.key === key ? answer : null;
+    return !current ? { status: "loading" } : current.message === null ? { status: "failed" } : { status: "ok", message: current.message };
+  }, [answer, key]);
 
   const copy = useCallback(() => {
     if (state.status !== "ok") return;
