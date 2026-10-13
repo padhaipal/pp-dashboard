@@ -16,3 +16,17 @@
 6.) Find tab (2026-10): a full-width TABLE of every staff account from GET users/staff?q=&offset=&limit=100 (pp-sketch; an empty search lists everyone; the search, debounced 300 ms, covers name, phone digits, role title, school / block / district name and UDISE code prefix and resets to the first page). Columns include Type (the geo entity type: school / block / district / state / country, `staff-type`). Rows (`staff-row`, dev/admin dropped defensively, deactivated greyed with a badge): Name (button → EditPanel; role title · geo name under it), Students (a teacher's referred students; an official's area's students at the last nightly run), Mobile, UDISE code, Dashboard link (Open + Copy), Teacher share link (teachers only, else "—"), Notes (a textarea saved on blur when changed: PATCH users/:id { new_staff_notes }, "Saving…" / "Saved" / "Not saved — …"). Footer: "{from}–{to} of {total}" (`staff-range`) with ← Previous / Next → (100 a page).
 7.) EditPanel: GET users/:id → `StaffUser & { geo_entity, ancestors }`; prefill the form (geo selection from geo_entity; parent_name = `ancestors[ancestors.length - 1]?.name ?? null` since ancestors are root-first). Roles dev/admin render "Not a staff user." Save PATCHes users/:id with only changed fields: name → `name`, phone → `phone` (normalised), geo → `new_geo_entity_id`, role → `new_role_title`, notes → `new_staff_notes`. Below the form: the link with Copy, then a "Deactivate" button (PATCH { deactivate: true }) when deleted_at is null, else "Reactivate" (PATCH { reactivate: true }). After any successful PATCH show "Saved", refetch the record and bump the Find list so its badge refreshes. Failures render "Not saved — {server message}". "← Back to results" returns to the list.
 8.) Lint constraint: never call setState synchronously inside a useEffect body (react-hooks/set-state-in-effect); all state updates happen in timers, promise callbacks or event handlers.
+
+## 2026-10: Find tab — "WhatsApp message" column
+
+Per row, `MessageCell`: Generate → `GET geo-entities/:unit/share-message`
+(pp-sketch share-message.service.ts; the staff session reaches it as
+STAFF, so any unit is allowed) where `shareMessageUnit(row)` = the
+teacher's user id (their class → a message for the parents) or the
+official's `geo_entity_id` (their teachers); null (deactivated, no geo
+entity) → "—". The answer shows as a one-line preview (full text in the
+hover title) with Copy (whole text to the clipboard) and Again — one row
+high in every state. Rows are independent: click as many Generates as you
+like; a stale answer never overwrites a newer request (`requestSeq`).
+"Generate WhatsApp messages for everyone on this page" runs every eligible
+row, `GENERATE_ALL_CONCURRENCY` (3) at a time. Nothing is saved.

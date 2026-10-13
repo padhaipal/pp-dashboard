@@ -275,4 +275,53 @@ describe("Find tab — staff table", () => {
     const patch = calls.find((c) => c.url === "/api/proxy/users/u1" && c.init?.method === "PATCH")!;
     expect(JSON.parse(String(patch.init!.body))).toEqual({ new_staff_notes: "called 3 Oct" });
   });
+
+  it("WhatsApp message column: Generate asks pp-sketch for the teacher's class / the official's geo entity, shows a one-line preview with Copy and Again; Generate all runs every eligible row; deactivated rows get none", async () => {
+    const gone = { ...BEO, id: "u3", name: "Old", deleted_at: "2026-01-01T00:00:00Z", link: "https://dashboard.padhaipal.com/d/u3", external_id: "919800000003" };
+    const calls: string[] = [];
+    let n = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) => {
+        const url = String(input);
+        calls.push(url);
+        if (url.startsWith("/api/proxy/users/staff?")) return jsonResponse(200, { total: 3, offset: 0, limit: 100, rows: [TEACHER, BEO, gone] });
+        const m = url.match(/^\/api\/proxy\/geo-entities\/([^/]+)\/share-message$/);
+        if (m) return jsonResponse(200, { message: `संदेश ${++n} · ${m[1]}\nदूसरी पंक्ति`, model: "claude-haiku-5-5", generated_at: "2026-10-13T00:00:00.000Z" });
+        return jsonResponse(404, { message: `unmocked ${url}` });
+      }),
+    );
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal("navigator", { ...navigator, clipboard: { writeText } });
+    render(<OnboardingConsole />);
+    fireEvent.click(screen.getByRole("tab", { name: "Find" }));
+    const rows = await screen.findAllByTestId("staff-row");
+    expect(screen.getByText("WhatsApp message")).toBeDefined();
+    // the teacher's message is for their class (their user id); the BEO's for their block; a deactivated account gets no button
+    expect(within(rows[0]).getByTestId("message-generate")).toBeDefined();
+    expect(within(rows[2]).queryByTestId("message-generate")).toBeNull();
+    expect(within(rows[2]).getByTestId("message-cell").textContent).toBe("—");
+    fireEvent.click(within(rows[0]).getByTestId("message-generate"));
+    expect(within(rows[0]).getByTestId("message-loading")).toBeDefined();
+    await waitFor(() => expect(within(rows[0]).getByTestId("message-preview")).toBeDefined());
+    expect(calls).toContain("/api/proxy/geo-entities/u1/share-message");
+    // one line, full text on hover, copied in full
+    const preview = within(rows[0]).getByTestId("message-preview");
+    expect(preview.textContent).toBe("संदेश 1 · u1 दूसरी पंक्ति");
+    expect(preview.getAttribute("title")).toBe("संदेश 1 · u1\nदूसरी पंक्ति");
+    fireEvent.click(within(rows[0]).getByTestId("message-copy"));
+    expect(writeText).toHaveBeenCalledWith("संदेश 1 · u1\nदूसरी पंक्ति");
+    await waitFor(() => expect(within(rows[0]).getByTestId("message-copy").textContent).toBe("Copied"));
+    // Again rewrites that row only
+    fireEvent.click(within(rows[0]).getByTestId("message-again"));
+    await waitFor(() => expect(within(rows[0]).getByTestId("message-preview").textContent).toContain("संदेश 2"));
+    expect(within(rows[1]).getByTestId("message-generate")).toBeDefined();
+    // Generate all: the BEO's block too (the teacher's is rewritten), never the deactivated row
+    fireEvent.click(screen.getByTestId("message-generate-all"));
+    await waitFor(() => expect(within(rows[1]).getByTestId("message-preview")).toBeDefined());
+    await waitFor(() => expect(within(rows[0]).getByTestId("message-preview").textContent).not.toContain("संदेश 2"));
+    expect(calls).toContain("/api/proxy/geo-entities/092711-block/share-message".replace("092711-block", BEO.geo_entity_id));
+    expect(calls.filter((u) => u.includes("/share-message"))).toHaveLength(4);
+    expect(within(rows[2]).getByTestId("message-cell").textContent).toBe("—");
+  });
 });

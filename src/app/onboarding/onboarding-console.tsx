@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useId, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { shareMessageUrl, type ShareMessageResponse } from "../d/[user_id]/dashboard-types";
 
 // Staff onboarding console: "Create / update" (new staff user + WhatsApp
 // deep link, or a partial update when the number already belongs to a staff
@@ -859,6 +860,74 @@ function LinkCell({ href, label }: { href: string; label: string }) {
   );
 }
 
+// ---------------------------------------------------------------- WhatsApp message
+
+// The unit pp-sketch writes the message for: a teacher's class (their user
+// id), an official's geo entity. Null → no message for this row.
+export function shareMessageUnit(row: Pick<StaffListRow, "id" | "geo_entity_id" | "geo_entity_type" | "deleted_at">): string | null {
+  if (row.deleted_at !== null || !row.geo_entity_id) return null;
+  return row.geo_entity_type === "school" ? row.id : row.geo_entity_id;
+}
+
+export type MessageState = { status: "loading" } | { status: "ok"; message: string } | { status: "error"; error: string };
+
+// How many generations run at once when "Generate all" is pressed (each is
+// one LLM call in pp-sketch; staff are not rate-limited there).
+export const GENERATE_ALL_CONCURRENCY = 3;
+
+// The message cell: Generate → a one-line preview (full text on hover) with
+// Copy and Again. One row high whatever the state, so the table never jumps.
+function MessageCell({ unit, state, onGenerate }: { unit: string | null; state: MessageState | undefined; onGenerate: () => void }) {
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    if (!copied) return;
+    const t = setTimeout(() => setCopied(false), 1500);
+    return () => clearTimeout(t);
+  }, [copied]);
+  if (!unit) return <span className="text-zinc-300">—</span>;
+  const small = "rounded border border-zinc-300 px-1.5 text-[11px] text-zinc-600 hover:bg-zinc-50 disabled:opacity-40";
+  if (!state || state.status === "error") {
+    return (
+      <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+        <button type="button" className={small} onClick={onGenerate} data-testid="message-generate">
+          {state ? "Try again" : "Generate"}
+        </button>
+        {state && (
+          <span className="max-w-[12rem] truncate text-[11px] text-red-600" title={state.error} data-testid="message-error">
+            {state.error}
+          </span>
+        )}
+      </span>
+    );
+  }
+  if (state.status === "loading") {
+    return (
+      <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-[11px] text-zinc-400" data-testid="message-loading">
+        <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-emerald-500" /> Writing…
+      </span>
+    );
+  }
+  const preview = state.message.replace(/\s+/g, " ").trim();
+  return (
+    <span className="inline-flex max-w-[22rem] items-center gap-1.5 whitespace-nowrap">
+      <span className="min-w-0 flex-1 truncate text-xs text-zinc-700" lang="hi" title={state.message} data-testid="message-preview">
+        {preview}
+      </span>
+      <button
+        type="button"
+        className={small}
+        data-testid="message-copy"
+        onClick={() => navigator.clipboard?.writeText(state.message).then(() => setCopied(true)).catch(() => setCopied(false))}
+      >
+        {copied ? "Copied" : "Copy"}
+      </button>
+      <button type="button" className={small} onClick={onGenerate} data-testid="message-again" title="Write it again">
+        Again
+      </button>
+    </span>
+  );
+}
+
 // The editable note: saved (PATCH users/:id { new_staff_notes }) when the
 // field loses focus with a changed value.
 function NoteCell({ row, onSaved }: { row: StaffListRow; onSaved: () => void }) {
@@ -907,6 +976,47 @@ function FindTab() {
   const debounced = useDebounced(query.trim(), 300);
   const key = `${debounced}#${offset}#${listVersion}`;
   const list = data?.key === key ? data.list : null;
+
+  // WhatsApp messages per row (keyed by the row's user id). A row's Generate
+  // is independent of every other row's — click as many as you like; the
+  // nth answer never overwrites a newer request for the same row.
+  const [messages, setMessages] = useState<Record<string, MessageState>>({});
+  const requestSeq = useRef<Record<string, number>>({});
+  const generate = useCallback((row: StaffListRow) => {
+    const unit = shareMessageUnit(row);
+    if (!unit) return Promise.resolve();
+    const seq = (requestSeq.current[row.id] = (requestSeq.current[row.id] ?? 0) + 1);
+    setMessages((m) => ({ ...m, [row.id]: { status: "loading" } }));
+    return fetch(shareMessageUrl(unit))
+      .then(async (res) => {
+        if (!res.ok) throw new Error(await serverMessage(res));
+        return (await res.json()) as ShareMessageResponse;
+      })
+      .then((body) => {
+        if (requestSeq.current[row.id] !== seq) return;
+        const message = (body.message ?? "").trim();
+        setMessages((m) => ({ ...m, [row.id]: message ? { status: "ok", message } : { status: "error", error: "Empty message" } }));
+      })
+      .catch((err: Error) => {
+        if (requestSeq.current[row.id] !== seq) return;
+        setMessages((m) => ({ ...m, [row.id]: { status: "error", error: err.message } }));
+      });
+  }, []);
+  // Every eligible row on the page, a few at a time.
+  const generateAll = useCallback(
+    (rows: StaffListRow[]) => {
+      const queue = rows.filter((r) => shareMessageUnit(r));
+      let next = 0;
+      const worker = async () => {
+        while (next < queue.length) {
+          const row = queue[next++];
+          await generate(row);
+        }
+      };
+      return Promise.all(Array.from({ length: Math.min(GENERATE_ALL_CONCURRENCY, queue.length) }, worker));
+    },
+    [generate],
+  );
 
   // Every staff account, paged; an empty search lists everyone.
   useEffect(() => {
@@ -959,6 +1069,12 @@ function FindTab() {
       {list && list.rows.length === 0 && !error && <p className="text-xs text-zinc-400">No matches</p>}
       {list && list.rows.length > 0 && (
         <>
+          <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-500">
+            <button type="button" className={secondaryBtnCls} onClick={() => void generateAll(list.rows)} data-testid="message-generate-all">
+              Generate WhatsApp messages for everyone on this page
+            </button>
+            <span>One LLM-written Hindi message per teacher (for their parents) or official (for their teachers); hover a message to read it, Copy to share it.</span>
+          </div>
           <div className="overflow-x-auto rounded border border-zinc-200 bg-white" data-testid="staff-table">
             <table className="min-w-full divide-y divide-zinc-100">
               <thead className="bg-zinc-50">
@@ -970,6 +1086,7 @@ function FindTab() {
                   <th className={th}>UDISE code</th>
                   <th className={th}>Dashboard</th>
                   <th className={th}>Teacher share link</th>
+                  <th className={th}>WhatsApp message</th>
                   <th className={th}>Notes</th>
                 </tr>
               </thead>
@@ -993,6 +1110,9 @@ function FindTab() {
                       <LinkCell href={u.link} label="Open" />
                     </td>
                     <td className={td}>{u.share_link ? <LinkCell href={u.share_link} label="Open" /> : <span className="text-zinc-300">—</span>}</td>
+                    <td className={td} data-testid="message-cell">
+                      <MessageCell unit={shareMessageUnit(u)} state={messages[u.id]} onGenerate={() => void generate(u)} />
+                    </td>
                     <td className={td}>
                       <NoteCell key={`${u.id}#${u.staff_notes ?? ""}`} row={u} onSaved={() => setListVersion((v) => v + 1)} />
                     </td>
