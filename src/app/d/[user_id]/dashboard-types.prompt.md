@@ -40,3 +40,9 @@ Fail red, Not enough data grey (`UNCOVERED`).
 
 `DEFAULT_TIME_WINDOW` is now `30d`: the one window drives the Time figures
 AND the trend's x-axis / data range for every metric.
+
+## 2026-10: share message
+
+`shareMessageUrl(id)` → `GET geo-entities/:id/share-message`
+(`ShareMessageResponse` {message, model, generated_at}); `whatsappShareUrl`
+builds the `wa.me/?text=` link. On the proxy's public allowlist (GET).

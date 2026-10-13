@@ -9,3 +9,8 @@ pass, Barabanki undecided / grey) and `SCORES_SCHOOL_VERDICT` (a school's
 Pass with its three bands, no teachers). `makeFetch({ verdictById })`
 answers `metric=nipun` scores requests with them (spotlight → nulls).
 `TEST_SCORES.nipun_grade_1`: three level-8 lessons so far, four needed.
+
+## 2026-10: share message
+
+`SHARE_MESSAGE` and `makeFetch({ shareMessage })`: the share-message answer
+for every id (null → 403, as pp-sketch answers a non-owner).

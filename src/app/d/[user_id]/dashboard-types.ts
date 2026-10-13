@@ -495,6 +495,13 @@ export const spotlightUrl = (id: string, metric: Metric, range: Range, window?: 
 // student modal "Time" chart: the student's active minutes per day
 export const usageHistoryUrl = (id: string, range: Range) => `/api/proxy/users/${encodeURIComponent(id)}/usage-history?range=${range}`;
 export const profileUrl = (id: string) => `/api/proxy/users/${encodeURIComponent(id)}/profile`;
+// GET geo-entities/:id/share-message — a fresh LLM-written Hindi message for
+// the viewer's OWN unit (their class / their geo entity) to paste into their
+// WhatsApp group; pp-sketch answers 403 for anyone else. Never cached.
+export type ShareMessageResponse = { message: string; model: string; generated_at: string };
+export const shareMessageUrl = (id: string) => `/api/proxy/geo-entities/${encodeURIComponent(id)}/share-message`;
+// "Open WhatsApp" with the message pre-filled (the share sheet on a phone).
+export const whatsappShareUrl = (text: string) => `https://wa.me/?text=${encodeURIComponent(text)}`;
 // student modal: per-test history, recent voice notes and one note's audio
 export const testScoresUrl = (id: string) => `/api/proxy/users/${encodeURIComponent(id)}/literacy-test-scores`;
 // letter-score chart (ScoreChart on /user/[id]) — every score row + the learnt bins

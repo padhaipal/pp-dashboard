@@ -228,6 +228,16 @@ const HI: Record<string, string> = {
   "Student's name": "छात्र का नाम",
   Rename: "नाम बदलें",
   "Loading…": "लोड हो रहा है…",
+  // the WhatsApp-group message card (share-message-card.tsx)
+  "A message for your WhatsApp group": "आपके WhatsApp समूह के लिए एक संदेश",
+  "Written just now from today's numbers — copy it and paste it into": "आज के आँकड़ों से अभी-अभी लिखा गया — इसे कॉपी करके भेजें",
+  "your parents' WhatsApp group": "अपने अभिभावकों के WhatsApp समूह में",
+  "your teachers' WhatsApp group": "अपने शिक्षकों के WhatsApp समूह में",
+  "your officials' WhatsApp group": "अपने अधिकारियों के WhatsApp समूह में",
+  "Copy message": "संदेश कॉपी करें",
+  "Copied — now paste it into WhatsApp": "कॉपी हो गया — अब WhatsApp में पेस्ट करें",
+  "Open WhatsApp": "WhatsApp खोलें",
+  "Write it again": "फिर से लिखें",
   // share bar (teachers)
   "Share your dashboard link": "अपना डैशबोर्ड लिंक साझा करें",
   Copy: "कॉपी करें",
