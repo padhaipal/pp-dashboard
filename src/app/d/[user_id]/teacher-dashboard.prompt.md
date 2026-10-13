@@ -105,8 +105,10 @@ sub-toggle on it (grades only for a student).
 
 ## 2026-10: the WhatsApp-group message
 
-`ownUnit` (`"parents"` / `"teachers"` / null): drilled in (`stack.length >
-1`) and the level is the viewer's own class (teacher: `entity.id ===
-profile.id`) or own geo entity (`entity.id === profile.geo_entity.id`).
+`ownUnit` (`"parents"` / `"teachers"` / `"officials"` / null): the level is
+the viewer's own class (teacher: `entity.id === profile.id`) or own geo
+entity (`entity.id === profile.geo_entity.id`) — a block → teachers,
+district and above → the officials below them; the national head's country
+is their home level, so the card shows there without a drill.
 Then `<ShareMessageCard key={entity.id}>` renders between `RepKpis` and
 the bar strip — share-message-card.prompt.md.

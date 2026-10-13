@@ -233,6 +233,7 @@ const HI: Record<string, string> = {
   "Written just now from today's numbers — copy it and paste it into": "आज के आँकड़ों से अभी-अभी लिखा गया — इसे कॉपी करके भेजें",
   "your parents' WhatsApp group": "अपने अभिभावकों के WhatsApp समूह में",
   "your teachers' WhatsApp group": "अपने शिक्षकों के WhatsApp समूह में",
+  "your officials' WhatsApp group": "अपने अधिकारियों के WhatsApp समूह में",
   "Copy message": "संदेश कॉपी करें",
   "Copied — now paste it into WhatsApp": "कॉपी हो गया — अब WhatsApp में पेस्ट करें",
   "Open WhatsApp": "WhatsApp खोलें",

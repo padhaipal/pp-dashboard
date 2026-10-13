@@ -33,8 +33,9 @@ export function ShareMessageCard({
 }: {
   entityId: string;
   viewerId: string;
-  // who the message is written for: the block's teachers, the class's parents
-  audience: "teachers" | "parents";
+  // who the message is written for: the class's parents, the block's
+  // teachers, or (district and above) the officials one level down
+  audience: "teachers" | "officials" | "parents";
   t?: T;
 }) {
   // bumped by "Write it again": a new generation
@@ -84,7 +85,7 @@ export function ShareMessageCard({
   }, [state, key]);
 
   if (state.status === "failed") return null;
-  const group = audience === "parents" ? t("your parents' WhatsApp group") : t("your teachers' WhatsApp group");
+  const group = audience === "parents" ? t("your parents' WhatsApp group") : audience === "teachers" ? t("your teachers' WhatsApp group") : t("your officials' WhatsApp group");
   return (
     <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50/60 px-4 py-4 shadow-sm sm:px-6" data-testid="share-message-card" data-status={state.status}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">

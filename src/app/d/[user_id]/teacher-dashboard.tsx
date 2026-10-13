@@ -499,18 +499,21 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
   // The viewer's own entity, highlighted among its peers at the home level
   // only (a teacher's "entity" among the school's teachers is their user id).
   const ownId = stack.length === 1 && profile.geo_entity ? (profile.geo_entity.type === "school" ? profile.id : profile.geo_entity.id) : null;
-  // The viewer's own unit, drilled into: a teacher on their class (the
-  // level's id is their user id), an official on their own geo entity. Not
-  // a peer's unit, not a school under their block — the share message is
-  // for the group THEY run.
-  const ownUnit: "parents" | "teachers" | null =
-    stack.length > 1 && entity && profile.geo_entity
+  // The viewer's own unit: a teacher on their class (the level's id is their
+  // user id), an official on their own geo entity — a BEO's block, a BSA's
+  // district, a DGSE's state, the national head's country (which is also
+  // their home level). Not a peer's unit, not a school under their block —
+  // the share message is for the group THEY run.
+  const ownUnit: "parents" | "teachers" | "officials" | null =
+    entity && profile.geo_entity
       ? profile.geo_entity.type === "school"
         ? entity.id === profile.id
           ? "parents"
           : null
         : entity.id === profile.geo_entity.id
-          ? "teachers"
+          ? profile.geo_entity.type === "block"
+            ? "teachers"
+            : "officials"
           : null
       : null;
   // The newest date of the root series: the trend's window ends there for every line.

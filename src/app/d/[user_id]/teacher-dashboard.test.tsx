@@ -752,6 +752,37 @@ describe("TeacherDashboard — the WhatsApp-group message", () => {
     expect(calls.filter((u) => u.includes("/share-message")).length).toBe(peerCalls);
   });
 
+  it("the national head sees it at home (their country IS their unit, for the state heads); a BSA on their district; never at a level that is not theirs", async () => {
+    const { fn, calls } = makeFetch({ scoresById: { "g-09": SCORES_UP } });
+    vi.stubGlobal("fetch", vi.fn(fn));
+    render(<TeacherDashboard profile={PROFILE} incompleteStates={[]} />);
+    const card = await screen.findByTestId("share-message-card");
+    expect(card.textContent).toContain("your officials' WhatsApp group");
+    await waitFor(() => expect(calls).toContain("/api/proxy/geo-entities/g-in/share-message?viewer=u1"));
+    // drilling into a state (not theirs): gone
+    await drillIntoUp();
+    await screen.findByTestId("root-kpis");
+    expect(screen.queryByTestId("share-message-card")).toBeNull();
+
+    // a BSA: opens on the state, no card; their own district → card for their BEOs
+    cleanup();
+    const bsa = { ...PROFILE_BLOCK, id: "u-bsa", role_title: "BSA", geo_entity: { id: "g-0901", type: "district" as const, code: "0901", name: "LUCKNOW", has_boundary: true, lat: null, lng: null }, ancestors: PROFILE_BLOCK.ancestors.slice(0, 2) };
+    const districtRow = { ...CHILD_UP, id: "g-0901", type: "district" as const, code: "0901", name: "LUCKNOW", has_boundary: false, lat: null, lng: null };
+    // two districts: a lone child draws no bar to double-click
+    const other = { ...districtRow, id: "g-0902", code: "0902", name: "BARABANKI" };
+    const state = { ...SCORES, entity: CHILD_UP, child_type: "district" as const, children: [districtRow, other], most_improved: [] };
+    const own = { ...SCORES, entity: districtRow, child_type: "block" as const, children: [], most_improved: [] };
+    const second = makeFetch({ scoresById: { "g-09": state, "g-0901": own } });
+    vi.stubGlobal("fetch", vi.fn(second.fn));
+    render(<TeacherDashboard profile={bsa} incompleteStates={[]} />);
+    await screen.findByTestId("bar-strip");
+    expect(screen.queryByTestId("share-message-card")).toBeNull();
+    fireEvent.dblClick(document.querySelector('[data-testid="bar"][data-id="g-0901"]')!);
+    const own2 = await screen.findByTestId("share-message-card");
+    expect(own2.textContent).toContain("your officials' WhatsApp group");
+    await waitFor(() => expect(second.calls).toContain("/api/proxy/geo-entities/g-0901/share-message?viewer=u-bsa"));
+  });
+
   it("a teacher sees it on THEIR class (the message ends with their referral link), not on a colleague's class; a refusal from pp-sketch leaves no card", async () => {
     const me = { ...PROFILE_SCHOOL, id: "t-1" };
     const parents = { ...SHARE_MESSAGE, message: "रानी ने इस हफ़्ते 2 घंटे अभ्यास किया! 🎉\nhttps://dashboard.padhaipal.com/r/919000000002" };
