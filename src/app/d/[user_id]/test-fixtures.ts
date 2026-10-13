@@ -396,8 +396,12 @@ export function jsonResponse(status: number, body: unknown): Response {
 // in Time mode ("geo" → timeScores, "class" → timeScoresClass). Without it a
 // usage request gets the plain fixture — a pp-sketch that predates windows.
 // `media`: the users/:id/media answer (default MEDIA — the viewer is the students' teacher).
+// The own-unit WhatsApp message pp-sketch writes (GET geo-entities/:id/share-message).
+export const SHARE_MESSAGE = { message: "शाबाश सभी शिक्षकों को! 🌟\nइस हफ़्ते सबसे ज़्यादा अभ्यास P.S. GWALPUR में हुआ।\nरोज़ 5 मिनट — बस इतना ही चाहिए।", model: "claude-haiku-5-5", generated_at: "2026-09-10T03:00:00.000Z" };
+
 // `verdictById`: ids whose `metric=nipun` scores requests are answered with that payload (spotlight → nulls, as pp-sketch).
-export function makeFetch(opts: { scores?: ScoresResponse; scoresById?: Record<string, ScoresResponse>; timeById?: Record<string, "geo" | "class">; verdictById?: Record<string, ScoresResponse>; media?: unknown } = {}) {
+// `shareMessage`: the share-message answer for every id (default SHARE_MESSAGE); null → 403, as pp-sketch answers a viewer who does not own the unit.
+export function makeFetch(opts: { scores?: ScoresResponse; scoresById?: Record<string, ScoresResponse>; timeById?: Record<string, "geo" | "class">; verdictById?: Record<string, ScoresResponse>; media?: unknown; shareMessage?: typeof SHARE_MESSAGE | null } = {}) {
   const calls: string[] = [];
   const fn = async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = typeof input === "string" ? input : input.toString();
@@ -416,6 +420,7 @@ export function makeFetch(opts: { scores?: ScoresResponse; scoresById?: Record<s
       if (tm[2] === "scores") return jsonResponse(200, opts.verdictById[tm[1]]);
       return jsonResponse(200, { top: null, most_improved: null });
     }
+    if (/^\/api\/proxy\/geo-entities\/[^/]+\/share-message$/.test(path)) return opts.shareMessage === null ? jsonResponse(403, { message: "The share message is for the unit owner" }) : jsonResponse(200, opts.shareMessage ?? SHARE_MESSAGE);
     if (/^\/api\/proxy\/users\/[^/]+\/usage-history$/.test(path)) return jsonResponse(200, { ...USAGE_HISTORY, range: qs.get("range") === "all" ? "all" : 30 });
     if (/^\/api\/proxy\/geo-entities\/g-in\/scores$/.test(path)) return jsonResponse(200, opts.scores ?? SCORES);
     if (/^\/api\/proxy\/geo-entities\/g-in\/spotlight$/.test(path)) return jsonResponse(200, SPOTLIGHT);

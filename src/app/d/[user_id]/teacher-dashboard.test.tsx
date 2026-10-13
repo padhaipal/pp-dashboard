@@ -5,7 +5,7 @@ import { TeacherDashboard } from "./teacher-dashboard";
 import { RepTrend } from "./report-card-modal";
 import { MvpMinutesChart } from "./mvp-widgets";
 import { EMPTY_ROOT_TEXT, INCOMPLETE_TOOLTIP } from "./dashboard-types";
-import { CHILD_AP, CHILD_UP, EMPTY_SCORES, MEDIA_MASKED, PROFILE, PROFILE_BLOCK, PROFILE_SCHOOL, SCORES, SCORES_CLASS, SCORES_CLASS_MASKED, SCORES_SCHOOL, SCORES_SCHOOL_VERDICT, SCORES_UP, SCORES_VERDICT, makeFetch } from "./test-fixtures";
+import { CHILD_AP, CHILD_UP, EMPTY_SCORES, MEDIA_MASKED, PROFILE, PROFILE_BLOCK, PROFILE_SCHOOL, SCORES, SCORES_CLASS, SCORES_CLASS_MASKED, SCORES_SCHOOL, SCORES_SCHOOL_VERDICT, SCORES_UP, SCORES_VERDICT, SHARE_MESSAGE, makeFetch } from "./test-fixtures";
 
 const pressed = (name: string) => screen.getAllByRole("button", { name }).map((b) => b.getAttribute("aria-pressed"));
 // a button of the headline Time window toggle (the trend has its own copy of the same toggle)
@@ -700,6 +700,90 @@ describe("TeacherDashboard", () => {
     fireEvent.click(screen.getByRole("button", { name: "Zoom out" }));
     fireEvent.click(screen.getByRole("button", { name: "Zoom out" }));
     expect(scaleOf()).toBeCloseTo(1 / 1.4, 5);
+  });
+});
+
+describe("TeacherDashboard — the WhatsApp-group message", () => {
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
+
+  const ownBlock = { ...CHILD_UP, id: "g-0901-01", type: "block" as const, code: "090101", name: "KAKORI", has_boundary: false, lat: null, lng: null };
+  const district = { ...SCORES, entity: { id: "g-0901", type: "district" as const, code: "0901", name: "LUCKNOW", has_boundary: true, lat: null, lng: null }, child_type: "block" as const, children: [ownBlock, { ...CHILD_AP, type: "block" as const, has_boundary: false, lat: null, lng: null }], most_improved: [] };
+  const block = (id: string, name: string) => ({ ...SCORES, entity: { id, type: "block" as const, code: "090101", name, has_boundary: false, lat: null, lng: null }, child_type: "school" as const, children: [], most_improved: [] });
+
+  it("a BEO sees it on THEIR block only — fetched for the viewer, between the headline figures and the bars; copy puts the text on the clipboard; another block gets nothing", async () => {
+    const { fn, calls } = makeFetch({ scoresById: { "g-0901": district, "g-0901-01": block("g-0901-01", "KAKORI"), "g-28": block("g-28", "ANDHRA") } });
+    vi.stubGlobal("fetch", vi.fn(fn));
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal("navigator", { ...navigator, clipboard: { writeText } });
+    render(<TeacherDashboard profile={PROFILE_BLOCK} incompleteStates={[]} />);
+    // the home level (the district): no card, no request
+    await screen.findByTestId("bar-strip");
+    expect(screen.queryByTestId("share-message-card")).toBeNull();
+    // drill into their own block
+    fireEvent.dblClick(document.querySelector('[data-testid="bar"][data-id="g-0901-01"]')!);
+    const card = await screen.findByTestId("share-message-card");
+    await waitFor(() => expect(calls).toContain("/api/proxy/geo-entities/g-0901-01/share-message?viewer=u-beo"));
+    await waitFor(() => expect(screen.getByTestId("share-message-text").textContent).toBe(SHARE_MESSAGE.message));
+    expect(card.textContent).toContain("A message for your WhatsApp group");
+    expect(card.textContent).toContain("your teachers' WhatsApp group");
+    // sits after the headline figures and before the bar strip
+    expect(screen.getByTestId("root-kpis").compareDocumentPosition(card) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(card.compareDocumentPosition(screen.getByTestId("bar-strip-wrap")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // copy
+    fireEvent.click(screen.getByTestId("share-message-copy"));
+    expect(writeText).toHaveBeenCalledWith(SHARE_MESSAGE.message);
+    await waitFor(() => expect(screen.getByTestId("share-message-copy").textContent).toContain("Copied — now paste it into WhatsApp"));
+    expect(screen.getByTestId("share-message-whatsapp").getAttribute("href")).toBe(`https://wa.me/?text=${encodeURIComponent(SHARE_MESSAGE.message)}`);
+    // "Write it again" asks pp-sketch again
+    const before = calls.filter((u) => u.includes("/share-message")).length;
+    fireEvent.click(screen.getByTestId("share-message-again"));
+    await waitFor(() => expect(calls.filter((u) => u.includes("/share-message")).length).toBe(before + 1));
+    // up, then into a PEER block: no card, no request
+    fireEvent.click(screen.getByRole("button", { name: "Up a level" }));
+    await screen.findByTestId("bar-strip");
+    const peerCalls = calls.filter((u) => u.includes("/share-message")).length;
+    fireEvent.dblClick(document.querySelector('[data-testid="bar"][data-id="g-28"]')!);
+    await waitFor(() => expect(screen.getByTestId("location-title").textContent).toContain("Andhra"));
+    await screen.findByTestId("root-kpis");
+    expect(screen.queryByTestId("share-message-card")).toBeNull();
+    expect(calls.filter((u) => u.includes("/share-message")).length).toBe(peerCalls);
+  });
+
+  it("a teacher sees it on THEIR class (the message ends with their referral link), not on a colleague's class; a refusal from pp-sketch leaves no card", async () => {
+    const me = { ...PROFILE_SCHOOL, id: "t-1" };
+    const parents = { ...SHARE_MESSAGE, message: "रानी ने इस हफ़्ते 2 घंटे अभ्यास किया! 🎉\nhttps://dashboard.padhaipal.com/r/919000000002" };
+    const { fn, calls } = makeFetch({ scoresById: { "g-sch": SCORES_SCHOOL, "t-1": SCORES_CLASS }, shareMessage: parents });
+    vi.stubGlobal("fetch", vi.fn(fn));
+    render(<TeacherDashboard profile={me} incompleteStates={[]} />);
+    fireEvent.dblClick(await screen.findByTestId("teacher-card"));
+    await screen.findAllByTestId("student-tile");
+    const card = await screen.findByTestId("share-message-card");
+    expect(card.textContent).toContain("your parents' WhatsApp group");
+    await waitFor(() => expect(screen.getByTestId("share-message-text").textContent).toBe(parents.message));
+    expect(calls).toContain("/api/proxy/geo-entities/t-1/share-message?viewer=t-1");
+
+    // a colleague (Tom, u-sch) drilling into Asha's class: no card, no request
+    cleanup();
+    const other = makeFetch({ scoresById: { "g-sch": SCORES_SCHOOL, "t-1": SCORES_CLASS } });
+    vi.stubGlobal("fetch", vi.fn(other.fn));
+    render(<TeacherDashboard profile={PROFILE_SCHOOL} incompleteStates={[]} />);
+    fireEvent.dblClick(await screen.findByTestId("teacher-card"));
+    await screen.findAllByTestId("student-tile");
+    expect(screen.queryByTestId("share-message-card")).toBeNull();
+    expect(other.calls.some((u) => u.includes("/share-message"))).toBe(false);
+
+    // pp-sketch says no (403) → the card is not shown at all
+    cleanup();
+    const refused = makeFetch({ scoresById: { "g-sch": SCORES_SCHOOL, "t-1": SCORES_CLASS }, shareMessage: null });
+    vi.stubGlobal("fetch", vi.fn(refused.fn));
+    render(<TeacherDashboard profile={me} incompleteStates={[]} />);
+    fireEvent.dblClick(await screen.findByTestId("teacher-card"));
+    await screen.findAllByTestId("student-tile");
+    await waitFor(() => expect(refused.calls.some((u) => u.includes("/share-message"))).toBe(true));
+    await waitFor(() => expect(screen.queryByTestId("share-message-card")).toBeNull());
   });
 });
 

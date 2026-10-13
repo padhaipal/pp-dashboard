@@ -88,6 +88,7 @@ import { DrillHint, GeoMap } from "./geo-map";
 import { isLang, LANG_STORAGE_KEY, makeT, type Lang, type T } from "./i18n";
 import { AvatarImg, EditableStudentName, MvpLangToggle, MvpMetricToggle, MvpNipunToggle, MvpShareBar, MvpSubSlot, MvpTeacherModal, MvpTimeWindowToggle, MvpTrend, VerdictSummary, type ModalSubject } from "./mvp-widgets";
 import { ReportCardModal, RepKpis, RepQuote, RepTrend, type ImprovedRow, type ReportData } from "./report-card-modal";
+import { ShareMessageCard } from "./share-message-card";
 
 export type TeacherDashboardProps = {
   profile: PublicProfile;
@@ -498,6 +499,20 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
   // The viewer's own entity, highlighted among its peers at the home level
   // only (a teacher's "entity" among the school's teachers is their user id).
   const ownId = stack.length === 1 && profile.geo_entity ? (profile.geo_entity.type === "school" ? profile.id : profile.geo_entity.id) : null;
+  // The viewer's own unit, drilled into: a teacher on their class (the
+  // level's id is their user id), an official on their own geo entity. Not
+  // a peer's unit, not a school under their block — the share message is
+  // for the group THEY run.
+  const ownUnit: "parents" | "teachers" | null =
+    stack.length > 1 && entity && profile.geo_entity
+      ? profile.geo_entity.type === "school"
+        ? entity.id === profile.id
+          ? "parents"
+          : null
+        : entity.id === profile.geo_entity.id
+          ? "teachers"
+          : null
+      : null;
   // The newest date of the root series: the trend's window ends there for every line.
   const newestDate = scores?.series.length ? scores.series[scores.series.length - 1].date : undefined;
   const closeModal = useCallback(() => setModal(null), []);
@@ -584,6 +599,8 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                   t={t}
                 />
               )}
+              {/* the viewer's own unit: a fresh LLM-written Hindi message for their WhatsApp group, between the figures and the bars */}
+              {scores && !emptyRoot && ownUnit && <ShareMessageCard key={entity.id} entityId={entity.id} viewerId={profile.id} audience={ownUnit} t={t} />}
             </div>
 
             {/* bars: every child ranked — ABOVE the map (2026-10) */}

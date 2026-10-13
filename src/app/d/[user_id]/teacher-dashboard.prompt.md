@@ -102,3 +102,11 @@ hidden under the verdict; no rankings request is made.
 
 The student modal gets the page metric and opens its own family / NIPUN
 sub-toggle on it (grades only for a student).
+
+## 2026-10: the WhatsApp-group message
+
+`ownUnit` (`"parents"` / `"teachers"` / null): drilled in (`stack.length >
+1`) and the level is the viewer's own class (teacher: `entity.id ===
+profile.id`) or own geo entity (`entity.id === profile.geo_entity.id`).
+Then `<ShareMessageCard key={entity.id}>` renders between `RepKpis` and
+the bar strip — share-message-card.prompt.md.

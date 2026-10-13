@@ -9,6 +9,9 @@ describe("proxy public allowlist", () => {
     expect(isPublicAllowed("geo-entities/g1/scores.csv", "GET")).toBe(true);
     expect(isPublicAllowed("geo-entities/g1/spotlight", "GET")).toBe(true);
     expect(isPublicAllowed("geo-entities/g1/rankings", "GET")).toBe(true);
+    // the own-unit WhatsApp message (GET only; pp-sketch decides who may ask)
+    expect(isPublicAllowed("geo-entities/g1/share-message", "GET")).toBe(true);
+    expect(isPublicAllowed("geo-entities/g1/share-message", "POST")).toBe(false);
   });
 
   it("accepts the student-modal reads (history, media, audio) — GET only", () => {
