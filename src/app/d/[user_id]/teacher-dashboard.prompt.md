@@ -74,3 +74,31 @@
  - Student pop-up Time tab: `MvpStudentTrend unit="min"` (a line like the test tabs, axis fits the minutes, no pass line, `minutes-chart`).
  - No "Generate report" button.
  - Bars above the map: top corners 4 px (`rounded-t-[4px]`; full rounding looked like domes).
+
+## 2026-10: one metric toggle, a NIPUN sub-toggle, one linked window
+
+State: `pickedFamily` (Time / NIPUN / MPL-B) + `pickedNipun` (Grade 1 / 2 /
+3 / Pass-Fail) → `pickedMetric = metricFor(...)`; `pickedWindow` (default
+last 30 days) is the Time window AND the trend window (`trendWindow` is
+gone; `pickedRange = rangeForWindow(pickedWindow)` for every metric). Both
+toggle rows (top of page, Performance section) render the same state.
+
+Rows: the family toggle, then an `MvpSubSlot` — always at the toggle's
+height, so a family without a sub-toggle (MPL-B) leaves the space empty and
+the page never jumps. Top slot: Time → `MvpTimeWindowToggle`; NIPUN →
+`MvpNipunToggle` (`nipun-view-toggle`). Performance slot: NIPUN →
+`MvpNipunToggle` (`perf-nipun-view-toggle`), then the trend window toggle
+(`trend-window-toggle`) always — the same `pickedWindow`.
+
+Pass/Fail (`isVerdict`, `metric === "nipun"`): `RepKpis` shows "N of M
+schools pass NIPUN · K not enough data" (share of DECIDED schools), or a
+school's own Pass / Fail / Not enough data; bars read the verdict / share;
+the map colours schools by verdict and areas by share with a matching
+legend; a school root shows `VerdictSummary` (the three age bands) in the
+map card instead of teacher cards (`verdict-panel`); the trend is
+"Schools passing NIPUN" with no pass mark. Rankings (level toggle, most
+improved, top performing) and the Spotlight section (and its nav link) are
+hidden under the verdict; no rankings request is made.
+
+The student modal gets the page metric and opens its own family / NIPUN
+sub-toggle on it (grades only for a student).

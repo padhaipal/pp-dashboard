@@ -17,6 +17,8 @@ type SnapshotScore = {
 };
 
 type LiteracyTestScores = {
+  // absent on a pp-sketch that predates grade 1 (2026-10)
+  nipun_grade_1?: SnapshotScore;
   nipun_grade_2: SnapshotScore;
   nipun_grade_3: SnapshotScore;
   mpl_b: SnapshotScore;
@@ -127,6 +129,13 @@ export function LiteracyTests({ userId }: { userId: string }) {
     <div className="mb-6">
       <h2 className="text-sm font-semibold text-zinc-900 mb-2">Literacy tests</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {d.nipun_grade_1 && (
+          <SnapshotCard
+            title="NIPUN grade 1"
+            sub="4 most recent level-8 lessons, read right first try · pass ≥ 75%"
+            score={d.nipun_grade_1}
+          />
+        )}
         <SnapshotCard
           title="NIPUN grade 2"
           sub="4 most recent level-10 R1.x first attempts · pass > 50%"

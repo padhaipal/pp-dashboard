@@ -39,6 +39,11 @@ import {
   ageBandLabel,
   ageBandOf,
   passMarkOf,
+  isVerdictMetric,
+  verdictColor,
+  verdictDecided,
+  verdictLabel,
+  type VerdictStats,
 } from "./dashboard-types";
 import type { T } from "./i18n";
 import { IconClose, IconPdf } from "./icons";
@@ -66,6 +71,8 @@ export function RepKpis({
   showUsing = true,
   timeWindow,
   ageBand,
+  verdict = null,
+  isSchool = false,
   t = same,
 }: {
   root: RootStats;
@@ -79,6 +86,10 @@ export function RepKpis({
   // Time mode: the headline is the active time per student over this window
   // (total + minutes per day, coloured by the per-day average), not a pass rate.
   timeWindow?: TimeWindow;
+  // Verdict metric: a school's own Pass / Fail / Not enough data, or an
+  // area's share of decided schools passing ("3 of 5 schools pass NIPUN").
+  verdict?: VerdictStats | null;
+  isSchool?: boolean;
   t?: T;
 }) {
   const card = (big: string, label: string, color: string, key: string, sub?: string) => (
@@ -98,6 +109,15 @@ export function RepKpis({
     <div className="flex flex-row gap-3" data-testid="root-kpis">
       {timeWindow
         ? card(fmtDurationParts(root.time_sum, t).value, `${fmtDurationParts(root.time_sum, t).unit} ${timeWindowSuffix(timeWindow, t)}`, windowColor(root.time_total, timeWindow), "pass")
+        : verdict
+          ? isSchool
+            ? card(verdictLabel(verdict.school_passed, t), t("NIPUN verdict"), verdictColor(verdict.school_passed), "pass")
+            : card(
+                fmtPctInt(root.pass_rate),
+                `${verdict.schools_pass} ${t("of")} ${verdictDecided(verdict)} ${t("schools pass NIPUN")}${verdict.schools_insufficient ? ` · ${verdict.schools_insufficient} ${t("not enough data")}` : ""}`,
+                nipColor(root.pass_rate),
+                "pass",
+              )
         : card(
             fmtPctInt(root.pass_rate),
             ageBand ? `${t("of")} ${ageBandLabel(ageBand)} ${t("year old students pass the")} ${metricLabel}` : `${t("of students pass the")} ${metricLabel}`,
@@ -717,7 +737,9 @@ export async function exportReportPdf(data: ReportData, root: HTMLElement | null
   const kpis: [string, string, [number, number, number]][] = [
     time
       ? [fmtDuration(data.root.time_sum), `total time · ${timeWindowSuffix(data.timeWindow!)}`, rgb(windowColor(data.root.time_total, data.timeWindow))]
-      : [fmtPctInt(data.root.pass_rate), `of ${ageBandLabel(ageBandOf(data.metric, data.ageBand) ?? [0, 1])} year old students pass the ${metricLabel}`, rgb(nipColor(data.root.pass_rate))],
+      : isVerdictMetric(data.metric)
+        ? [fmtPctInt(data.root.pass_rate), `${data.root.verdict?.schools_pass ?? 0} of ${verdictDecided(data.root.verdict)} schools pass NIPUN`, rgb(nipColor(data.root.pass_rate))]
+        : [fmtPctInt(data.root.pass_rate), `of ${ageBandLabel(ageBandOf(data.metric, data.ageBand) ?? [0, 1])} year old students pass the ${metricLabel}`, rgb(nipColor(data.root.pass_rate))],
   ];
   if (data.childType !== "student") kpis.push([`${usingN}`, `${nounP} using Lifteracy`, [24, 24, 27]]);
   const kw = (CW - 10 * (kpis.length - 1)) / kpis.length,
@@ -907,6 +929,8 @@ export function ReportCardModal({ data, onClose }: { data: ReportData; onClose: 
             showUsing={data.childType !== "student"}
             timeWindow={data.timeWindow}
             ageBand={time ? undefined : ageBandOf(data.metric, data.ageBand)}
+            verdict={isVerdictMetric(data.metric) ? (data.root.verdict ?? null) : null}
+            isSchool={data.childType === "teacher"}
           />
           <div>
             <div className="mb-1 text-sm font-semibold text-zinc-800">Trend</div>

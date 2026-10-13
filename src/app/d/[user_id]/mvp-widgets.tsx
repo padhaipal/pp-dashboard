@@ -5,7 +5,7 @@
 // opens from a child row. Every number comes from the pp-sketch API.
 
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { Children, useEffect, useRef, useState } from "react";
 import { avatarUrl, seedFor } from "./avatar";
 import {
   ACCENT,
@@ -14,13 +14,19 @@ import {
   CHILD_OFFICER,
   csvUrl,
   DEFAULT_RANGE,
+  DEFAULT_STUDENT_NIPUN_VIEW,
   EXPLAINER_SHARE_URL,
-  MODAL_METRICS,
+  FAMILIES,
+  familyOf,
+  isVerdictMetric,
+  metricFor,
+  MODAL_FAMILIES,
+  NIPUN_VIEWS,
+  STUDENT_NIPUN_VIEWS,
   rangeLabel,
   EXPLAINER_VIDEO_URL,
   mediaUrl,
   METRIC_BY,
-  METRICS,
   profileUrl,
   RANGES,
   scoresUrl,
@@ -40,7 +46,9 @@ import {
   type TimeWindow,
   type UsageHistory,
   type Metric,
-  type ModalMetric,
+  type Family,
+  type ModalFamily,
+  type NipunView,
   type Range,
   type ScoresResponse,
   type SeriesPoint,
@@ -48,6 +56,11 @@ import {
   type UserMedia,
   UNNAMED,
   isPiiFull,
+  METRIC_AGE_BANDS,
+  NIPUN_BANDS,
+  verdictColor,
+  verdictLabel,
+  type VerdictStats,
 } from "./dashboard-types";
 import { useViewerId } from "./viewer-context";
 import { withViewer } from "./viewer-url";
@@ -125,9 +138,10 @@ export function MvpTrend({ delta, suffix = "" }: { delta: number | null; suffix?
 
 // ------------------------------------------------------------------ toggles
 
-// `options` defaults to the dashboard METRICS; the student modal passes
-// MODAL_METRICS (letter scores first).
-export function MvpMetricToggle<M extends string = Metric>({
+// The page's metric toggle: Time · NIPUN proxy · MPL-B proxy (FAMILIES) —
+// the student modal passes MODAL_FAMILIES (letter scores first). On a phone
+// the short labels ("NIPUN", "MPL-B") keep it on one line.
+export function MvpMetricToggle<M extends string = Family>({
   metric,
   setMetric,
   options,
@@ -135,10 +149,11 @@ export function MvpMetricToggle<M extends string = Metric>({
 }: {
   metric: M;
   setMetric: (m: M) => void;
-  options?: { key: M; label: string }[];
+  options?: { key: M; label: string; short?: string }[];
   t?: T;
 }) {
-  const opts = (options ?? METRICS) as { key: M; label: string }[];
+  const opts = (options ?? FAMILIES) as { key: M; label: string; short?: string }[];
+  const mobile = useIsMobile();
   return (
     <div className="inline-flex flex-wrap justify-center gap-1 rounded-full bg-zinc-100 p-1 text-xs font-semibold ring-1 ring-zinc-200" role="group" aria-label="Metric">
       {opts.map((m) => (
@@ -149,15 +164,64 @@ export function MvpMetricToggle<M extends string = Metric>({
           aria-pressed={metric === m.key}
           className={"rounded-full px-3.5 py-1.5 transition " + (metric === m.key ? "bg-blue-600 text-white shadow-sm" : "text-zinc-600 hover:bg-white")}
         >
-          {t(m.label)}
+          {t(mobile && m.short ? m.short : m.label)}
         </button>
       ))}
     </div>
   );
 }
 
+// The second-row toggle under the metric toggle (dark pill): the Time
+// window, or the NIPUN grade / Pass-Fail. Generic over its options.
+export function MvpSubToggle<K extends string>({
+  value,
+  setValue,
+  options,
+  label,
+  testId,
+  t = same,
+}: {
+  value: K;
+  setValue: (k: K) => void;
+  options: { key: K; label: string; short?: string }[];
+  label: string;
+  testId: string;
+  t?: T;
+}) {
+  const mobile = useIsMobile();
+  return (
+    <div className="inline-flex flex-wrap justify-center gap-1 rounded-full bg-zinc-100 p-1 text-xs font-semibold ring-1 ring-zinc-200" role="group" aria-label={label} data-testid={testId}>
+      {options.map((o) => (
+        <button
+          key={o.key}
+          type="button"
+          onClick={() => setValue(o.key)}
+          aria-pressed={value === o.key}
+          className={"rounded-full px-3.5 py-1.5 transition " + (value === o.key ? "bg-zinc-900 text-white shadow-sm" : "text-zinc-600 hover:bg-white")}
+        >
+          {t(mobile && o.short ? o.short : o.label)}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// The row a sub-toggle sits in. Always rendered at the toggle's height, so a
+// metric without one (MPL-B) leaves the space empty instead of pulling the
+// page up — toggling metrics never makes the layout jump.
+export function MvpSubSlot({ children, testId = "sub-toggle-slot" }: { children?: React.ReactNode; testId?: string }) {
+  // `false` / null children (a family without a sub-toggle) leave the slot empty
+  const empty = Children.toArray(children).length === 0;
+  return (
+    <div className="flex min-h-9 items-center justify-center" data-testid={testId} data-empty={empty ? "1" : undefined}>
+      {children}
+    </div>
+  );
+}
+
 // Shown under the metric toggle while Time is selected: Yesterday · Last
-// seven days · All time (the window of the Time figures).
+// seven days · Last 30 days · All time (the window of the Time figures and,
+// since 2026-10, of the trend for every metric).
 export function MvpTimeWindowToggle({
   window,
   setWindow,
@@ -172,21 +236,27 @@ export function MvpTimeWindowToggle({
   testId?: string;
   t?: T;
 }) {
-  return (
-    <div className="inline-flex flex-wrap justify-center gap-1 rounded-full bg-zinc-100 p-1 text-xs font-semibold ring-1 ring-zinc-200" role="group" aria-label={label} data-testid={testId}>
-      {TIME_WINDOWS.map((w) => (
-        <button
-          key={w.key}
-          type="button"
-          onClick={() => setWindow(w.key)}
-          aria-pressed={window === w.key}
-          className={"rounded-full px-3.5 py-1.5 transition " + (window === w.key ? "bg-zinc-900 text-white shadow-sm" : "text-zinc-600 hover:bg-white")}
-        >
-          {t(w.label)}
-        </button>
-      ))}
-    </div>
-  );
+  return <MvpSubToggle value={window} setValue={setWindow} options={TIME_WINDOWS} label={label} testId={testId} t={t} />;
+}
+
+// Shown under the metric toggle while NIPUN is selected: Grade 1 · Grade 2 ·
+// Grade 3 · Pass/Fail (`options` = STUDENT_NIPUN_VIEWS in the student modal).
+export function MvpNipunToggle({
+  view,
+  setView,
+  options = NIPUN_VIEWS,
+  label = "NIPUN view",
+  testId = "nipun-view-toggle",
+  t = same,
+}: {
+  view: NipunView;
+  setView: (v: NipunView) => void;
+  options?: { key: NipunView; label: string; short?: string }[];
+  label?: string;
+  testId?: string;
+  t?: T;
+}) {
+  return <MvpSubToggle value={view} setValue={setView} options={options} label={label} testId={testId} t={t} />;
 }
 
 // 30 days / all time window + "Download CSV" (link built from the CURRENT metric +
@@ -723,6 +793,57 @@ export function historySeries(scores: LiteracyTestScores | null, metric: Metric,
     .map((h) => ({ date: h.at.slice(0, 10), pass_rate: Math.round(h.score * 1000) / 10, n: 1, mean: null }));
 }
 
+// The verdict metric in words: an area's schools passing / failing / not
+// enough data, or a school's own verdict with its three age bands —
+// "6 year olds: 9 of 12 pass, 9 needed · Pass".
+export function VerdictSummary({ verdict, school, t = same }: { verdict: VerdictStats; school: boolean; t?: T }) {
+  const bands = verdict.bands;
+  return (
+    <div className="mb-3 rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-700" data-testid="verdict-summary">
+      {school ? (
+        <>
+          <div className="font-semibold" style={{ color: verdictColor(verdict.school_passed) }} data-testid="verdict-school">
+            {t("NIPUN")}: {verdictLabel(verdict.school_passed, t)}
+          </div>
+          {bands && (
+            <ul className="mt-1 space-y-0.5 text-xs" data-testid="verdict-bands">
+              {NIPUN_BANDS.map((b) => {
+                const band = bands[b];
+                const age = METRIC_AGE_BANDS[b][0];
+                return (
+                  <li key={b} className="flex flex-wrap items-center gap-x-1.5">
+                    <span className="font-semibold text-zinc-800">
+                      {age} {t("year olds")}:
+                    </span>
+                    <span>
+                      {band.passers} {t("of")} {band.cohort} {t("pass")}, {band.needed} {t("needed")}
+                    </span>
+                    <span className="font-semibold" style={{ color: verdictColor(band.verdict) }}>
+                      · {verdictLabel(band.verdict, t)}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </>
+      ) : (
+        <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs" data-testid="verdict-counts">
+          <span className="font-semibold text-emerald-700">
+            {verdict.schools_pass} {t("schools pass")}
+          </span>
+          <span className="font-semibold text-red-600">
+            {verdict.schools_fail} {t("schools fail")}
+          </span>
+          <span className="font-semibold text-zinc-500">
+            {verdict.schools_insufficient} {t("not enough data")}
+          </span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Opens from the Detail card (geo child / teacher) or a student tile.
 // Geo children: the official (name / role / avatar / spotlight message) + that
 // entity's own trend, fetched on demand. Students (mvp2's student dashboard):
@@ -739,14 +860,21 @@ export function MvpTeacherModal({
   t = same,
 }: {
   subject: ModalSubject;
+  // the page's metric (family + NIPUN view): what the modal opens on
   metric: Metric;
   onClose: () => void;
   // student mode: the name was edited in the header → update the page's copy
   onRename?: (studentId: string, name: string) => void;
   t?: T;
 }) {
+  const isStudent = subject.kind === "student";
   // Students open on the letter chart; geo children have no letter scores.
-  const [mMetric, setMMetric] = useState<ModalMetric>(subject.kind === "student" ? "letters" : metric);
+  // The same family + NIPUN sub-toggle as the page; a student has no school
+  // verdict, so Pass/Fail is not offered and falls back to a grade.
+  const [mFamily, setMFamily] = useState<ModalFamily>(isStudent ? "letters" : familyOf(metric));
+  const pageView: NipunView = familyOf(metric) === "nipun" ? (metric as NipunView) : DEFAULT_STUDENT_NIPUN_VIEW;
+  const [mNipun, setMNipun] = useState<NipunView>(isStudent && isVerdictMetric(pageView) ? DEFAULT_STUDENT_NIPUN_VIEW : pageView);
+  const mMetric: Metric | "letters" = mFamily === "letters" ? "letters" : metricFor(mFamily, mNipun);
   const [mRange, setMRange] = useState<Range>(DEFAULT_RANGE);
   // The dashboard metric the trend uses when the letter chart is showing.
   const testMetric: Metric = mMetric === "letters" ? metric : mMetric;
@@ -853,8 +981,8 @@ export function MvpTeacherModal({
   // test, only the answers that count toward the student's current and
   // previous score (pp-sketch's counted_message_ids), with a note while
   // there are not enough yet / none at all.
-  const testMetric2 = mMetric !== "letters" && mMetric !== "usage" ? mMetric : null;
-  const testScore = testMetric2 && st?.tests ? st.tests[TEST_KEY_OF[testMetric2]!] : null;
+  const testMetric2 = mMetric !== "letters" && mMetric !== "usage" && !isVerdictMetric(mMetric) ? mMetric : null;
+  const testScore = testMetric2 && st?.tests ? (st.tests[TEST_KEY_OF[testMetric2]!] ?? null) : null;
   // A test tab lists EVERY answer in the test's bin (bin_message_ids; an
   // older pp-sketch only sends counted_message_ids) and marks the ones behind
   // the current / previous score. null = no filter (letters / Time).
@@ -934,14 +1062,14 @@ export function MvpTeacherModal({
           <div className="border-b border-zinc-100 px-3 py-5 sm:px-6">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <div className="flex flex-wrap items-center gap-2">
-                {subject.kind === "student" ? (
-                  <MvpMetricToggle<ModalMetric> metric={mMetric} setMetric={setMMetric} options={MODAL_METRICS} t={t} />
-                ) : (
-                  <MvpMetricToggle metric={testMetric} setMetric={setMMetric} t={t} />
-                )}
+                {isStudent ? <MvpMetricToggle<ModalFamily> metric={mFamily} setMetric={setMFamily} options={MODAL_FAMILIES} t={t} /> : <MvpMetricToggle metric={mFamily as Family} setMetric={setMFamily} t={t} />}
                 {/* the letter chart is per interaction, not per day — no range */}
                 {mMetric !== "letters" && <MvpRangeBar range={mRange} setRange={setMRange} entityId={childId} metric={testMetric} t={t} />}
               </div>
+            </div>
+            {/* NIPUN: the grade / Pass-Fail row, as on the page (kept at its height for the other families) */}
+            <div className="mb-3">
+              <MvpSubSlot testId="modal-sub-toggle-slot">{mFamily === "nipun" && <MvpNipunToggle view={mNipun} setView={setMNipun} options={isStudent ? STUDENT_NIPUN_VIEWS : NIPUN_VIEWS} testId="modal-nipun-view-toggle" t={t} />}</MvpSubSlot>
             </div>
             {subject.kind === "child" ? (
               <>
@@ -951,6 +1079,11 @@ export function MvpTeacherModal({
                 {scores &&
                   (shownMetric === "usage" ? (
                     <MvpMinutesChart points={scores.series.map((p) => ({ date: shiftDay(p.date, -1), minutes: p.mean }))} label={t("Active minutes per student")} t={t} />
+                  ) : isVerdictMetric(shownMetric) ? (
+                    <>
+                      {scores.root.verdict && <VerdictSummary verdict={scores.root.verdict} school={subject.child.type === "school"} t={t} />}
+                      <MvpStudentTrend series={scores.series} label={t("Schools passing NIPUN")} passMark={null} />
+                    </>
                   ) : (
                     <MvpStudentTrend series={scores.series} label={`${METRIC_BY[shownMetric].label}`} />
                   ))}
@@ -977,7 +1110,7 @@ export function MvpTeacherModal({
                       />
                     )}
                   </>
-                ) : mMetric !== "letters" ? (
+                ) : mMetric !== "letters" && !isVerdictMetric(mMetric) ? (
                   <>
                     {st?.error && <p className="text-sm text-red-600">{st.error}</p>}
                     {!st && <ChartLoading t={t} />}

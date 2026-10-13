@@ -170,6 +170,8 @@ export const SCORES_CLASS: ScoresResponse = {
 
 // Student modal payloads (GET users/:id/literacy-test-scores, GET users/:id/media).
 export const TEST_SCORES = {
+  // grade 1 (2026-10): three level-8 lessons so far, four needed
+  nipun_grade_1: { status: "insufficient_data", attempts_available: 3, counted_message_ids: ["m-1"], bin_message_ids: ["m-1", "m-2"] },
   nipun_grade_2: { status: "insufficient_data", attempts_available: 0, counted_message_ids: [] },
   nipun_grade_3: {
     status: "ok",
@@ -305,6 +307,85 @@ export const USAGE_HISTORY: UsageHistory = {
   ],
 };
 
+// ---- NIPUN verdict (metric=nipun) ----
+// UP (state) under the verdict: Lucknow district decided (1 of 2 schools
+// pass), a second district with no decided school (grey), a week-old row.
+export const CHILD_LKO_VERDICT: Child = {
+  ...CHILD_UP,
+  id: "g-0901",
+  type: "district",
+  code: "0901",
+  name: "LUCKNOW",
+  has_boundary: false,
+  lat: null,
+  lng: null,
+  pass_rate: 50,
+  n: 2,
+  delta: 50,
+  bin: "mid",
+  verdict: { school_passed: null, schools_pass: 1, schools_fail: 1, schools_insufficient: 1 },
+};
+export const CHILD_UNDECIDED_VERDICT: Child = {
+  ...CHILD_AP,
+  id: "g-0902",
+  type: "district",
+  code: "0902",
+  name: "BARABANKI",
+  has_boundary: false,
+  lat: null,
+  lng: null,
+  pass_rate: null,
+  n: 0,
+  delta: null,
+  bin: "none",
+  verdict: { school_passed: null, schools_pass: 0, schools_fail: 0, schools_insufficient: 2 },
+};
+export const SCORES_VERDICT: ScoresResponse = {
+  as_of: "2026-09-10",
+  metric: "nipun",
+  range: 30,
+  entity: CHILD_UP,
+  root: { pass_rate: 50, mean: null, sd: null, n: 2, students_active: 160, students_unbanded: 3, delta: 50, verdict: { school_passed: null, schools_pass: 1, schools_fail: 1, schools_insufficient: 3 } },
+  series: [
+    { date: "2026-09-03", pass_rate: 0, n: 2, mean: null },
+    { date: "2026-09-10", pass_rate: 50, n: 2, mean: null },
+  ],
+  child_type: "district",
+  children: [CHILD_LKO_VERDICT, CHILD_UNDECIDED_VERDICT],
+  most_improved: [],
+};
+// A school under the verdict: its own Pass with the three age bands; no teachers listed.
+export const SCORES_SCHOOL_VERDICT: ScoresResponse = {
+  as_of: "2026-09-18",
+  metric: "nipun",
+  range: 30,
+  entity: PROFILE_SCHOOL.geo_entity!,
+  root: {
+    pass_rate: 100,
+    mean: null,
+    sd: null,
+    n: 1,
+    students_active: 3,
+    students_unbanded: 0,
+    delta: null,
+    verdict: {
+      school_passed: true,
+      schools_pass: 1,
+      schools_fail: 0,
+      schools_insufficient: 0,
+      bands: {
+        nipun_g1: { cohort: 10, passers: 9, needed: 9, verdict: true },
+        nipun_g2: { cohort: 12, passers: 9, needed: 9, verdict: true },
+        nipun_g3: { cohort: 9, passers: 9, needed: 9, verdict: true },
+      },
+    },
+  },
+  series: [{ date: "2026-09-18", pass_rate: 100, n: 1, mean: null }],
+  child_type: "teacher",
+  children: [],
+  most_improved: [],
+};
+
 export function jsonResponse(status: number, body: unknown): Response {
   return { ok: status >= 200 && status < 300, status, json: async () => body, text: async () => JSON.stringify(body) } as unknown as Response;
 }
@@ -315,7 +396,8 @@ export function jsonResponse(status: number, body: unknown): Response {
 // in Time mode ("geo" → timeScores, "class" → timeScoresClass). Without it a
 // usage request gets the plain fixture — a pp-sketch that predates windows.
 // `media`: the users/:id/media answer (default MEDIA — the viewer is the students' teacher).
-export function makeFetch(opts: { scores?: ScoresResponse; scoresById?: Record<string, ScoresResponse>; timeById?: Record<string, "geo" | "class">; media?: unknown } = {}) {
+// `verdictById`: ids whose `metric=nipun` scores requests are answered with that payload (spotlight → nulls, as pp-sketch).
+export function makeFetch(opts: { scores?: ScoresResponse; scoresById?: Record<string, ScoresResponse>; timeById?: Record<string, "geo" | "class">; verdictById?: Record<string, ScoresResponse>; media?: unknown } = {}) {
   const calls: string[] = [];
   const fn = async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = typeof input === "string" ? input : input.toString();
@@ -329,6 +411,10 @@ export function makeFetch(opts: { scores?: ScoresResponse; scoresById?: Record<s
       if (tm[2] === "scores") return jsonResponse(200, scores);
       const top = (scores.children as Child[])[0];
       return jsonResponse(200, { top: opts.timeById[tm[1]] === "class" ? null : { child: top, official: top.official }, most_improved: null });
+    }
+    if (tm && qs.get("metric") === "nipun" && opts.verdictById && tm[1] in opts.verdictById) {
+      if (tm[2] === "scores") return jsonResponse(200, opts.verdictById[tm[1]]);
+      return jsonResponse(200, { top: null, most_improved: null });
     }
     if (/^\/api\/proxy\/users\/[^/]+\/usage-history$/.test(path)) return jsonResponse(200, { ...USAGE_HISTORY, range: qs.get("range") === "all" ? "all" : 30 });
     if (/^\/api\/proxy\/geo-entities\/g-in\/scores$/.test(path)) return jsonResponse(200, opts.scores ?? SCORES);

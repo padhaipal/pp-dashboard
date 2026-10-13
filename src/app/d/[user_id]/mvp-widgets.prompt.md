@@ -12,3 +12,20 @@
 3.) Server errors: Nest `{ message }` (string | string[]) else `HTTP <status>`.
 2b.) Student modal sentences (2026-09): the list and the 7-day activity both read `studentModalRows(media)` (dashboard-types) — voice notes and ANSWERED flow taps. A tap (`kind: "tap"`, `data-testid="tap-sentence"`) reads "At {time} on {day} {week} the student was asked “{question}” and chose “{chosen}” and the correct answer was “{answer}” and so was marked as correct|incorrect." — no audio button; question/option text clipped at 80 chars (`MAX_TAP_CHARS`; a voice note's answer stays at 14). A tap the lesson was not waiting for (`answer_correct` null) and any `kind: "onboarding"` row are never rendered: pp-sketch does not send onboarding voice notes to this public page (they need the staff-only `onboarding` param, which the proxy drops — api/proxy/[...path]/public-allowlist.prompt.md), the filter is defence in depth.
 2c.) Time in the modal (2026-09). `MvpTimeWindowToggle({ window, setWindow, t })` — the three-way window toggle (dark selected state like the range bar). `MvpMinutesChart({ points, label, t })` — active minutes per day as bars (`data-testid="minutes-chart"`, one `minutes-bar` per day with activity), y-axis = minutes on an axis that fits the data (multiples of 10, at least 10), y label from `label`, dates under every ~n/8-th bar and the last, "No results in this window" when empty. Student subject: fetches `usageHistoryUrl(studentId, mRange)` when the modal opens (refetched on the 30 days / All time toggle; the previous chart stays up meanwhile, and `ChartLoading` holds the chart's size when there is none) — "Time" in the picker and draws the student's minutes each day, label "Active minutes". Child (area / teacher) subject + Time: the same chart over `scores.series` (`mean` = minutes per student; dates shifted back one day to the day the minutes were spent), label "Active minutes per student". `MvpRangeBar` takes `timeWindow` so its CSV link exports the window.
+
+## 2026-10: family toggle, sub-toggle slot, verdict summary
+
+`MvpMetricToggle` now defaults to `FAMILIES` and shows each option's
+`short` label on a phone (`useIsMobile`). `MvpSubToggle` is the generic
+dark second-row toggle; `MvpTimeWindowToggle` and `MvpNipunToggle` wrap it.
+`MvpSubSlot` keeps the row's height when empty (`data-empty="1"`).
+`VerdictSummary` renders a `VerdictStats`: a school's verdict + "6 year
+olds: 9 of 10 pass, 9 needed · Pass" per band, or an area's schools pass /
+fail / not enough data counts.
+
+`MvpTeacherModal` takes the page `metric` and keeps `mFamily` +
+`mNipun` (students: `MODAL_FAMILIES` + `STUDENT_NIPUN_VIEWS`, opening on
+Grade 2 when the page is on Pass/Fail); the NIPUN row sits in a
+`MvpSubSlot` under the family toggle (`modal-nipun-view-toggle`). A geo
+child under the verdict shows `VerdictSummary` above its share trend;
+`historySeries` / the test note never run for the verdict.

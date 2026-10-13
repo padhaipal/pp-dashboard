@@ -5,16 +5,25 @@ import { TeacherDashboard } from "./teacher-dashboard";
 import { RepTrend } from "./report-card-modal";
 import { MvpMinutesChart } from "./mvp-widgets";
 import { EMPTY_ROOT_TEXT, INCOMPLETE_TOOLTIP } from "./dashboard-types";
-import { CHILD_AP, CHILD_UP, EMPTY_SCORES, MEDIA_MASKED, PROFILE, PROFILE_BLOCK, PROFILE_SCHOOL, SCORES, SCORES_CLASS, SCORES_CLASS_MASKED, SCORES_SCHOOL, SCORES_UP, makeFetch } from "./test-fixtures";
+import { CHILD_AP, CHILD_UP, EMPTY_SCORES, MEDIA_MASKED, PROFILE, PROFILE_BLOCK, PROFILE_SCHOOL, SCORES, SCORES_CLASS, SCORES_CLASS_MASKED, SCORES_SCHOOL, SCORES_SCHOOL_VERDICT, SCORES_UP, SCORES_VERDICT, makeFetch } from "./test-fixtures";
 
 const pressed = (name: string) => screen.getAllByRole("button", { name }).map((b) => b.getAttribute("aria-pressed"));
 // a button of the headline Time window toggle (the trend has its own copy of the same toggle)
 const winBtn = (name: string) => within(screen.getByTestId("time-window-toggle")).getByRole("button", { name });
 const winPressed = (name: string) => [winBtn(name).getAttribute("aria-pressed")];
-// The page opens on Time; tests about the test-score metrics pick one first.
+// The page opens on Time; tests about the test-score metrics pick one first:
+// "NIPUN proxy" opens on Pass/Fail, so the grade is picked in the sub-toggle.
 const pickNipunG3 = async () => {
-  fireEvent.click((await screen.findAllByRole("button", { name: "NIPUN grade 3 proxy" }))[0]);
-  await waitFor(() => expect(pressed("NIPUN grade 3 proxy")[0]).toBe("true"));
+  fireEvent.click((await screen.findAllByRole("button", { name: "NIPUN proxy" }))[0]);
+  await waitFor(() => expect(pressed("NIPUN proxy")[0]).toBe("true"));
+  fireEvent.click(within(screen.getByTestId("nipun-view-toggle")).getByRole("button", { name: "Grade 3" }));
+  await waitFor(() => expect(pressed("Grade 3")[0]).toBe("true"));
+};
+// a button of the dialog's family / NIPUN toggles
+const dialogButton = (dialog: HTMLElement, name: string) => Array.from(dialog.querySelectorAll("button")).find((b) => b.textContent === name)!;
+const pickDialogGrade = (dialog: HTMLElement, grade: "Grade 1" | "Grade 2" | "Grade 3") => {
+  fireEvent.click(dialogButton(dialog, "NIPUN proxy"));
+  fireEvent.click(dialogButton(dialog, grade));
 };
 
 // The home level is for ranking against peers: no headline figures until a
@@ -287,9 +296,9 @@ describe("TeacherDashboard", () => {
     vi.stubGlobal("fetch", vi.fn(fn));
     render(<TeacherDashboard profile={PROFILE} incompleteStates={[]} />);
 
-    // opens on Time, so the link carries the window
+    // opens on Time (last 30 days), so the link carries the window
     const link = await screen.findByTestId("csv-link");
-    expect(link.getAttribute("href")).toBe("/api/proxy/geo-entities/g-in/scores.csv?metric=usage&range=30&window=all&viewer=u1");
+    expect(link.getAttribute("href")).toBe("/api/proxy/geo-entities/g-in/scores.csv?metric=usage&range=30&window=30d&viewer=u1");
 
     // the metric toggle is rendered twice (under the title and under Performance), like mvp2
     const toggles = screen.getAllByRole("button", { name: "MPL-B proxy" });
@@ -367,7 +376,7 @@ describe("TeacherDashboard", () => {
     // the bin's m-older is not on the first page → page 2 (offset 100) is fetched, then it stops
     await waitFor(() => expect(mediaCalls.some((u) => u.includes("offset=100"))).toBe(true));
     expect(mediaCalls.some((u) => u.includes("offset=200"))).toBe(false);
-    fireEvent.click(within(dialog).getByRole("button", { name: "NIPUN grade 3 proxy" }));
+    pickDialogGrade(dialog, "Grade 3");
     await waitFor(() => expect(within(screen.getByTestId("student-sentences")).getAllByTestId("tap-sentence")).toHaveLength(1));
     expect(screen.getByTestId("student-sentences").textContent).toContain("पुराना?");
   });
@@ -490,8 +499,12 @@ describe("TeacherDashboard", () => {
     expect(calls.some((u) => u.includes("/scores/letter-bins?users=s-1"))).toBe(true);
     await waitFor(() => expect(dialog.textContent).toContain("No scores recorded"));
     expect(dialog.querySelectorAll('[aria-label="Range"]').length).toBe(0);
-    // picking a test metric brings the range toggle (30 days / All time)
-    fireEvent.click(modalButton("NIPUN grade 3 proxy"));
+    // picking a test metric brings the range toggle (30 days / All time); the
+    // NIPUN sub-toggle offers the grades only (a student has no Pass/Fail) and
+    // follows the page (Grade 3)
+    fireEvent.click(modalButton("NIPUN proxy"));
+    expect(within(dialog).getByTestId("modal-nipun-view-toggle").textContent).toBe("Grade 1Grade 2Grade 3");
+    expect(modalButton("Grade 3").getAttribute("aria-pressed")).toBe("true");
     expect(dialog.querySelectorAll('[aria-label="Range"]').length).toBe(1);
     expect(modalButton("All time")).toBeDefined();
     // …and narrows the interaction list to the answers that counted toward
@@ -511,10 +524,16 @@ describe("TeacherDashboard", () => {
     expect(screen.getByTestId("test-interactions-note").textContent).toBe("These answers count toward MPL-B proxy, but at least 20 are needed before a score can be calculated.");
     expect(sentencesOf().querySelectorAll('[data-testid="tap-sentence"]').length).toBe(1);
     // NIPUN grade 2: nothing answered → blank list with the explanation
-    fireEvent.click(modalButton("NIPUN grade 2 proxy"));
+    pickDialogGrade(dialog, "Grade 2");
     expect(screen.getByTestId("test-interactions-note").textContent).toBe("No questions counting toward NIPUN grade 2 proxy answered yet.");
     expect(sentencesOf().children.length).toBe(1);
     expect(sentencesOf().textContent).not.toContain("No voice notes yet.");
+    // NIPUN grade 1 (level-8 lessons): three so far, four needed
+    fireEvent.click(modalButton("Grade 1"));
+    expect(screen.getByTestId("test-interactions-note").textContent).toBe("These answers count toward NIPUN grade 1 proxy, but 4 are needed before a score can be calculated.");
+    // the sub-toggle row keeps its place for the other families (no jump)
+    fireEvent.click(modalButton("MPL-B proxy"));
+    expect(within(dialog).getByTestId("modal-sub-toggle-slot").getAttribute("data-empty")).toBe("1");
     // Time and the letter chart list everything again, without a note
     fireEvent.click(modalButton("Time"));
     expect(screen.queryByTestId("test-interactions-note")).toBeNull();
@@ -602,7 +621,7 @@ describe("TeacherDashboard", () => {
     expect(screen.getByRole("link", { name: "आपकी प्रोफ़ाइल" })).toBeDefined();
     expect(screen.getByTestId("location-title").textContent).toBe("भारत");
     // the metric toggle follows the language too
-    expect(screen.getAllByRole("button", { name: "निपुण कक्षा 3 प्रॉक्सी" }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("button", { name: "निपुण प्रॉक्सी" }).length).toBeGreaterThan(0);
     expect(window.localStorage.getItem("lifteracy-dashboard-lang")).toBe("hi");
     window.localStorage.removeItem("lifteracy-dashboard-lang");
   });
@@ -690,7 +709,7 @@ describe("TeacherDashboard — Time metric", () => {
     vi.unstubAllGlobals();
   });
 
-  it("'Time' reveals the window toggle (default: all time) and shows totals only, coloured by the per-day average; no change arrows; most improved = rise in minutes", async () => {
+  it("'Time' reveals the window toggle (default: last 30 days) and shows totals only, coloured by the per-day average; no change arrows; most improved = rise in minutes", async () => {
     const { fn, calls } = makeFetch({ timeById: { "g-in": "geo", "g-09": "geo" }, scoresById: { "g-09": SCORES } });
     vi.stubGlobal("fetch", vi.fn(fn));
     render(<TeacherDashboard profile={PROFILE} incompleteStates={[]} />);
@@ -701,24 +720,27 @@ describe("TeacherDashboard — Time metric", () => {
     expect(screen.queryByRole("button", { name: "Daily usage (5+ min)" })).toBeNull();
     expect(pressed("Time")).toEqual(["true", "true"]);
     expect(screen.getAllByTestId("time-window-toggle")).toHaveLength(1);
-    // its window toggle is hidden for other metrics
-    fireEvent.click(screen.getAllByRole("button", { name: "NIPUN grade 3 proxy" })[0]);
+    // its window toggle is hidden for other metrics — the row stays (the NIPUN grades sit in it)
+    await pickNipunG3();
     await waitFor(() => expect(screen.queryByTestId("time-window-toggle")).toBeNull());
+    expect(screen.getByTestId("top-sub-toggle-slot").getAttribute("data-empty")).toBeNull();
     await waitFor(() => expect(screen.getByTestId("most-improved")).toBeDefined());
 
     fireEvent.click(screen.getAllByRole("button", { name: "Time" })[0]);
-    // ONE window toggle, under the title (the Performance card keeps only the trend's own range), on "All time"
+    // ONE window toggle, under the title (the Performance card's trend window is the SAME window), on "Last 30 days"
     await waitFor(() => expect(screen.getAllByTestId("time-window-toggle")).toHaveLength(1));
-    expect(within(screen.getByTestId("time-window-toggle")).getByRole("button", { name: "All time" }).getAttribute("aria-pressed")).toBe("true");
+    expect(within(screen.getByTestId("time-window-toggle")).getByRole("button", { name: "Last 30 days" }).getAttribute("aria-pressed")).toBe("true");
     expect(winPressed("Last seven days")).toEqual(["false"]);
     expect(winPressed("Yesterday")).toEqual(["false"]);
-    await waitFor(() => expect(calls).toContain("/api/proxy/geo-entities/g-in/scores?metric=usage&range=30&window=all&viewer=u1"));
-    await waitFor(() => expect(screen.getByTestId("kpi-pass").textContent).toBe("2.5hours all time"));
+    await waitFor(() => expect(calls).toContain("/api/proxy/geo-entities/g-in/scores?metric=usage&range=30&window=30d&viewer=u1"));
+    await waitFor(() => expect(screen.getByTestId("kpi-pass").textContent).toBe("90min last 30 days"));
 
     // Last seven days: refetch — the previous figures stay on screen meanwhile (no blank / loading line)
     fireEvent.click(winBtn("Last seven days"));
     expect(winPressed("Last seven days")).toEqual(["true"]);
-    expect(screen.getByTestId("kpi-pass").textContent).toBe("2.5hours all time");
+    // …and the Performance section's trend window follows (one linked state)
+    expect(within(screen.getByTestId("trend-window-toggle")).getByRole("button", { name: "Last seven days" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByTestId("kpi-pass").textContent).toBe("90min last 30 days");
     expect(screen.queryByText("Loading your dashboard…")).toBeNull();
     expect(document.querySelector('#rep-perf [data-testid="time-window-toggle"]')).toBeNull();
     expect(screen.queryByRole("button", { name: /week/i })).toBeNull();
@@ -775,10 +797,79 @@ describe("TeacherDashboard — Time metric", () => {
     expect(screen.getByTestId("root-kpis").textContent).not.toContain("per day");
 
     // leaving Time hides the window toggle and brings the pass-rate view back
-    fireEvent.click(screen.getAllByRole("button", { name: "NIPUN grade 3 proxy" })[0]);
+    await pickNipunG3();
     await waitFor(() => expect(screen.queryByTestId("time-window-toggle")).toBeNull());
     await waitFor(() => expect(screen.getByTestId("root-kpis").textContent).toContain("72%"));
     expect(screen.getByTestId("most-improved")).toBeDefined();
+    // the trend window picked under Time (All time) is still the trend's window here
+    expect(within(screen.getByTestId("trend-window-toggle")).getByRole("button", { name: "All time" }).getAttribute("aria-pressed")).toBe("true");
+    // MPL-B has no sub-toggle: the row stays, empty, so the page does not jump
+    fireEvent.click(screen.getAllByRole("button", { name: "MPL-B proxy" })[0]);
+    expect(screen.getByTestId("top-sub-toggle-slot").getAttribute("data-empty")).toBe("1");
+    expect(screen.getByTestId("perf-sub-toggle-slot").getAttribute("data-empty")).toBe("1");
+    expect(screen.queryByTestId("nipun-view-toggle")).toBeNull();
+  });
+
+  it("'NIPUN proxy' opens on Pass/Fail: the verdict from pp-sketch — share of decided schools, grey for not enough data, no rankings or spotlight; the grade sub-toggle is linked top ↔ Performance", async () => {
+    const { fn, calls } = makeFetch({ scoresById: { "g-09": SCORES }, verdictById: { "g-09": SCORES_VERDICT } });
+    vi.stubGlobal("fetch", vi.fn(fn));
+    render(<TeacherDashboard profile={PROFILE} incompleteStates={[]} />);
+    await screen.findByTestId("map-card");
+    await drillIntoUp();
+    fireEvent.click(screen.getAllByRole("button", { name: "NIPUN proxy" })[0]);
+    // both NIPUN sub-toggles appear (top and Performance), on Pass/Fail
+    await waitFor(() => expect(screen.getByTestId("nipun-view-toggle")).toBeDefined());
+    expect(within(screen.getByTestId("nipun-view-toggle")).getByRole("button", { name: "Pass/Fail" }).getAttribute("aria-pressed")).toBe("true");
+    expect(within(screen.getByTestId("perf-nipun-view-toggle")).getByRole("button", { name: "Pass/Fail" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.queryByTestId("time-window-toggle")).toBeNull();
+    await waitFor(() => expect(calls).toContain("/api/proxy/geo-entities/g-09/scores?metric=nipun&range=30&viewer=u1"));
+    // headline: 1 of 2 decided schools pass (3 with not enough data)
+    await waitFor(() => expect(screen.getByTestId("kpi-pass").textContent).toContain("50%"));
+    expect(screen.getByTestId("kpi-pass").textContent).toContain("1 of 2 schools pass NIPUN · 3 not enough data");
+    // bars: a decided district reads its share, an undecided one "Not enough data" in grey
+    const lko = document.querySelector('[data-testid="bar"][data-id="g-0901"]')!;
+    expect(lko).not.toBeNull();
+    fireEvent.mouseEnter(lko);
+    expect(screen.getByTestId("bar-card").textContent).toContain("1/2 · 50%");
+    fireEvent.mouseLeave(lko);
+    // no rankings, no spotlight (section or nav link) under the verdict
+    expect(screen.queryByTestId("most-improved")).toBeNull();
+    expect(screen.queryByTestId("top-performing")).toBeNull();
+    expect(screen.queryByText(/Spotlight/, { selector: "div" })).toBeNull();
+    expect(screen.queryByRole("link", { name: /Spotlight/ })).toBeNull();
+    expect(calls.some((u) => u.includes("/rankings?"))).toBe(false);
+    // the trend is the share of schools passing, no pass mark
+    expect(document.querySelector('[data-testid="pass-mark"]')).toBeNull();
+    expect(screen.getByText("Schools passing NIPUN")).toBeDefined();
+    // picking Grade 3 in the PERFORMANCE sub-toggle switches the top one too, and the metric sent
+    fireEvent.click(within(screen.getByTestId("perf-nipun-view-toggle")).getByRole("button", { name: "Grade 3" }));
+    expect(within(screen.getByTestId("nipun-view-toggle")).getByRole("button", { name: "Grade 3" }).getAttribute("aria-pressed")).toBe("true");
+    await waitFor(() => expect(calls).toContain("/api/proxy/geo-entities/g-09/scores?metric=nipun_g3&range=30&viewer=u1"));
+    await waitFor(() => expect(screen.getByTestId("root-kpis").textContent).toContain("of 8 year old students pass the NIPUN grade 3 proxy"));
+    expect(screen.getByTestId("most-improved")).toBeDefined();
+  });
+
+  it("a school under Pass/Fail shows its own verdict and the three age bands instead of teacher cards; the student modal never offers Pass/Fail", async () => {
+    const { fn } = makeFetch({ scoresById: { "g-sch": SCORES_SCHOOL, "t-1": SCORES_CLASS }, verdictById: { "g-sch": SCORES_SCHOOL_VERDICT } });
+    vi.stubGlobal("fetch", vi.fn(fn));
+    render(<TeacherDashboard profile={PROFILE_SCHOOL} incompleteStates={[]} />);
+    await screen.findByTestId("teacher-card");
+    fireEvent.click(screen.getAllByRole("button", { name: "NIPUN proxy" })[0]);
+    const panel = await screen.findByTestId("verdict-panel");
+    expect(screen.queryByTestId("teacher-card")).toBeNull();
+    expect(within(panel).getByTestId("verdict-school").textContent).toBe("NIPUN: Pass");
+    const bands = within(panel).getByTestId("verdict-bands");
+    expect(bands.textContent).toContain("6 year olds:9 of 10 pass, 9 needed· Pass");
+    expect(bands.textContent).toContain("7 year olds:9 of 12 pass, 9 needed· Pass");
+    expect(bands.textContent).toContain("8 year olds:9 of 9 pass, 9 needed· Pass");
+    // the student modal (from the class view) opens its NIPUN toggle on a grade, never Pass/Fail
+    fireEvent.click(within(screen.getByTestId("nipun-view-toggle")).getByRole("button", { name: "Grade 2" }));
+    fireEvent.dblClick(await screen.findByTestId("teacher-card"));
+    fireEvent.click((await screen.findAllByTestId("student-tile"))[0]);
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(dialogButton(dialog, "NIPUN proxy"));
+    expect(within(dialog).getByTestId("modal-nipun-view-toggle").textContent).toBe("Grade 1Grade 2Grade 3");
+    expect(dialogButton(dialog, "Grade 2").getAttribute("aria-pressed")).toBe("true");
   });
 
   it("class view: each student's total (no minutes per day), no ▲/▼; the student pop-up's Time chart plots active minutes per day", async () => {
@@ -836,7 +927,7 @@ describe("TeacherDashboard — Time metric", () => {
     await screen.findByTestId("map-card");
     await drillIntoUp();
     fireEvent.click(screen.getAllByRole("button", { name: "Time" })[0]);
-    await waitFor(() => expect(calls).toContain("/api/proxy/geo-entities/g-09/scores?metric=usage&range=30&window=all&viewer=u1"));
+    await waitFor(() => expect(calls).toContain("/api/proxy/geo-entities/g-09/scores?metric=usage&range=30&window=30d&viewer=u1"));
     await waitFor(() => expect(screen.getByTestId("root-kpis").textContent).toContain("of students pass the Time · 5+ min yesterday"));
     expect(screen.getByTestId("root-kpis").textContent).toContain("72%");
     expect(screen.queryByTestId("kpi-per-day")).toBeNull();

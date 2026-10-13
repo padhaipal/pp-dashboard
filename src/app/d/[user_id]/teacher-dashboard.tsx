@@ -24,8 +24,16 @@ import {
   CHILD_NOUN,
   CHILD_OFFICER,
   DEFAULT_METRIC,
-    DEFAULT_TIME_WINDOW,
+  DEFAULT_NIPUN_VIEW,
+  DEFAULT_TIME_WINDOW,
   displayName,
+  familyOf,
+  isVerdictMetric,
+  metricFor,
+  verdictDecided,
+  verdictLabel,
+  type Family,
+  type NipunView,
   EMPTY_ROOT_TEXT,
   fmtDelta,
   fmtDuration,
@@ -78,7 +86,7 @@ import { ViewerProvider } from "./viewer-context";
 import { BarStrip, type BarItem } from "./bar-strip";
 import { DrillHint, GeoMap } from "./geo-map";
 import { isLang, LANG_STORAGE_KEY, makeT, type Lang, type T } from "./i18n";
-import { AvatarImg, EditableStudentName, MvpLangToggle, MvpMetricToggle, MvpShareBar, MvpTeacherModal, MvpTimeWindowToggle, MvpTrend, type ModalSubject } from "./mvp-widgets";
+import { AvatarImg, EditableStudentName, MvpLangToggle, MvpMetricToggle, MvpNipunToggle, MvpShareBar, MvpSubSlot, MvpTeacherModal, MvpTimeWindowToggle, MvpTrend, VerdictSummary, type ModalSubject } from "./mvp-widgets";
 import { ReportCardModal, RepKpis, RepQuote, RepTrend, type ImprovedRow, type ReportData } from "./report-card-modal";
 
 export type TeacherDashboardProps = {
@@ -141,13 +149,17 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
   const [profile, setProfile] = useState<PublicProfile>(initialProfile);
   // What the toggles are on. The page body renders `metric` / `range` /
   // `timeWindow` below — the same, except while a new selection is loading.
-  const [pickedMetric, setMetric] = useState<Metric>(DEFAULT_METRIC);
-  // The trend's own window (same toggle as the Time window): its x-axis.
-  // The data range follows it (all time → the full history, else 30 days).
-  const [trendWindow, setTrendWindow] = useState<TimeWindow>("30d");
-  const pickedRange: Range = rangeForWindow(trendWindow);
-  // The window of the Time metric (its own toggle, shown only while Time is selected).
+  // The metric is a pair: the family (Time / NIPUN / MPL-B) and, for NIPUN,
+  // the view (Grade 1 / 2 / 3 / Pass-Fail). Both toggles (top of page and
+  // the Performance section) share this state.
+  const [pickedFamily, setFamily] = useState<Family>(familyOf(DEFAULT_METRIC));
+  const [pickedNipun, setNipunView] = useState<NipunView>(DEFAULT_NIPUN_VIEW);
+  const pickedMetric: Metric = metricFor(pickedFamily, pickedNipun);
+  // ONE window (2026-10): the Time figures' window and the trend's x-axis /
+  // data range for every metric (all time → the full history, else 30 days),
+  // shown under the Time toggle and as the Performance section's trend window.
   const [pickedWindow, setTimeWindow] = useState<TimeWindow>(DEFAULT_TIME_WINDOW);
+  const pickedRange: Range = rangeForWindow(pickedWindow);
   const [stack, setStack] = useState<GeoRef[]>(() => homeStack(initialProfile));
   const [data, setData] = useState<Loaded | null>(null);
   const [hoverId, setHoverId] = useState<string | null>(null);
@@ -254,6 +266,10 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
   // mvp2's `inClass`: a drilled class (the children are students) hides Detail + Spotlight.
   const inClass = childType === "student";
   const isUsageMetric = metric === "usage";
+  // The NIPUN school verdict: pass / fail / not enough data per school, the
+  // share of decided schools passing above. No rankings, no spotlight.
+  const isVerdict = isVerdictMetric(metric);
+  const rootVerdict = isVerdict ? (scores?.root.verdict ?? null) : null;
   // Time mode: pp-sketch answered with the window's time figures (total +
   // minutes per day, no deltas). A pp-sketch that predates Time windows
   // answers without them — the page then falls back to the old "5+ min
@@ -266,7 +282,9 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
     ? `${t(METRIC_BY[metric].label)} · ${timeSuffix}`
     : metric === "usage"
       ? `${t(METRIC_BY[metric].label)} · ${t("5+ min yesterday")}`
-      : t(METRIC_BY[metric].label);
+      : isVerdict
+        ? `${t("NIPUN proxy")} · ${t("Pass/Fail")}`
+        : t(METRIC_BY[metric].label);
 
   // ---- navigation ----
   const drill = useCallback((c: Child) => {
@@ -356,10 +374,19 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
             name: c.name,
             sub: c.official?.name ? `${c.official.role_title ?? t(CHILD_OFFICER[c.type as keyof typeof CHILD_OFFICER] ?? "")} · ${c.official.name}` : "",
             value: c.using_lifteracy ? c.pass_rate : null,
-            display: c.using_lifteracy ? fmtPctInt(c.pass_rate) : t("Not using Lifteracy"),
+            // verdict: a school reads Pass / Fail / Not enough data; an area its share of decided schools
+            display: !c.using_lifteracy
+              ? t("Not using Lifteracy")
+              : isVerdict
+                ? c.type === "school"
+                  ? verdictLabel(c.verdict?.school_passed, t)
+                  : c.pass_rate == null
+                    ? t("Not enough data")
+                    : `${c.verdict?.schools_pass ?? 0}/${verdictDecided(c.verdict)} · ${fmtPctInt(c.pass_rate)}`
+                : fmtPctInt(c.pass_rate),
             color: binColor(c.bin),
           })),
-    [inClass, students, geoChildren, isUsageMetric, timeMode, timeWindow, t],
+    [inClass, students, geoChildren, isUsageMetric, isVerdict, timeMode, timeWindow, t],
   );
   const barMax = timeMode
     ? Math.max(10, Math.ceil(Math.max(0, ...(inClass ? students.map((s) => s.time_total ?? 0) : geoChildren.map((c) => c.time_sum ?? 0))) / 10) * 10)
@@ -404,7 +431,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
   const deeper = rankLevel !== null && rankLevel !== rankOptions[0];
   const [ranked, setRanked] = useState<{ key: string; data: RankingsResponse | null } | null>(null);
   const rankWin = metric === "usage" ? timeWindow : undefined;
-  const rankKey = deeper && entity ? `${entity.id}|${rankLevel}|${metric}|${rankWin ?? ""}` : null;
+  const rankKey = deeper && entity && !isVerdict ? `${entity.id}|${rankLevel}|${metric}|${rankWin ?? ""}` : null;
   useEffect(() => {
     if (!rankKey || !entity || !rankLevel) return;
     let cancelled = false;
@@ -491,7 +518,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
               <a href="#rep-perf" className="transition-colors hover:text-blue-600">
                 {t(nounS)} {t("Performance")}
               </a>
-              {!inClass && (
+              {!inClass && !isVerdict && (
                 <a href="#rep-spotlight" className="transition-colors hover:text-blue-600">
                   {t(officer)} {t("Spotlight")}
                 </a>
@@ -526,9 +553,12 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
             {/* headline stats — narrower, with the shared metric tab */}
             <div className="mx-auto mt-6 max-w-5xl px-6">
               <div className="mb-3 flex flex-col items-center gap-2">
-                <MvpMetricToggle metric={pickedMetric} setMetric={setMetric} t={t} />
-                {/* Time only: yesterday / last seven days / all time */}
-                {pickedMetric === "usage" && <MvpTimeWindowToggle window={pickedWindow} setWindow={setTimeWindow} t={t} />}
+                <MvpMetricToggle metric={pickedFamily} setMetric={setFamily} t={t} />
+                {/* second row, always at its height: Time → the window; NIPUN → the grade / Pass-Fail; MPL-B → empty */}
+                <MvpSubSlot testId="top-sub-toggle-slot">
+                  {pickedFamily === "usage" && <MvpTimeWindowToggle window={pickedWindow} setWindow={setTimeWindow} t={t} />}
+                  {pickedFamily === "nipun" && <MvpNipunToggle view={pickedNipun} setView={setNipunView} t={t} />}
+                </MvpSubSlot>
               </div>
               {loaded?.error && <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">Could not load results — {loaded.error}</p>}
               {loading && <p className="text-center text-sm text-zinc-400">{t("Loading your dashboard…")}</p>}
@@ -549,6 +579,8 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                   timeWindow={timeMode ? timeWindow : undefined}
                   // the teacher's own class: "of students pass …" (no age band)
                   ageBand={inClass ? null : ageBandOf(metric, scores.age_band)}
+                  verdict={rootVerdict}
+                  isSchool={entity.type === "school"}
                   t={t}
                 />
               )}
@@ -593,7 +625,16 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
               style={{ width: "min(calc(100% - 3rem), 69rem)" }}
               data-testid="map-card"
             >
-              {entity.type === "school" ? (
+              {entity.type === "school" && isVerdict ? (
+                /* the verdict is the school's, not its teachers': the three age bands instead of teacher cards */
+                scores && (
+                  <div className="absolute inset-0 z-10 overflow-y-auto bg-[#eaf0f6] p-3 sm:p-5" onDoubleClick={up} data-testid="verdict-panel">
+                    <div className="mx-auto max-w-3xl">
+                      {rootVerdict ? <VerdictSummary verdict={rootVerdict} school t={t} /> : <p className="py-10 text-center text-sm text-zinc-400">{t("No results yet — share your link to get started.")}</p>}
+                    </div>
+                  </div>
+                )
+              ) : entity.type === "school" ? (
                 scores && <TeacherCards teachers={geoChildren} metric={metric} range={range} time={timeMode} timeWindow={timeWindow} timeCaption={timeSuffix} selId={selId} ownId={ownId} onOpen={openChild} drillHint={hintOpen && ownId ? t("This is you. Double-click your card to see your class.") : null} onDismissHint={dismissHint} onSelect={select} onDrill={drill} onClear={() => setSelId(null)} onUp={up} t={t} />
               ) : entity.type === "teacher" ? (
                 scores && <StudentTiles students={students} metric={metric} time={timeMode} timeWindow={timeWindow} timeCaption={timeSuffix} onOpen={openStudent} onRename={renameStudent} onUp={up} t={t}
@@ -618,6 +659,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                   onDismissHint={dismissHint}
                   metricLabel={metricLabel}
                   time={timeMode}
+                  verdict={isVerdict}
                   t={t}
                 />
               )}
@@ -653,17 +695,18 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                     <div className={"mb-6 " + H} style={{ color: ACCENT }}>
                       {t(nounS)} {t("Performance")}
                     </div>
-                    {/* metric, then the trend's window directly under it (as at the top of the page) */}
+                    {/* the same metric + NIPUN sub-toggle as at the top of the page (one state), then the trend's window — the same window as Time's */}
                     <div className="-mt-3 mb-5 flex flex-col items-center gap-2">
-                      <MvpMetricToggle metric={pickedMetric} setMetric={setMetric} t={t} />
-                      <MvpTimeWindowToggle window={trendWindow} setWindow={setTrendWindow} label="Trend window" testId="trend-window-toggle" t={t} />
+                      <MvpMetricToggle metric={pickedFamily} setMetric={setFamily} t={t} />
+                      <MvpSubSlot testId="perf-sub-toggle-slot">{pickedFamily === "nipun" && <MvpNipunToggle view={pickedNipun} setView={setNipunView} testId="perf-nipun-view-toggle" t={t} />}</MvpSubSlot>
+                      <MvpTimeWindowToggle window={pickedWindow} setWindow={setTimeWindow} label="Trend window" testId="trend-window-toggle" t={t} />
                     </div>
                     <div className={CARD + " space-y-6"}>
                       <div>
                         <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
                           <div className="text-base font-semibold text-zinc-800">
                             {t("Trend")}
-                            <HoverLabel child={hoverId ? geoChildren.find((c) => c.id === hoverId) ?? null : null} time={timeMode} t={t} />
+                            <HoverLabel child={hoverId ? geoChildren.find((c) => c.id === hoverId) ?? null : null} time={timeMode} verdict={isVerdict} t={t} />
                           </div>
                           <div className="flex flex-wrap items-center gap-2">
                             <a
@@ -678,8 +721,8 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                           </div>
                         </div>
                         <RepTrend
-                          series={lastDays(scores.series, WINDOW_DAYS[trendWindow])}
-                          label={isUsageMetric ? t("Total minutes") : t(METRIC_BY[metric].short)}
+                          series={lastDays(scores.series, WINDOW_DAYS[pickedWindow])}
+                          label={isUsageMetric ? t("Total minutes") : isVerdict ? t("Schools passing NIPUN") : t(METRIC_BY[metric].short)}
                           metric={metric}
                           passMark={scores.pass_mark}
                           students={
@@ -687,13 +730,13 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                               ? (scores.students_series ?? []).map((ss) => ({
                                   id: ss.student_id,
                                   label: ((s) => withPhone(s?.name?.split(/\s+/)[0] ?? UNNAMED, s?.phone))(students.find((s) => s.student_id === ss.student_id)),
-                                  points: lastDays(ss.points, WINDOW_DAYS[trendWindow], newestDate),
+                                  points: lastDays(ss.points, WINDOW_DAYS[pickedWindow], newestDate),
                                 }))
                               : // one faint line per child (area, or a teacher's class) — hover a marker / card to light it up
                                 (scores.children_series ?? []).map((cs) => ({
                                   id: cs.id,
                                   label: geoChildren.find((c) => c.id === cs.id)?.name ?? "",
-                                  points: lastDays(cs.points, WINDOW_DAYS[trendWindow], newestDate),
+                                  points: lastDays(cs.points, WINDOW_DAYS[pickedWindow], newestDate),
                                 }))
                           }
                           hoverId={hoverId}
@@ -705,7 +748,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                       </div>
                       {/* most improved (change vs the range / the Time window before) and top performing, side by side */}
                       {/* drilled in: which level to rank (the children by default, or any level below) */}
-                      {rankOptions.length > 1 && entity && (
+                      {rankOptions.length > 1 && entity && !isVerdict && (
                         <div className="flex justify-center border-t border-zinc-100 pt-5">
                           <div className="inline-flex flex-wrap justify-center gap-1 rounded-full bg-zinc-100 p-1 text-xs font-semibold ring-1 ring-zinc-200" role="group" aria-label="Ranking level" data-testid="rank-level-toggle">
                             {rankOptions.map((l) => (
@@ -722,7 +765,8 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                           </div>
                         </div>
                       )}
-                      {/* most improved (left) and top performing (right): both by the selected metric / Time window */}
+                      {/* most improved (left) and top performing (right): both by the selected metric / Time window — not under the verdict (2026-10) */}
+                      {!isVerdict && (
                       <div className={"grid grid-cols-1 gap-6 md:grid-cols-2" + (rankOptions.length > 1 ? "" : " border-t border-zinc-100 pt-5")}>
                         <div data-testid="most-improved">
                           <div className="mb-3 text-base font-semibold text-zinc-800">{t("Most improved")}</div>
@@ -735,12 +779,13 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                           <RankBars rows={shownTop} kind="top" format={fmtRank} hoverId={hoverId} setHoverId={setHoverId} selId={selId} onSelect={select} onPick={pickRow} />
                         </div>
                       </div>
+                      )}
                     </div>
                   </div>
                 </section>
 
-                {/* Spotlight — two testimonials inside a card; hidden in the class view */}
-                {!inClass && (
+                {/* Spotlight — two testimonials inside a card; hidden in the class view and under the verdict */}
+                {!inClass && !isVerdict && (
                   <section id="rep-spotlight" className="scroll-mt-16 py-10">
                     <div className="mx-auto max-w-6xl px-6">
                       <div className={"mb-6 " + H} style={{ color: ACCENT }}>
@@ -788,7 +833,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
 
 // ------------------------------------------------------------------ pieces
 
-function HoverLabel({ child, time = false, t }: { child: Child | null; time?: boolean; t: T }) {
+function HoverLabel({ child, time = false, verdict = false, t }: { child: Child | null; time?: boolean; verdict?: boolean; t: T }) {
   if (!child) return null;
   return (
     <span className="ml-2 text-[11px] font-normal text-zinc-500">
@@ -796,7 +841,9 @@ function HoverLabel({ child, time = false, t }: { child: Child | null; time?: bo
       {child.using_lifteracy
         ? time
           ? ` — ${fmtDuration(child.time_sum, t)}`
-          : ` — ${fmtPct(child.pass_rate)} (${fmtDelta(child.delta)})`
+          : verdict && child.type === "school"
+            ? ` — ${verdictLabel(child.verdict?.school_passed, t)}`
+            : ` — ${fmtPct(child.pass_rate)} (${fmtDelta(child.delta)})`
         : ` — ${t("not using Lifteracy")}`}
     </span>
   );
