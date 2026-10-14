@@ -3,7 +3,10 @@
 import { useState } from "react";
 
 // Full student-interaction CSV export (dev-only; rendered only for the dev
-// role, and the proxy's admin allowlist does not include the path). A plain
+// role, and the proxy's admin allowlist does not include the path).
+// Anonymised by pp-sketch: students and teachers appear as users.id only,
+// transcripts are censored (names, spoken phone numbers) — never a name or
+// phone column. A plain
 // anchor — NOT fetch + Blob — so the browser streams the response straight
 // to disk with no memory ceiling. Blank dates = all time; the file ends with
 // a "# export complete, N rows" marker, so a cut-off download is detectable
@@ -46,7 +49,8 @@ export function DownloadInteractions() {
         Download all
       </a>
       <span className="text-[11px] text-zinc-400">
-        blank dates = all time · CSV, one row per interaction
+        blank dates = all time · CSV, one row per interaction · ids only, no
+        names/phones
       </span>
     </div>
   );
