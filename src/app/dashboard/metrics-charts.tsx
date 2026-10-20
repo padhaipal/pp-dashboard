@@ -82,7 +82,7 @@ function buildSeries(daily: SummaryDay[]): MetricSeries[] {
 }
 
 // Recessive y-axis ticks: ~4 "nice" values spanning [min, max], 0 included.
-function niceTicks(min: number, max: number): number[] {
+export function niceTicks(min: number, max: number): number[] {
   const span = max - min || 1;
   const rawStep = span / 4;
   const mag = Math.pow(10, Math.floor(Math.log10(rawStep)));

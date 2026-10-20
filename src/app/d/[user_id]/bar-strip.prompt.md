@@ -6,7 +6,7 @@ a 150 px white strip (`rounded-b-2xl`, the map card above loses its bottom
 radius) with one flex bar per `BarItem = { id, name, sub, value, display,
 color }`, sorted by value desc; height = value / `max` (2 % minimum), colour =
 the item's tile/marker colour, grey `#e5e7eb` when `value` is null (not using
-Lifteracy / unscored). Header line: "{count} · {hint}" left, "hover a bar for
+LIFTeracy / unscored). Header line: "{count} · {hint}" left, "hover a bar for
 details" right. Hover: sets the page's `hoverId` (so map marker, trend line and
 bar light up together), dims the others to 0.45, and — only when the hover
 started on a bar (`localHover`) — shows the card above it: name, `sub`, the

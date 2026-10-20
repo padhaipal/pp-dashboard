@@ -27,7 +27,7 @@ export default function DashboardError({ error, reset }: { error: Error & { dige
             Reload
           </button>
         </div>
-        <div className="mt-3 text-[11px] text-zinc-400">Please send a screenshot of this box to Lifteracy.</div>
+        <div className="mt-3 text-[11px] text-zinc-400">Please send a screenshot of this box to LIFTeracy.</div>
       </div>
     </div>
   );

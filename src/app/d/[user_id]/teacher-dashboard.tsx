@@ -81,7 +81,7 @@ import {
   type RankRow,
   type RankingsResponse,
 } from "./dashboard-types";
-import { withViewer } from "./viewer-url";
+import { PUBLIC_VIEWER, withViewer } from "./viewer-url";
 import { ViewerProvider } from "./viewer-context";
 import { BarStrip, type BarItem } from "./bar-strip";
 import { DrillHint, GeoMap } from "./geo-map";
@@ -93,7 +93,29 @@ import { ShareMessageCard } from "./share-message-card";
 export type TeacherDashboardProps = {
   profile: PublicProfile;
   incompleteStates: string[];
+  // "public": the donor page's embedded map for the general public —
+  // `profile` is a stand-in (publicProfile()), every request names the
+  // viewer "public" so pp-sketch masks every person, and the parts that
+  // belong to an account (header, "You" tags, drill hint, share message /
+  // bar, spotlight quotes, CSV, profile editor, footer) are not rendered.
+  variant?: "public";
 };
+
+// The stand-in profile the public variant opens on: the country, nobody's
+// account (id = PUBLIC_VIEWER, so every fetch carries `?viewer=public`).
+export function publicProfile(country: GeoRef): PublicProfile {
+  return {
+    id: PUBLIC_VIEWER,
+    name: null,
+    role_title: null,
+    avatar_seed: null,
+    spotlight_message: null,
+    geo_entity: country,
+    ancestors: [],
+    share_link: "",
+    explainer_url: null,
+  };
+}
 
 // `entityId` / `metric` / `range` / `timeWindow` = what this answer was fetched
 // for: while the next selection loads, the page keeps showing it as it was.
@@ -146,7 +168,8 @@ const inputCls = "w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm foc
 const nextChildType = (t: GeoRef["type"]): ChildType =>
   t === "country" ? "state" : t === "state" ? "district" : t === "district" ? "block" : t === "block" ? "school" : t === "school" ? "teacher" : "student";
 
-export function TeacherDashboard({ profile: initialProfile, incompleteStates }: TeacherDashboardProps) {
+export function TeacherDashboard({ profile: initialProfile, incompleteStates, variant }: TeacherDashboardProps) {
+  const isPublic = variant === "public";
   const [profile, setProfile] = useState<PublicProfile>(initialProfile);
   // What the toggles are on. The page body renders `metric` / `range` /
   // `timeWindow` below — the same, except while a new selection is loading.
@@ -350,7 +373,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
               name: c.name,
               sub: c.official?.name ? `${c.official.role_title ?? t(CHILD_OFFICER[c.type as keyof typeof CHILD_OFFICER] ?? "")} · ${c.official.name}` : "",
               value: c.using_lifteracy ? (c.time_sum ?? null) : null,
-              display: c.using_lifteracy ? fmtDuration(c.time_sum, t) : t("Not using Lifteracy"),
+              display: c.using_lifteracy ? fmtDuration(c.time_sum, t) : t("Not using LIFTeracy"),
               color: windowFill(c, timeWindow),
               extra: [
                 [t("Students"), String(c.students ?? c.n)],
@@ -377,7 +400,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
             value: c.using_lifteracy ? c.pass_rate : null,
             // verdict: a school reads Pass / Fail / Not enough data; an area its share of decided schools
             display: !c.using_lifteracy
-              ? t("Not using Lifteracy")
+              ? t("Not using LIFTeracy")
               : isVerdict
                 ? c.type === "school"
                   ? verdictLabel(c.verdict?.school_passed, t)
@@ -498,14 +521,14 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
   };
   // The viewer's own entity, highlighted among its peers at the home level
   // only (a teacher's "entity" among the school's teachers is their user id).
-  const ownId = stack.length === 1 && profile.geo_entity ? (profile.geo_entity.type === "school" ? profile.id : profile.geo_entity.id) : null;
+  const ownId = !isPublic && stack.length === 1 && profile.geo_entity ? (profile.geo_entity.type === "school" ? profile.id : profile.geo_entity.id) : null;
   // The viewer's own unit: a teacher on their class (the level's id is their
   // user id), an official on their own geo entity — a BEO's block, a BSA's
   // district, a DGSE's state, the national head's country (which is also
   // their home level). Not a peer's unit, not a school under their block —
   // the share message is for the group THEY run.
   const ownUnit: "parents" | "teachers" | "officials" | null =
-    entity && profile.geo_entity
+    !isPublic && entity && profile.geo_entity
       ? profile.geo_entity.type === "school"
         ? entity.id === profile.id
           ? "parents"
@@ -523,11 +546,12 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
 
   return (
     <ViewerProvider id={profile.id}>
-      <div className="min-h-screen scroll-smooth bg-zinc-50 text-zinc-900">
-        {/* header — logo + section shortcuts + language */}
+      <div className={(isPublic ? "" : "min-h-screen ") + "scroll-smooth bg-zinc-50 text-zinc-900"}>
+        {/* header — logo + section shortcuts + language (not on the donor page, which has its own) */}
+        {!isPublic && (
         <header className="sticky top-0 z-40 border-b border-zinc-200/70 bg-zinc-50/90 backdrop-blur">
           <div className="relative mx-auto flex max-w-6xl items-center justify-between gap-2 px-4 py-2.5 sm:px-6">
-            <Image src="/lifteracy-logo-only.svg" alt="Lifteracy" width={160} height={64} className="h-10 w-auto shrink-0 sm:h-14 md:h-16" priority />
+            <Image src="/lifteracy-logo-only.svg" alt="LIFTeracy" width={160} height={64} className="h-10 w-auto shrink-0 sm:h-14 md:h-16" priority />
             {/* nav centred in the bar, independent of logo width */}
             <nav className="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 items-center gap-6 text-sm font-semibold text-zinc-600 lg:flex">
               <a href="#rep-top" className="transition-colors hover:text-blue-600">
@@ -550,6 +574,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
             </div>
           </div>
         </header>
+        )}
         <div id="rep-top" />
 
         {!entity ? (
@@ -705,7 +730,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
             </div>
 
             {/* teachers only: the referral link parents use to enrol under this teacher, right below the map card */}
-            {profile.geo_entity?.type === "school" && <MvpShareBar shareLink={profile.share_link} t={t} />}
+            {!isPublic && profile.geo_entity?.type === "school" && <MvpShareBar shareLink={profile.share_link} t={t} />}
 
             {scores && !emptyRoot && childType && (
               <>
@@ -729,6 +754,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                             <HoverLabel child={hoverId ? geoChildren.find((c) => c.id === hoverId) ?? null : null} time={timeMode} verdict={isVerdict} t={t} />
                           </div>
                           <div className="flex flex-wrap items-center gap-2">
+                            {!isPublic && (
                             <a
                               href={withViewer(csvUrl(entity.id, pickedMetric, pickedRange, pickedWin), profile.id)}
                               target="_blank"
@@ -738,6 +764,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                             >
                               {t("Download CSV")}
                             </a>
+                            )}
                           </div>
                         </div>
                         <RepTrend
@@ -805,7 +832,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
                 </section>
 
                 {/* Spotlight — two testimonials inside a card; hidden in the class view and under the verdict */}
-                {!inClass && !isVerdict && (
+                {!isPublic && !inClass && !isVerdict && (
                   <section id="rep-spotlight" className="scroll-mt-16 py-10">
                     <div className="mx-auto max-w-6xl px-6">
                       <div className={"mb-6 " + H} style={{ color: ACCENT }}>
@@ -825,24 +852,28 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates }: 
           </>
         )}
 
-        {/* Personal details / profile settings */}
-        <section id="rep-profile" className={"scroll-mt-16 py-10" + (inClass ? "" : " bg-blue-50")}>
-          <div className="mx-auto max-w-6xl px-6">
-            <div className={"mb-6 " + H} style={{ color: ACCENT }}>
-              {t("Your Profile")}
-            </div>
-            <div className={CARD}>
-              <ProfileEditor profile={profile} onSaved={setProfile} t={t} />
-            </div>
-          </div>
-        </section>
+        {/* Personal details / profile settings + footer — an account's page only */}
+        {!isPublic && (
+          <>
+            <section id="rep-profile" className={"scroll-mt-16 py-10" + (inClass ? "" : " bg-blue-50")}>
+              <div className="mx-auto max-w-6xl px-6">
+                <div className={"mb-6 " + H} style={{ color: ACCENT }}>
+                  {t("Your Profile")}
+                </div>
+                <div className={CARD}>
+                  <ProfileEditor profile={profile} onSaved={setProfile} t={t} />
+                </div>
+              </div>
+            </section>
 
-        {/* shared footer */}
-        <section className="pb-10">
-          <div className="mx-auto max-w-6xl px-6">
-            <SiteFooter t={t} />
-          </div>
-        </section>
+            {/* shared footer */}
+            <section className="pb-10">
+              <div className="mx-auto max-w-6xl px-6">
+                <SiteFooter t={t} />
+              </div>
+            </section>
+          </>
+        )}
 
         {modal && <MvpTeacherModal subject={modal} metric={metric} onClose={closeModal} onRename={renameStudent} t={t} />}
         {reportOpen && reportData && <ReportCardModal data={reportData} onClose={closeReport} />}
@@ -864,7 +895,7 @@ function HoverLabel({ child, time = false, verdict = false, t }: { child: Child 
           : verdict && child.type === "school"
             ? ` — ${verdictLabel(child.verdict?.school_passed, t)}`
             : ` — ${fmtPct(child.pass_rate)} (${fmtDelta(child.delta)})`
-        : ` — ${t("not using Lifteracy")}`}
+        : ` — ${t("not using LIFTeracy")}`}
     </span>
   );
 }
@@ -1180,7 +1211,7 @@ function ProfileEditor({ profile, onSaved, t }: { profile: PublicProfile; onSave
 function SiteFooter({ t }: { t: T }) {
   const SITE = "https://www.lifteracy.ai";
   const cols = [
-    { h: "Lifteracy", links: [["About", SITE + "/#founders"], ["How it works", SITE + "/#video"], ["Contact", SITE + "/#traction-2"]] },
+    { h: "LIFTeracy", links: [["About", SITE + "/#founders"], ["How it works", SITE + "/#video"], ["Contact", SITE + "/#traction-2"]] },
     {
       h: "Safety",
       links: [
@@ -1194,7 +1225,7 @@ function SiteFooter({ t }: { t: T }) {
     <div className="mt-2 rounded-2xl border border-zinc-200 bg-white p-6">
       <div className="grid grid-cols-2 gap-6 sm:grid-cols-3">
         <div className="col-span-2 sm:col-span-1">
-          <Image src="/lifteracy-logo-only.svg" alt="Lifteracy" width={107} height={40} className="h-10 w-auto" />
+          <Image src="/lifteracy-logo-only.svg" alt="LIFTeracy" width={107} height={40} className="h-10 w-auto" />
           <div className="mt-2 text-[11px] text-zinc-500">{t("Teaching every child to read, over WhatsApp.")}</div>
           <a href={SITE} target="_blank" rel="noreferrer" className="mt-2 inline-block text-[11px] font-semibold text-blue-600 hover:underline">
             www.lifteracy.ai

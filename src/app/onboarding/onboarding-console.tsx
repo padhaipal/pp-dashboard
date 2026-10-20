@@ -621,7 +621,7 @@ function blockedMessage(row: StaffUser): string {
   if (isProtectedRole(row.role)) {
     return `this number belongs to a ${row.role} account (${who}), which cannot be managed here`;
   }
-  return `this number belongs to a deactivated account (${who}). Please contact the next level up the Lifteracy hierarchy about reactivating it`;
+  return `this number belongs to a deactivated account (${who}). Please contact the next level up the LIFTeracy hierarchy about reactivating it`;
 }
 
 function ExistingNote({ row, mode }: { row: StaffUser; mode: Mode }) {
@@ -631,7 +631,7 @@ function ExistingNote({ row, mode }: { row: StaffUser; mode: Mode }) {
       <p className="text-xs text-red-600 mt-1">
         {isProtectedRole(row.role)
           ? `This number belongs to a ${row.role} account (${who}) and cannot be managed here.`
-          : `This number belongs to a deactivated account (${who}) and cannot be updated here. Please contact the next level up the Lifteracy hierarchy about reactivating it.`}
+          : `This number belongs to a deactivated account (${who}) and cannot be updated here. Please contact the next level up the LIFTeracy hierarchy about reactivating it.`}
       </p>
     );
   }

@@ -62,7 +62,7 @@ describe("bin → colour", () => {
     expect(binOf(null)).toBe("none");
   });
 
-  it("area fill is grey when not using Lifteracy", () => {
+  it("area fill is grey when not using LIFTeracy", () => {
     expect(childFill({ using_lifteracy: false, pass_rate: 90 })).toBe(UNCOVERED);
     expect(childFill({ using_lifteracy: true, pass_rate: null })).toBe(UNCOVERED);
     expect(childFill({ using_lifteracy: true, pass_rate: 100 })).toBe("rgb(34,197,94)");

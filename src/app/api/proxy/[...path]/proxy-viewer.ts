@@ -2,7 +2,9 @@
 // dashboard (/d/[user_id]) has no session: the page appends `?viewer=<its
 // user id>` to every proxy call (viewer-url.ts) and the proxy turns it into
 // the x-pp-viewer-id header. A staff session (dev/admin) becomes
-// x-pp-viewer-staff instead. The headers are set HERE and never copied from
+// x-pp-viewer-staff instead. The donor page names the viewer "public"
+// (viewer-url.ts PUBLIC_VIEWER): not a uuid, so no header at all — pp-sketch
+// answers as to the general public, even for a logged-in staff browser. The headers are set HERE and never copied from
 // the browser, so a client cannot claim to be someone else; pp-sketch in
 // turn only believes them from the dashboard's badge.
 

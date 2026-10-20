@@ -26,6 +26,8 @@ export const PUBLIC_ALLOWED: { pattern: RegExp; methods: string[] }[] = [
   // PII) and the learnt bins.
   { pattern: /^users\/[^/]+\/scores$/, methods: ["GET"] },
   { pattern: /^scores\/letter-bins$/, methods: ["GET"] },
+  // The donor page's traction chart: daily aggregates, no personal data.
+  { pattern: /^users\/dashboard\/traction$/, methods: ["GET"] },
 ];
 
 // The media feed; its `onboarding` param is staff-only (below).

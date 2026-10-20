@@ -119,7 +119,7 @@ async function loadBoundary(url: string): Promise<Feature | null> {
   return q;
 }
 
-// Solid area fill: grey when the area has no Lifteracy user, otherwise the
+// Solid area fill: grey when the area has no LIFTeracy user, otherwise the
 // score colour. Interactions live on the outline path drawn on top.
 export function areaFill(d: string, child: Child, incomplete: boolean, fill: (c: Child) => string = childFill) {
   if (!d) return null;
@@ -359,7 +359,7 @@ export function GeoMap(props: GeoMapProps) {
                   ? verdictLabel(c.verdict?.school_passed, t)
                   : `${c.verdict?.schools_pass ?? 0}/${verdictDecided(c.verdict)} ${t("schools pass NIPUN")}`
                 : `${fmtPct(c.pass_rate)} · n=${c.n}`
-            : t("Not using Lifteracy")) + (isPrivateSchool(c) ? ` · ${t("private school")}` : ""),
+            : t("Not using LIFTeracy")) + (isPrivateSchool(c) ? ` · ${t("private school")}` : ""),
         ];
 
   const onPointerDown = (e: React.PointerEvent) => {
@@ -536,7 +536,7 @@ export function GeoMap(props: GeoMapProps) {
               );
             })}
 
-          {/* schools as dots — SVG paints in order, so grey (no Lifteracy
+          {/* schools as dots — SVG paints in order, so grey (no LIFTeracy
               user / no score) dots go first and coloured ones sit on top */}
           {childType === "school" &&
             [...projected]
@@ -626,7 +626,7 @@ export function GeoMap(props: GeoMapProps) {
               [timeMarkLabels(timeWindow, t)[0], "#16a34a"],
               [timeMarkLabels(timeWindow, t)[1], "#f59e0b"],
               [timeMarkLabels(timeWindow, t)[2], "#dc2626"],
-              [t("Not using Lifteracy"), UNCOVERED],
+              [t("Not using LIFTeracy"), UNCOVERED],
             ]
           : verdict && childType === "school"
             ? [
@@ -645,7 +645,7 @@ export function GeoMap(props: GeoMapProps) {
                   ["≥80", "#16a34a"],
                   ["50–79", "#f59e0b"],
                   ["<50", "#dc2626"],
-                  [t("Not using Lifteracy"), UNCOVERED],
+                  [t("Not using LIFTeracy"), UNCOVERED],
                 ]
         ).map(([l, c]) => (
           <div key={l} className="flex items-center gap-1.5">

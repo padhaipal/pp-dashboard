@@ -62,7 +62,7 @@ const fmtDay = (iso: string) => {
 // ------------------------------------------------------------------ KPIs
 
 // mvp2's headline cards: the average of the toggled metric (nipColor) and, above
-// school level, "{usingN} of {totalN} {nounP} using Lifteracy".
+// school level, "{usingN} of {totalN} {nounP} using LIFTeracy".
 export function RepKpis({
   root,
   metricLabel,
@@ -124,8 +124,8 @@ export function RepKpis({
             nipColor(root.pass_rate),
             "pass",
           )}
-      {/* how many children are on Lifteracy — a plain count, in black */}
-      {showUsing && card(`${usingN}`, `${t(nounP)} ${t("using Lifteracy")}`, "#18181b", "using")}
+      {/* how many children are on LIFTeracy — a plain count, in black */}
+      {showUsing && card(`${usingN}`, `${t(nounP)} ${t("using LIFTeracy")}`, "#18181b", "using")}
     </div>
   );
 }
@@ -325,7 +325,7 @@ export function RepTrend({
 
 // ------------------------------------------------------------------ latest bars
 
-// Best first; children not using Lifteracy last. Time mode ranks by total minutes.
+// Best first; children not using LIFTeracy last. Time mode ranks by total minutes.
 export function sortedLatest(children: Child[], time = false): Child[] {
   const v = (c: Child) => (c.using_lifteracy ? ((time ? c.time_sum : c.pass_rate) ?? -1) : -2);
   return children.slice().sort((a, b) => v(b) - v(a));
@@ -401,7 +401,7 @@ export function RepLatest({
             onDoubleClick={() => onPick(it)}
             style={{ cursor: "pointer" }}
           >
-            <title>{`${it.name} — ${has ? (time ? fmtDuration(it.time_sum) : fmtPct(it.pass_rate)) : "not using Lifteracy"}`}</title>
+            <title>{`${it.name} — ${has ? (time ? fmtDuration(it.time_sum) : fmtPct(it.pass_rate)) : "not using LIFTeracy"}`}</title>
           </rect>
         );
       })}
@@ -537,7 +537,7 @@ export function RepQuote({
       <AvatarImg seed={official?.avatar_seed ?? child.id} size={56} className="h-14 w-14" ring="#16a34a" ringWidth={2} />
       <div className="min-w-0 text-[12px] leading-snug text-zinc-700">
         <div className="mb-1 text-[11px] font-bold uppercase tracking-wide text-emerald-700">{head}</div>
-        <div className="text-lg font-extrabold leading-tight text-zinc-900">{official?.name ?? t("No Lifteracy user yet")}</div>
+        <div className="text-lg font-extrabold leading-tight text-zinc-900">{official?.name ?? t("No LIFTeracy user yet")}</div>
         <div className="mb-2 text-[11px] font-semibold text-zinc-500">
           {official?.role_title ?? t(officer)} · {child.name}
         </div>
@@ -629,7 +629,7 @@ export function RepMeta({
         <div className="truncate text-xl font-bold leading-tight text-zinc-900" title={child.name}>
           {child.name}
         </div>
-        <div className="mt-0.5 text-sm font-medium text-zinc-700">{child.official?.name ?? t("No Lifteracy user yet")}</div>
+        <div className="mt-0.5 text-sm font-medium text-zinc-700">{child.official?.name ?? t("No LIFTeracy user yet")}</div>
         <div className="text-[12px] text-zinc-500">{child.official?.role_title ?? t(officer)}</div>
       </div>
     </>,
@@ -741,7 +741,7 @@ export async function exportReportPdf(data: ReportData, root: HTMLElement | null
         ? [fmtPctInt(data.root.pass_rate), `${data.root.verdict?.schools_pass ?? 0} of ${verdictDecided(data.root.verdict)} schools pass NIPUN`, rgb(nipColor(data.root.pass_rate))]
         : [fmtPctInt(data.root.pass_rate), `of ${ageBandLabel(ageBandOf(data.metric, data.ageBand) ?? [0, 1])} year old students pass the ${metricLabel}`, rgb(nipColor(data.root.pass_rate))],
   ];
-  if (data.childType !== "student") kpis.push([`${usingN}`, `${nounP} using Lifteracy`, [24, 24, 27]]);
+  if (data.childType !== "student") kpis.push([`${usingN}`, `${nounP} using LIFTeracy`, [24, 24, 27]]);
   const kw = (CW - 10 * (kpis.length - 1)) / kpis.length,
     kh = 58;
   kpis.forEach((k, i) => {
@@ -835,7 +835,7 @@ export async function exportReportPdf(data: ReportData, root: HTMLElement | null
   for (const [label, e] of quotes) {
     if (y > PH - M - FOOT - 30) break;
     doc.setFont("helvetica", "bold").setFontSize(8).setTextColor(21, 128, 61);
-    const who = e ? `${label} — ${e.official?.name ?? "no Lifteracy user yet"} · ${e.child.name}` : `${label} — none yet`;
+    const who = e ? `${label} — ${e.official?.name ?? "no LIFTeracy user yet"} · ${e.child.name}` : `${label} — none yet`;
     doc.text(who, M, y + 8);
     y += 11;
     doc.setFont("helvetica", "italic").setFontSize(8).setTextColor(60);
@@ -848,7 +848,7 @@ export async function exportReportPdf(data: ReportData, root: HTMLElement | null
   // footer / generation metadata
   const gen = new Date();
   doc.setFont("helvetica", "normal").setFontSize(7.5).setTextColor(150);
-  doc.text(`Generated ${gen.toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST · ${data.shareLink} · ${metricLabel} · ${data.range === "all" ? "all-time" : `${data.range}-day`} window · Lifteracy`, M, PH - M + 6);
+  doc.text(`Generated ${gen.toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })} IST · ${data.shareLink} · ${metricLabel} · ${data.range === "all" ? "all-time" : `${data.range}-day`} window · LIFTeracy`, M, PH - M + 6);
   doc.save(`lifteracy-${data.title.replace(/[^A-Za-z0-9]+/g, "-").toLowerCase()}-report.pdf`);
 }
 
@@ -910,7 +910,7 @@ export function ReportCardModal({ data, onClose }: { data: ReportData; onClose: 
           <div className="flex items-center justify-between border-b border-zinc-200 pb-3">
             <div>
               <div className="text-lg font-black" style={{ color: ACCENT }}>
-                Lifteracy
+                LIFTeracy
               </div>
               <div className="text-[10px] text-zinc-400">Dashboard report card</div>
             </div>
@@ -961,7 +961,7 @@ export function ReportCardModal({ data, onClose }: { data: ReportData; onClose: 
             {!time && <RepQuote kind="improved" entry={data.spotlight?.most_improved ?? null} nounS={nounS} officer={officer} />}
           </div>
           <div className="text-[9px] text-zinc-400">
-            Generated from live Lifteracy data · {data.shareLink}
+            Generated from live LIFTeracy data · {data.shareLink}
           </div>
         </div>
       </div>

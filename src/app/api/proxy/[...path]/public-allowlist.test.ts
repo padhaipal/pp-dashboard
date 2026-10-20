@@ -34,6 +34,13 @@ describe("proxy public allowlist", () => {
     expect(isPublicAllowed("scores", "GET")).toBe(false);
   });
 
+  it("accepts the donor page's traction series (GET only) but not the staff summary", () => {
+    expect(isPublicAllowed("users/dashboard/traction", "GET")).toBe(true);
+    expect(isPublicAllowed("users/dashboard/traction", "POST")).toBe(false);
+    expect(isPublicAllowed("users/dashboard/summary", "GET")).toBe(false);
+    expect(isPublicAllowed("users/dashboard", "GET")).toBe(false);
+  });
+
   it("rejects staff detail and wrong methods", () => {
     expect(isPublicAllowed("users/abc", "GET")).toBe(false);
     expect(isPublicAllowed("users/abc", "PATCH")).toBe(false);

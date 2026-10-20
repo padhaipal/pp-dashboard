@@ -12,7 +12,7 @@ export type BarItem = {
   id: string;
   name: string;
   sub: string;
-  value: number | null; // null = not using Lifteracy / unscored (grey stub)
+  value: number | null; // null = not using LIFTeracy / unscored (grey stub)
   display: string; // formatted value for the hover card
   color: string;
   // more lines for the hover card: [label, value]

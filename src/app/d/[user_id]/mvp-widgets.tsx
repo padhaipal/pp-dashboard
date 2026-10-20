@@ -63,7 +63,7 @@ import {
   type VerdictStats,
 } from "./dashboard-types";
 import { useViewerId } from "./viewer-context";
-import { withViewer } from "./viewer-url";
+import { isPublicViewer, withViewer } from "./viewer-url";
 import { LANGS, type Lang, type T } from "./i18n";
 import { useIsMobile } from "./use-is-mobile";
 import { IconCopy } from "./icons";
@@ -350,7 +350,7 @@ function useCopy(text: string): { copied: boolean; copy: () => void } {
 
 // Teachers only, rendered just below the map card: the /r/<phone> referral
 // link parents message to enrol under this teacher, in large mono text with
-// a Copy button; then the "See Lifteracy in Action" clip from
+// a Copy button; then the "See LIFTeracy in Action" clip from
 // www.lifteracy.ai (inline <video>) with a deliberately quiet
 // "Share this video · Copy link" row under it.
 export function MvpShareBar({ shareLink, t = same }: { shareLink: string; t?: T }) {
@@ -716,10 +716,52 @@ const clip = (s: string, max: number) => (s.length > max ? s.slice(0, max) + "�
 // student's teacher and the officials above them; 403 otherwise) — a refused
 // or broken clip turns the button into a disabled "🔒 audio".
 function AudioButton({ mediaId, t }: { mediaId: string; t: T }) {
+  const viewerId = useViewerId();
+  // The general public (donor page) never requests a child's recording.
+  if (isPublicViewer(viewerId)) return <PublicAudioButton t={t} />;
+  return <PrivateAudioButton mediaId={mediaId} viewerId={viewerId} t={t} />;
+}
+
+// A placeholder clip shown to the general public instead of the real note.
+export const EXAMPLE_VOICE_NOTE_URL = "/example-voice-note.wav";
+
+// Donor page: "▶ audio" opens a pop-up that explains recordings are private
+// and plays an example clip (a placeholder for now). No request about the
+// real recording is ever made.
+function PublicAudioButton({ t }: { t: T }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="mx-0.5 inline-flex items-center rounded-md border border-zinc-200 px-2 py-0.5 align-middle text-xs text-zinc-600 hover:bg-zinc-50"
+        data-testid="audio-button"
+      >
+        ▶ {t("audio")}
+      </button>
+      {open && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/40 p-4" onClick={() => setOpen(false)} data-testid="example-audio-modal">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label={t("Example voice message")}>
+            <div className="flex items-start justify-between gap-3">
+              <div className="text-base font-bold text-zinc-900">{t("Example voice message")}</div>
+              <button type="button" onClick={() => setOpen(false)} aria-label={t("Close")} className="-mr-1 rounded-md px-2 py-0.5 text-lg leading-none text-zinc-400 hover:bg-zinc-100">
+                ×
+              </button>
+            </div>
+            <p className="mt-2 text-sm leading-relaxed text-zinc-600">{t("Children's recordings are private. Only their teacher and the officials above them can listen. This is an example of what a voice message sounds like.")}</p>
+            <audio src={EXAMPLE_VOICE_NOTE_URL} controls autoPlay className="mt-4 w-full" data-testid="example-audio" />
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
+function PrivateAudioButton({ mediaId, viewerId, t }: { mediaId: string; viewerId: string | null; t: T }) {
   const ref = useRef<HTMLAudioElement | null>(null);
   const [playing, setPlaying] = useState(false);
   const [unavailable, setUnavailable] = useState(false);
-  const viewerId = useViewerId();
   useEffect(
     () => () => {
       ref.current?.pause();
