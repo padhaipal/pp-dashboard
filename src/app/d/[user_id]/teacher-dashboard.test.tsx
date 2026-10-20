@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { boxesOverlap, labelBox } from "./geo-map";
-import { TeacherDashboard } from "./teacher-dashboard";
+import { TeacherDashboard, publicProfile } from "./teacher-dashboard";
 import { RepTrend } from "./report-card-modal";
 import { MvpMinutesChart } from "./mvp-widgets";
 import { EMPTY_ROOT_TEXT, INCOMPLETE_TOOLTIP } from "./dashboard-types";
@@ -63,7 +63,7 @@ describe("TeacherDashboard", () => {
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("India");
     expect(screen.queryByTestId("profile-header")).toBeNull();
     expect(screen.queryByTestId("share-link")).toBeNull();
-    expect(screen.queryByRole("link", { name: /What is Lifteracy\?/ })).toBeNull();
+    expect(screen.queryByRole("link", { name: /What is LIFTeracy\?/ })).toBeNull();
     // header nav + language toggle + report button
     expect(screen.getByRole("link", { name: "Top" })).toBeDefined();
     expect(screen.getByRole("link", { name: "Your Profile" })).toBeDefined();
@@ -91,9 +91,9 @@ describe("TeacherDashboard", () => {
     expect(kpis.textContent).toContain("72%");
     expect(kpis.textContent).toContain("of 8 year old students pass the NIPUN grade 3 proxy");
     expect(kpis.textContent).not.toContain("average NIPUN");
-    expect(kpis.textContent).toContain("states using Lifteracy");
+    expect(kpis.textContent).toContain("states using LIFTeracy");
     // a plain count ("2", not "2 of 2"), in black
-    const usingBig = screen.getByText("states using Lifteracy").previousElementSibling as HTMLElement;
+    const usingBig = screen.getByText("states using LIFTeracy").previousElementSibling as HTMLElement;
     expect(usingBig.textContent).toBe("2");
     expect(usingBig.style.color).toBe("rgb(24, 24, 27)");
     // one faint line per state on the trend, lit up by the shared hover
@@ -405,8 +405,8 @@ describe("TeacherDashboard", () => {
     expect(document.querySelectorAll('[data-testid="bar-strip"] [data-testid="bar"]')).toHaveLength(0);
     expect(screen.getByTestId("bar-strip")).toBeDefined();
     expect(screen.getByTestId("share-link").textContent).toBe("lifteracy.ai/d/u1");
-    // the website's "See Lifteracy in Action" clip is embedded, with a quiet share row for it
-    expect(screen.queryByRole("link", { name: /What is Lifteracy\?/ })).toBeNull();
+    // the website's "See LIFTeracy in Action" clip is embedded, with a quiet share row for it
+    expect(screen.queryByRole("link", { name: /What is LIFTeracy\?/ })).toBeNull();
     expect(screen.getByTestId("explainer-video").getAttribute("src")).toBe("https://framerusercontent.com/assets/UzlwOpPmZp3DVtJKOUr7hrlM8.mp4");
     expect(screen.getByTestId("video-share-link").getAttribute("href")).toBe("https://www.lifteracy.ai/#video");
     expect(screen.getByRole("button", { name: "Copy link" })).toBeDefined();
@@ -700,6 +700,39 @@ describe("TeacherDashboard", () => {
     fireEvent.click(screen.getByRole("button", { name: "Zoom out" }));
     fireEvent.click(screen.getByRole("button", { name: "Zoom out" }));
     expect(scaleOf()).toBeCloseTo(1 / 1.4, 5);
+  });
+});
+
+describe("TeacherDashboard — public variant (the donor page)", () => {
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+  });
+
+  it("asks as the general public, renders no account parts, and never requests a recording: ▶ audio opens the example clip", async () => {
+    const { fn, calls } = makeFetch({ scoresById: { "g-sch": SCORES_SCHOOL, "t-1": SCORES_CLASS_MASKED }, media: MEDIA_MASKED });
+    vi.stubGlobal("fetch", vi.fn(fn));
+    render(<TeacherDashboard profile={publicProfile(PROFILE_SCHOOL.geo_entity!)} incompleteStates={[]} variant="public" />);
+
+    const cards = await screen.findAllByTestId("teacher-card");
+    // every proxy call is the public's
+    expect(calls.filter((u) => u.includes("/api/proxy/")).every((u) => u.includes("viewer=public"))).toBe(true);
+    // no header nav / language toggle, profile editor, share bar or message, CSV, "You" tag
+    expect(screen.queryByRole("link", { name: "Your Profile" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "EN" })).toBeNull();
+    expect(screen.queryByTestId("share-link")).toBeNull();
+    expect(screen.queryByTestId("csv-link")).toBeNull();
+    expect(screen.queryByTestId("own-card-tag")).toBeNull();
+    expect(calls.some((u) => u.includes("share-message"))).toBe(false);
+
+    fireEvent.dblClick(cards[0]);
+    const tiles = await screen.findAllByTestId("student-tile");
+    fireEvent.click(tiles[0]);
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(await within(dialog).findByTestId("audio-button"));
+    const example = await screen.findByTestId("example-audio-modal");
+    expect(within(example).getByTestId("example-audio").getAttribute("src")).toBe("/example-voice-note.wav");
+    expect(calls.some((u) => u.includes("/audio"))).toBe(false);
   });
 });
 

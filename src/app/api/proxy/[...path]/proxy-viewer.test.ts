@@ -39,6 +39,13 @@ describe("viewerForward", () => {
   });
 });
 
+describe("the donor page's public viewer", () => {
+  it("viewer=public is the general public even for a staff browser: no headers, never staff", () => {
+    expect(viewerForward("?viewer=public&metric=usage", true)).toEqual({ headers: {}, search: "?metric=usage" });
+    expect(actsAsStaff("?viewer=public", true)).toBe(false);
+  });
+});
+
 describe("proxyRequestHeaders", () => {
   it("forwards only content headers — never the cookie, the badge or a client-supplied viewer header — plus the viewer headers the proxy sets", () => {
     const incoming = new Headers({

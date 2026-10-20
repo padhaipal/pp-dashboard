@@ -86,7 +86,7 @@ export type PublicProfile = {
   geo_entity: GeoRef | null;
   ancestors: Ancestor[]; // root first
   share_link: string;
-  // "What is Lifteracy?" clip, resolved server-side from the
+  // "What is LIFTeracy?" clip, resolved server-side from the
   // lifteracy-explainer stid; null when unseeded → the link is omitted.
   explainer_url: string | null;
 };
@@ -342,14 +342,14 @@ export const studentChildrenOf = (s: ScoresResponse): StudentChild[] => (s.child
 
 // ------------------------------------------------------------------ colours
 
-// light grey = an area with no Lifteracy user (using_lifteracy false / bin none).
+// light grey = an area with no LIFTeracy user (using_lifteracy false / bin none).
 export const UNCOVERED = "#a1a1aa";
 // incomplete states (district boundaries missing) render black and are not drillable.
 export const INCOMPLETE_FILL = "#000000";
 export const INCOMPLETE_TOOLTIP = "District boundaries not yet available for this state";
 export const ACCENT = "#1d9edf";
 
-// "See Lifteracy in Action" — the clip embedded on www.lifteracy.ai/#video
+// "See LIFTeracy in Action" — the clip embedded on www.lifteracy.ai/#video
 // (Framer-hosted mp4, CORS *, immutable). Shown in the teacher's share bar;
 // the share link points parents at the website section, not the raw file.
 export const EXPLAINER_VIDEO_URL = "https://framerusercontent.com/assets/UzlwOpPmZp3DVtJKOUr7hrlM8.mp4";
@@ -385,7 +385,7 @@ export function binColor(bin: Bin): string {
   }
 }
 
-// Map/area fill for a child: grey when not using Lifteracy or without a score.
+// Map/area fill for a child: grey when not using LIFTeracy or without a score.
 export function childFill(c: { using_lifteracy: boolean; pass_rate: number | null }): string {
   if (!c.using_lifteracy || c.pass_rate == null) return UNCOVERED;
   return scoreColor(c.pass_rate / 100);
@@ -432,7 +432,7 @@ export function fmtPerDay(minutes: number | null | undefined, t: (s: string) => 
 }
 // Colour for a Time figure, from the average minutes per day: green past the
 // 5-minute mark, amber for some use, red for none, grey when there is nothing
-// to average (not using Lifteracy).
+// to average (not using LIFTeracy).
 export const timeColor = (perDay: number | null | undefined): string => (perDay == null ? UNCOVERED : usageColor(perDay));
 // Colour of a Time figure, from the minutes PER STUDENT in the window, with a
 // mark that fits the window (2026-10): all time 2 h+ green, 30 min – 2 h amber,

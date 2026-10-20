@@ -213,7 +213,7 @@ describe("OnboardingConsole update mode", () => {
     fireEvent.change(screen.getByLabelText("WhatsApp number"), { target: { value: "9876543210" } });
 
     expect(await screen.findByText(/deactivated account \(Asha\)/)).toBeDefined();
-    expect(screen.getByText(/next level up the Lifteracy hierarchy/)).toBeDefined();
+    expect(screen.getByText(/next level up the LIFTeracy hierarchy/)).toBeDefined();
     expect((screen.getByRole("button", { name: "Create user" }) as HTMLButtonElement).disabled).toBe(true);
   });
 });

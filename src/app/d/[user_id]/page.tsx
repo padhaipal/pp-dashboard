@@ -4,7 +4,7 @@ import { readIncompleteStates } from "./incomplete-states";
 import { TeacherDashboard } from "./teacher-dashboard";
 import { ppSketchFetch } from "@/lib/pp-sketch";
 
-// Public, unauthenticated dashboard for a Lifteracy user (teacher / official).
+// Public, unauthenticated dashboard for a LIFTeracy user (teacher / official).
 // No NextAuth: the link itself is the credential, so keep robots out.
 export const metadata: Metadata = { robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
@@ -32,7 +32,7 @@ function Message({ text }: { text: string }) {
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 p-6">
       <div className="max-w-md rounded-2xl border border-zinc-200 bg-white px-6 py-8 text-center shadow-sm">
         <div className="text-lg font-bold text-zinc-900">{text}</div>
-        <div className="mt-2 text-sm text-zinc-500">Lifteracy</div>
+        <div className="mt-2 text-sm text-zinc-500">LIFTeracy</div>
       </div>
     </div>
   );
