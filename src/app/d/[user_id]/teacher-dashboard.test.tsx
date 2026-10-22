@@ -755,6 +755,29 @@ describe("TeacherDashboard — public variant (the donor page)", () => {
     expect(calls.some((u) => u.includes("window=30d"))).toBe(false);
   });
 
+  it("the public Usage time trend leaves out today (India time), still in progress; /d keeps it", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-09-10T06:00:00Z")); // 11:30 IST on 10 Sep, the series' last date
+    const usage = { ...SCORES, metric: "usage" as const, series: SCORES.series.map((p) => ({ ...p, total: 10 })) };
+    const trendDates = async (public_: boolean) => {
+      const { fn } = makeFetch({ scoresById: { "g-in": usage } });
+      vi.stubGlobal("fetch", vi.fn(fn));
+      render(public_ ? <TeacherDashboard profile={publicProfile(PROFILE.geo_entity!)} incompleteStates={[]} variant="public" /> : <TeacherDashboard profile={PROFILE} incompleteStates={[]} />);
+      await waitFor(() => expect(document.querySelector('svg[data-rep-chart="trend"]')).toBeTruthy());
+      const n = (document.querySelector('svg[data-rep-chart="trend"]')!.textContent ?? "").match(/\d{1,2} Sept?/g)?.length ?? 0;
+      cleanup();
+      return n;
+    };
+    try {
+      const pub = await trendDates(true);
+      const staff = await trendDates(false);
+      expect(pub).toBeGreaterThan(0);
+      expect(staff).toBe(pub + 1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("calls the usage metric 'Usage time' for the public (the /d dashboards keep 'Time')", async () => {
     const { fn } = makeFetch({ scoresById: { "g-sch": SCORES_SCHOOL } });
     vi.stubGlobal("fetch", vi.fn(fn));
