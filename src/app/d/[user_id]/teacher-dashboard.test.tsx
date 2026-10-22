@@ -747,6 +747,14 @@ describe("TeacherDashboard — public variant (the donor page)", () => {
     expect(screen.queryByTestId("drill-hint")).toBeNull();
   });
 
+  it("the public opens on all time (the /d dashboards on 30 days)", async () => {
+    const { fn, calls } = makeFetch({ scoresById: { "g-sch": SCORES_SCHOOL } });
+    vi.stubGlobal("fetch", vi.fn(fn));
+    render(<TeacherDashboard profile={publicProfile(PROFILE_SCHOOL.geo_entity!)} incompleteStates={[]} variant="public" />);
+    await waitFor(() => expect(calls.some((u) => u.includes("/scores?") && u.includes("range=all&window=all"))).toBe(true));
+    expect(calls.some((u) => u.includes("window=30d"))).toBe(false);
+  });
+
   it("calls the usage metric 'Usage time' for the public (the /d dashboards keep 'Time')", async () => {
     const { fn } = makeFetch({ scoresById: { "g-sch": SCORES_SCHOOL } });
     vi.stubGlobal("fetch", vi.fn(fn));

@@ -99,9 +99,7 @@ export function DonorPage({ country, incompleteStates }: { country: GeoRef | nul
           <h2 className={"mb-6 " + H} style={HC}>
             Traction
           </h2>
-          <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-6">
-            <TractionChart />
-          </div>
+          <TractionChart />
           <InteractionStream />
         </div>
       </section>

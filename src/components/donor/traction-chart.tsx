@@ -1,6 +1,7 @@
 "use client";
 
-// The donor page's Traction chart: one series at a time from 1 April,
+// The donor page's Traction section body: two headline figures (all-time
+// hours on LIFTeracy, students), then the chart card — one series at a time from 1 April,
 // one point per IST day (no averaging), its units on the y-axis. Above it
 // the /d page's pill toggle picks the series (minutes by default). "Monthly
 // active students" is a bar chart instead (MonthlyBars). Data: GET
@@ -64,7 +65,9 @@ export function TractionChart() {
   const size = mobile ? SIZE.mobile : SIZE.desktop;
 
   return (
-    <div data-testid="traction-chart">
+    <>
+      {data?.totals && <Headline hours={data.totals.hours} students={data.totals.students} />}
+      <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-6" data-testid="traction-chart">
       <div className="mb-4 flex justify-center">
         <MvpMetricToggle metric={metric} setMetric={setMetric} options={TRACTION_METRICS} />
       </div>
@@ -86,6 +89,26 @@ export function TractionChart() {
           {metric === "monthly" ? "Monthly" : "Daily"}, India time · updated {shortDate(data.computed_at.slice(0, 10))}
         </div>
       )}
+      </div>
+    </>
+  );
+}
+
+function Headline({ hours, students }: { hours: number; students: number }) {
+  const figs: [string, number, string][] = [
+    ["traction-hours", hours, "hours spent learning on LIFTeracy"],
+    ["traction-students", students, "students"],
+  ];
+  return (
+    <div className="mb-6 grid grid-cols-2 gap-4" data-testid="traction-headline">
+      {figs.map(([id, v, label]) => (
+        <div key={id} className="rounded-xl border border-zinc-200 bg-white px-4 py-5 text-center shadow-sm">
+          <div className="text-3xl font-extrabold tracking-tight text-blue-700 sm:text-5xl" data-testid={id}>
+            {v.toLocaleString("en-IN")}
+          </div>
+          <div className="mt-1 text-sm font-semibold text-zinc-600 sm:text-base">{label}</div>
+        </div>
+      ))}
     </div>
   );
 }
