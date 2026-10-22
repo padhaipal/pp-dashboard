@@ -44,7 +44,18 @@ export function reveal(shown: StreamRow[], row: StreamRow): StreamRow[] {
 // they happened, instead of in a burst once a minute.
 export const revealGapMs = (queued: number): number => Math.max(1500, Math.floor(POLL_MS / Math.max(1, queued + 1)));
 
-// "22 Oct, 6:42 pm" in India time
-export function formatIst(iso: string): string {
-  return new Date(iso).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
+// "3 min ago", "2 h ago", "4 days ago"
+export function timeAgo(iso: string, now: number): string {
+  const min = Math.max(0, Math.floor((now - Date.parse(iso)) / 60_000));
+  if (min < 1) return "just now";
+  if (min < 60) return `${min} min ago`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `${h} h ago`;
+  const d = Math.floor(h / 24);
+  return d === 1 ? "1 day ago" : `${d} days ago`;
 }
+
+export const QUESTION_TYPE: Record<StreamRow["kind"], string> = {
+  voice: "Reading Question",
+  tap: "Comprehension Multi-choice",
+};

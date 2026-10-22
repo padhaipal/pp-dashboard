@@ -1,6 +1,6 @@
 "use client";
 
-// The donor page's Traction chart: one series at a time from 1 September,
+// The donor page's Traction chart: one series at a time from 1 August,
 // one point per IST day (no averaging), its units on the y-axis. Above it
 // the /d page's pill toggle picks the series. A cohort series (`dots`) is
 // drawn as one dot per day, with a note that a missing dot is a day nobody

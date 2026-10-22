@@ -735,6 +735,18 @@ describe("TeacherDashboard — public variant (the donor page)", () => {
     expect(calls.some((u) => u.includes("/audio"))).toBe(false);
   });
 
+  it("at India, a dismissible callout points at Uttar Pradesh inviting a drill-down", async () => {
+    const { fn } = makeFetch({});
+    vi.stubGlobal("fetch", vi.fn(fn));
+    render(<TeacherDashboard profile={publicProfile(PROFILE.geo_entity!)} incompleteStates={[]} variant="public" />);
+    const hint = await screen.findByTestId("drill-hint");
+    expect(hint.textContent).toContain("Double-click Uttar Pradesh");
+    // no "You" tag: the public has no own area
+    expect(screen.queryByTestId("own-bar-tag")).toBeNull();
+    fireEvent.click(screen.getByTestId("drill-hint-dismiss"));
+    expect(screen.queryByTestId("drill-hint")).toBeNull();
+  });
+
   it("calls the usage metric 'Usage time' for the public (the /d dashboards keep 'Time')", async () => {
     const { fn } = makeFetch({ scoresById: { "g-sch": SCORES_SCHOOL } });
     vi.stubGlobal("fetch", vi.fn(fn));

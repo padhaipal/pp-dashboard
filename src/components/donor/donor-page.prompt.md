@@ -18,7 +18,7 @@ effectiveness model (Google Sheet), "GiveWell’s $55 funding bar" links
 GiveWell's cost-effectiveness models page.
 
 TractionChart: GET `users/dashboard/traction` (public allowlist; pp-sketch
-users/traction.prompt.md). One series at a time from 1 Sep, one point per
+users/traction.prompt.md). One series at a time from 1 Aug, one point per
 IST day (no averaging, no grey lines), blue (#2563eb, the /d toggle's pill)
 on a nice 0-based axis titled with its unit; hover = date + value. Toggle:
 `MvpMetricToggle` with `TRACTION_METRICS` (ten series, asked order). A
@@ -30,13 +30,16 @@ pp-sketch users/interaction-stream.prompt.md) on load and every 60 s while
 the tab is visible. Shows the newest `STREAM_SIZE` (10) turns; turns not
 seen before are revealed one by one over the next minute (`revealGapMs`),
 newest on top, the oldest rotating out. Columns follow /user/[id]'s table:
-Timestamp (IST), Student (masked), Response (Voice note / Flow tap, sky
-tint), Answer (transcript masked to first and last character, or the
+When ("N min ago" / "N h ago", refreshed every 30 s; IST time on hover),
+Student (masked name, or "Student NNNN" when unnamed), Question Type
+("Reading Question" / "Comprehension Multi-choice", sky tint), Answer (transcript masked to first and last character, or the
 tapped option), Correct Answer, Answer Status, WPM. No audio.
 
 "Measuring Every Child": `TeacherDashboard variant="public"` relabels
 "Time" as "Usage time" (English only, via its `t`); the /d dashboards keep
-"Time".
+"Time". At the country level a dismissible `DrillHint` points at Uttar
+Pradesh (state code 09, GeoMap `hintId`) inviting a double-click; it closes
+on dismiss or on any drill (session only).
 
 Technical Roadmap (`tech-roadmap.tsx`): to scale, 24 Feb – 24 Oct 2026,
 milestones from the repos' history.
