@@ -31,8 +31,10 @@ export interface TractionResponse {
   to: string;
   computed_at: string;
   daily: TractionDay[];
-  // absent from a pp-sketch older than the monthly series
+  // absent from a pp-sketch older than the monthly series / the totals
   monthly?: TractionMonth[];
+  // all time through `to`: active hours (whole), onboarded students
+  totals?: { hours: number; students: number };
 }
 
 export type TractionKey = Exclude<keyof TractionDay, "date">;

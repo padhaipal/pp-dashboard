@@ -26,7 +26,9 @@ income doubling at scale" links the LIFTeracy cost-effectiveness artifact,
 and "This estimate needs to be tested with a randomized control trial." on
 its own line.
 
-TractionChart: GET `users/dashboard/traction` (public allowlist; pp-sketch
+TractionChart: headline figures first (`totals`: all-time hours spent on
+LIFTeracy, students; hidden when pp-sketch has none), then the chart card.
+GET `users/dashboard/traction` (public allowlist; pp-sketch
 users/traction.prompt.md). One series at a time from 1 Apr, one point per
 IST day (no averaging, no grey lines), blue (#2563eb, the /d toggle's pill)
 on a nice 0-based axis titled with its unit; hover = date + value. Toggle:
@@ -44,11 +46,12 @@ the tab is visible. Shows the newest `STREAM_SIZE` (10) turns; turns not
 seen before are revealed one by one over the next minute (`revealGapMs`),
 newest on top, the oldest rotating out. Columns follow /user/[id]'s table:
 When ("N min ago" / "N h ago", refreshed every 30 s; IST time on hover),
-Student (masked name, or a stand-in "A...l" when unnamed), Question Type
+Student (masked name, or a masked common Indian name when unnamed), Question Type
 ("Reading Question" / "Comprehension Multi-choice", sky tint), Answer (transcript masked to first and last character, or the
 tapped option), Correct Answer, Answer Status, WPM. No audio.
 
-"Measuring Every Child": `TeacherDashboard variant="public"` relabels
+"Measuring Every Child": `TeacherDashboard variant="public"` opens on All time (the /d dashboards
+on 30 days) and relabels
 "Time" as "Usage time" (English only, via its `t`); the /d dashboards keep
 "Time". At the country level a dismissible `DrillHint` points at Uttar
 Pradesh (state code 09, GeoMap `hintId`) inviting a double-click; it closes

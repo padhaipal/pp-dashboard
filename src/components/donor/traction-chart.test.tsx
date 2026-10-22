@@ -21,6 +21,7 @@ const DATA: TractionResponse = {
   to: "2026-05-10",
   computed_at: "2026-05-11T00:00:00Z",
   daily: [day("2026-05-09", 30), day("2026-05-10", 45)],
+  totals: { hours: 12345, students: 678 },
   monthly: [
     { month: "2026-04", joined_earlier: 0, joined_this_month: 11, projected_joined_earlier: null, projected_joined_this_month: null },
     { month: "2026-05", joined_earlier: 4, joined_this_month: 6, projected_joined_earlier: 12, projected_joined_this_month: 19 },
@@ -37,6 +38,15 @@ describe("TractionChart", () => {
   afterEach(() => {
     cleanup();
     vi.unstubAllGlobals();
+  });
+
+  it("headline: all-time hours and students; none from an older pp-sketch", async () => {
+    await mount(DATA);
+    expect(screen.getByTestId("traction-hours").textContent).toBe("12,345");
+    expect(screen.getByTestId("traction-students").textContent).toBe("678");
+    cleanup();
+    await mount({ ...DATA, totals: undefined });
+    expect(screen.queryByTestId("traction-headline")).toBeNull();
   });
 
   it("opens on minutes spent as a daily line", async () => {

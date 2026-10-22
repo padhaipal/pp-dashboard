@@ -187,7 +187,8 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates, va
   // ONE window (2026-10): the Time figures' window and the trend's x-axis /
   // data range for every metric (all time → the full history, else 30 days),
   // shown under the Time toggle and as the Performance section's trend window.
-  const [pickedWindow, setTimeWindow] = useState<TimeWindow>(DEFAULT_TIME_WINDOW);
+  // the public (donor page) opens on all time; the /d dashboards on 30 days
+  const [pickedWindow, setTimeWindow] = useState<TimeWindow>(isPublic ? "all" : DEFAULT_TIME_WINDOW);
   const pickedRange: Range = rangeForWindow(pickedWindow);
   const [stack, setStack] = useState<GeoRef[]>(() => homeStack(initialProfile));
   const [data, setData] = useState<Loaded | null>(null);
