@@ -79,7 +79,7 @@ export function TechRoadmap() {
       <div className="mb-2 text-center text-sm text-zinc-500">
         What we&apos;ve built so far, month by month. Hover a milestone for the one-line story. Every line of code is open source:{" "}
         <a href="https://github.com/orgs/padhaipal/repositories" target="_blank" rel="noreferrer" className="font-semibold text-blue-600 hover:underline">
-          github.com/padhaipal ↗
+          GitHub ↗
         </a>
       </div>
       <div className={"relative mx-auto mb-10 mt-14 max-w-5xl overflow-x-auto sm:overflow-visible " + (farthest >= 6 ? "h-96" : farthest >= 4 ? "h-80" : "h-64")}>

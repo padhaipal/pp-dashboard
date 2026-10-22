@@ -5,12 +5,13 @@
 // Traction (real daily series + a live stream of masked student turns),
 // Measuring Every Child (the /d dashboard's drillable map of India for the
 // general public — every person masked by pp-sketch, recordings replaced by
-// an example clip), Technical Roadmap, footer. No donate flow and no
+// an example clip), Technical Roadmap, footer (www.lifteracy.ai's). No donate flow and no
 // sign-in.
 
 import Image from "next/image";
 import { TeacherDashboard, publicProfile } from "@/app/d/[user_id]/teacher-dashboard";
 import type { GeoRef } from "@/app/d/[user_id]/dashboard-types";
+import { DonorFooter } from "./donor-footer";
 import { TechRoadmap } from "./tech-roadmap";
 import { InteractionStream } from "./interaction-stream";
 import { TractionChart } from "./traction-chart";
@@ -84,7 +85,8 @@ export function DonorPage({ country, incompleteStates }: { country: GeoRef | nul
           </h2>
           <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm sm:p-8">
             <p className="mx-auto mb-6 max-w-3xl text-center text-lg leading-relaxed text-zinc-700" data-testid="what-does-text">
-              LIFTeracy is a one-on-one AI tutor that teaches children in India to read Hindi through evening WhatsApp voice message conversations. We are the only EdTech tool that can teach a fully illiterate child to pass the main internationally recognized standard of being able to read.
+              LIFTeracy is a one-on-one AI tutor that teaches children in India to read Hindi through evening WhatsApp voice message conversations.
+              <span className="mt-3 block">To the best of our knowledge, we are the only Hindi EdTech tool that can teach a fully illiterate child to pass the main internationally recognized standard (MPL-B) of being able to read.</span>
             </p>
             <video src={LIFTERACY_VIDEO_URL} poster="/donor/lifteracy-video-poster.jpg" controls preload="metadata" playsInline className="mx-auto w-full max-w-4xl rounded-xl bg-black" />
           </div>
@@ -143,40 +145,6 @@ export function DonorPage({ country, incompleteStates }: { country: GeoRef | nul
           <DonorFooter />
         </div>
       </section>
-    </div>
-  );
-}
-
-function DonorFooter() {
-  const cols: { h: string; links: [string, string][] }[] = [
-    { h: "LIFTeracy", links: [["About", "https://www.padhaipal.com"], ["How it works", "https://www.padhaipal.com"], ["Contact", "https://www.padhaipal.com"]] },
-    { h: "Trust", links: [["Annual report", "https://www.padhaipal.com"], ["Financials", "https://www.padhaipal.com"], ["Governance", "https://www.padhaipal.com"]] },
-    { h: "Safety", links: [["Child safeguarding", "https://www.padhaipal.com"], ["Data & privacy", "https://www.padhaipal.com"]] },
-  ];
-  return (
-    <div className="mt-2 rounded-2xl border border-zinc-200 bg-white p-6">
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <div className="col-span-2 sm:col-span-1">
-          <div className="text-lg font-black text-blue-700">LIFTeracy</div>
-          <div className="mt-1 text-[11px] text-zinc-500">Teaching every child to read, over WhatsApp.</div>
-          <a href="https://www.padhaipal.com" target="_blank" rel="noreferrer" className="mt-2 inline-block text-[11px] font-semibold text-blue-600 hover:underline">
-            www.padhaipal.com ↗
-          </a>
-        </div>
-        {cols.map((col) => (
-          <div key={col.h}>
-            <div className="text-[10px] font-bold uppercase tracking-wide text-zinc-400">{col.h}</div>
-            <div className="mt-2 space-y-1">
-              {col.links.map(([n, u]) => (
-                <a key={n} href={u} target="_blank" rel="noreferrer" className="block text-xs text-zinc-600 hover:text-blue-600">
-                  {n}
-                </a>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-      <div className="mt-4 border-t border-zinc-100 pt-3 text-[10px] text-zinc-400">LIFTeracy is a registered non-profit · child data is processed under our privacy &amp; safeguarding policy.</div>
     </div>
   );
 }

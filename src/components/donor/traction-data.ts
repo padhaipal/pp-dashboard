@@ -13,7 +13,17 @@ export interface TractionDay {
   blocks: number;
   districts: number;
   states: number;
-  cohort_avg_lifetime_hours: number | null;
+}
+
+// Per IST month: students with at least one day > 5 min active that month,
+// split by onboarding month; projected_* = the month in progress scaled
+// linearly to month end (null for complete months).
+export interface TractionMonth {
+  month: string; // YYYY-MM
+  joined_earlier: number;
+  joined_this_month: number;
+  projected_joined_earlier: number | null;
+  projected_joined_this_month: number | null;
 }
 
 export interface TractionResponse {
@@ -21,31 +31,31 @@ export interface TractionResponse {
   to: string;
   computed_at: string;
   daily: TractionDay[];
+  // absent from a pp-sketch older than the monthly series
+  monthly?: TractionMonth[];
 }
 
 export type TractionKey = Exclude<keyof TractionDay, "date">;
+// a daily series, or the monthly bar chart
+export type TractionChoice = TractionKey | "monthly";
 
 export const TRACTION_URL = "/api/proxy/users/dashboard/traction";
 
 const fmtInt = (v: number) => Math.round(v).toLocaleString("en-IN");
-const fmtHours = (v: number) => v.toFixed(v < 10 ? 2 : 1);
 
-// Toggle order = the order asked for. `unit` is the y-axis title. `dots`:
-// drawn as one dot per day instead of a line (a cohort series has no value
-// on a day nobody was onboarded), with `note` under the chart.
+// Toggle order = the order asked for; the first is the default. `unit` is
+// the y-axis title.
 export interface TractionMetric {
-  key: TractionKey;
+  key: TractionChoice;
   label: string;
   short: string;
   unit: string;
   format: (v: number) => string;
-  dots?: boolean;
-  note?: string;
 }
 
 export const TRACTION_METRICS: TractionMetric[] = [
-  { key: "users_over_5min", label: "Users over 5 min", short: "Users 5+ min", unit: "Users", format: fmtInt },
   { key: "minutes", label: "Minutes spent", short: "Minutes", unit: "Minutes", format: fmtInt },
+  { key: "users_over_5min", label: "Users over 5 min", short: "Users 5+ min", unit: "Users", format: fmtInt },
   { key: "students_onboarded", label: "Students onboarded", short: "Students", unit: "Students", format: fmtInt },
   { key: "mpl_b_passed", label: "Passed MPL-b", short: "MPL-b", unit: "Students", format: fmtInt },
   { key: "teachers_onboarded", label: "Teachers onboarded", short: "Teachers", unit: "Teachers", format: fmtInt },
@@ -53,20 +63,18 @@ export const TRACTION_METRICS: TractionMetric[] = [
   { key: "blocks", label: "Blocks", short: "Blocks", unit: "Blocks", format: fmtInt },
   { key: "districts", label: "Districts", short: "Districts", unit: "Districts", format: fmtInt },
   { key: "states", label: "States", short: "States", unit: "States", format: fmtInt },
-  {
-    key: "cohort_avg_lifetime_hours",
-    label: "Avg lifetime hours by onboarding day",
-    short: "Cohort hours",
-    unit: "Hours per student",
-    format: fmtHours,
-    dots: true,
-    note: "A day with no dot means no student was onboarded that day.",
-  },
+  { key: "monthly", label: "Monthly active students", short: "Monthly", unit: "Students", format: fmtInt },
 ];
 
 export const seriesOf = (daily: TractionDay[], key: TractionKey): (number | null)[] => daily.map((d) => d[key]);
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+// "2026-09" → "Sep 2026"
+export function monthLabel(ym: string): string {
+  const [y, m] = ym.split("-").map(Number);
+  return `${MONTHS[m - 1] ?? ""} ${y}`;
+}
 
 // "2026-09-01" → "1 Sep" (a fixed table: ICU builds differ — "Sept")
 export function shortDate(iso: string): string {
