@@ -2,15 +2,17 @@
 
 // The public donor page (ported from sandbox-global-map/donor.html,
 // 2026-10): value statement, learner photos, What LIFTeracy Does (video),
-// Traction (real daily series), Measuring Every Child (the /d dashboard's
-// drillable map of India for the general public — every person masked by
-// pp-sketch, recordings replaced by an example clip), Technical Roadmap,
-// footer. No donate flow and no sign-in.
+// Traction (real daily series + a live stream of masked student turns),
+// Measuring Every Child (the /d dashboard's drillable map of India for the
+// general public — every person masked by pp-sketch, recordings replaced by
+// an example clip), Technical Roadmap, footer. No donate flow and no
+// sign-in.
 
 import Image from "next/image";
 import { TeacherDashboard, publicProfile } from "@/app/d/[user_id]/teacher-dashboard";
 import type { GeoRef } from "@/app/d/[user_id]/dashboard-types";
 import { TechRoadmap } from "./tech-roadmap";
+import { InteractionStream } from "./interaction-stream";
 import { TractionChart } from "./traction-chart";
 import { ValueStatement } from "./value-statement";
 
@@ -82,7 +84,7 @@ export function DonorPage({ country, incompleteStates }: { country: GeoRef | nul
           </h2>
           <div className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm sm:p-8">
             <p className="mx-auto mb-6 max-w-3xl text-center text-lg leading-relaxed text-zinc-700" data-testid="what-does-text">
-              LIFTeracy is a one-on-one AI tutor that teaches children in India to read Hindi through evening WhatsApp voice message conversations.
+              LIFTeracy is a one-on-one AI tutor that teaches children in India to read Hindi through evening WhatsApp voice message conversations. We are the only EdTech tool that can teach a fully illiterate child to pass the main internationally recognized standard of being able to read.
             </p>
             <video src={LIFTERACY_VIDEO_URL} poster="/donor/lifteracy-video-poster.jpg" controls preload="metadata" playsInline className="mx-auto w-full max-w-4xl rounded-xl bg-black" />
           </div>
@@ -98,6 +100,7 @@ export function DonorPage({ country, incompleteStates }: { country: GeoRef | nul
           <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-6">
             <TractionChart />
           </div>
+          <InteractionStream />
         </div>
       </section>
 

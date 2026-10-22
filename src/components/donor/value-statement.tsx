@@ -1,9 +1,9 @@
 "use client";
 
 // The donor page's headline value proposition (ported from
-// sandbox-global-map/donor.html ValueStatement): a rotating subject / verb /
-// percentage with an odometer roll, a drag-to-scrub subject and
-// hand-scribbled hover notes (Caveat).
+// sandbox-global-map/donor.html ValueStatement): a rotating subject / verb
+// with an odometer roll, a drag-to-scrub subject and hand-scribbled hover
+// notes (Caveat); under it a fixed cost-effectiveness line with its sources.
 
 import { Caveat } from "next/font/google";
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent, type ReactNode } from "react";
@@ -11,17 +11,17 @@ import { useEffect, useRef, useState, type CSSProperties, type PointerEvent, typ
 const caveat = Caveat({ subsets: ["latin"], weight: ["500", "600", "700"] });
 
 const WWHGE_PDF = "https://www.wwhge.org/wp-content/uploads/2026/02/WWHGE_Universal-Foundational-Learning-Insight-Note.pdf";
-const CG_LINK = "https://coefficientgiving.org/research/our-planned-allocation-to-givewells-recommendations-for-the-next-few-years/";
-const PP_ANALYSIS = "https://www.padhaipal.com"; // TODO: replace with the real analysis link
+const CEM_LINK = "https://docs.google.com/spreadsheets/d/1oU5Z5rpj47kKDunNbYjr6euMCv4FiweQ2uTVDynS6aI/edit?gid=1478707958#gid=1478707958";
+const GIVEWELL_BAR_LINK = "https://www.givewell.org/how-we-work/our-criteria/cost-effectiveness/cost-effectiveness-models";
 
 const VARIATIONS = [
-  { subject: "$200T of economic value", verb: "unlocked", pct: "47%" },
-  { subject: "$21 trillion additional tax revenue", verb: "unlocked", pct: "46%" },
-  { subject: "46 million more people employed", verb: "unlocked", pct: "51%" },
-  { subject: "368 million more primary school completions", verb: "unlocked", pct: "49%" },
-  { subject: "368 million more secondary school starts", verb: "unlocked", pct: "50%" },
-  { subject: "12 million child deaths", verb: "averted", pct: "47%" },
-  { subject: "12 million child marriages", verb: "averted", pct: "49%" },
+  { subject: "$200T of economic value", verb: "unlocked" },
+  { subject: "$21 trillion additional tax revenue", verb: "unlocked" },
+  { subject: "46 million more people employed", verb: "unlocked" },
+  { subject: "368 million more primary school completions", verb: "unlocked" },
+  { subject: "368 million more secondary school starts", verb: "unlocked" },
+  { subject: "12 million child deaths", verb: "averted" },
+  { subject: "12 million child marriages", verb: "averted" },
 ];
 
 // vertical pixels per value step while scrubbing
@@ -37,7 +37,6 @@ function Link({ href, children }: { href: string; children: ReactNode }) {
 
 export function ValueStatement() {
   const scribble = caveat.className;
-  const note = "absolute left-1/2 top-full hidden w-max -translate-x-1/2 whitespace-nowrap pt-2 text-center text-2xl font-medium leading-tight text-zinc-500 group-hover:block";
   const [vIdx, setVIdx] = useState(0);
   const [paused, setPaused] = useState(false);
   useEffect(() => {
@@ -105,30 +104,8 @@ export function ValueStatement() {
         </span>{" "}
         by 2050 if every child could read.
       </p>
-      <p className="relative mt-6 pb-14" style={stage}>
-        LIFTeracy&apos;s goal is to{" "}
-        <span className="group relative inline-block font-semibold text-amber-700">
-          cost effectively
-          <span className={note + " " + scribble}>
-            achieves Coefficient Giving&apos;s funding bar of <Link href={CG_LINK}>$50/DALY</Link>
-          </span>
-        </span>{" "}
-        capture{" "}
-        <span className="group relative inline-block font-extrabold text-violet-700" style={stage}>
-          <span key={vIdx} style={rollStyle}>
-            {v.pct}
-          </span>
-          <span className="absolute left-1/2 top-full hidden translate-x-1 items-start gap-1 pt-1 group-hover:flex">
-            <svg width="56" height="44" viewBox="0 0 56 44" fill="none" className="-mt-2 flex-shrink-0 text-zinc-400">
-              <path d="M10 8 C 14 30, 28 35, 46 35" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M46 35 l -13 -5 M46 35 l -13 5" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-            <span className={"whitespace-nowrap pt-2.5 text-2xl font-medium leading-tight text-zinc-500 " + scribble}>
-              our analysis <Link href={PP_ANALYSIS}>here</Link>
-            </span>
-          </span>
-        </span>{" "}
-        of that.
+      <p className="mx-auto mt-6 max-w-4xl pb-10 text-2xl leading-snug sm:text-3xl" data-testid="cost-effectiveness">
+        LIFTeracy is estimated to cost <Link href={CEM_LINK}>$31 per income doubling</Link>, beating <Link href={GIVEWELL_BAR_LINK}>GiveWell’s $55 funding bar</Link>. This estimate needs to be tested with a randomized trial.
       </p>
     </div>
   );

@@ -30,8 +30,20 @@ export const TRACTION_URL = "/api/proxy/users/dashboard/traction";
 const fmtInt = (v: number) => Math.round(v).toLocaleString("en-IN");
 const fmtHours = (v: number) => v.toFixed(v < 10 ? 2 : 1);
 
-// Toggle order = the order asked for. `unit` is the y-axis title.
-export const TRACTION_METRICS: { key: TractionKey; label: string; short: string; unit: string; format: (v: number) => string }[] = [
+// Toggle order = the order asked for. `unit` is the y-axis title. `dots`:
+// drawn as one dot per day instead of a line (a cohort series has no value
+// on a day nobody was onboarded), with `note` under the chart.
+export interface TractionMetric {
+  key: TractionKey;
+  label: string;
+  short: string;
+  unit: string;
+  format: (v: number) => string;
+  dots?: boolean;
+  note?: string;
+}
+
+export const TRACTION_METRICS: TractionMetric[] = [
   { key: "users_over_5min", label: "Users over 5 min", short: "Users 5+ min", unit: "Users", format: fmtInt },
   { key: "minutes", label: "Minutes spent", short: "Minutes", unit: "Minutes", format: fmtInt },
   { key: "students_onboarded", label: "Students onboarded", short: "Students", unit: "Students", format: fmtInt },
@@ -41,30 +53,16 @@ export const TRACTION_METRICS: { key: TractionKey; label: string; short: string;
   { key: "blocks", label: "Blocks", short: "Blocks", unit: "Blocks", format: fmtInt },
   { key: "districts", label: "Districts", short: "Districts", unit: "Districts", format: fmtInt },
   { key: "states", label: "States", short: "States", unit: "States", format: fmtInt },
-  { key: "cohort_avg_lifetime_hours", label: "Avg lifetime hours by onboarding day", short: "Cohort hours", unit: "Hours per student", format: fmtHours },
+  {
+    key: "cohort_avg_lifetime_hours",
+    label: "Avg lifetime hours by onboarding day",
+    short: "Cohort hours",
+    unit: "Hours per student",
+    format: fmtHours,
+    dots: true,
+    note: "A day with no dot means no student was onboarded that day.",
+  },
 ];
-
-export const SMOOTH_MIN = 1;
-export const SMOOTH_MAX = 14;
-export const SMOOTH_DEFAULT = 7;
-
-// Trailing mean over `days` days (the window shrinks at the start); nulls
-// (a day without a cohort) are skipped, and a window with none stays null.
-export function smooth(values: (number | null)[], days: number): (number | null)[] {
-  const n = Math.max(1, Math.round(days));
-  return values.map((_, i) => {
-    let sum = 0;
-    let count = 0;
-    for (let k = Math.max(0, i - n + 1); k <= i; k++) {
-      const v = values[k];
-      if (v !== null) {
-        sum += v;
-        count++;
-      }
-    }
-    return count ? sum / count : null;
-  });
-}
 
 export const seriesOf = (daily: TractionDay[], key: TractionKey): (number | null)[] => daily.map((d) => d[key]);
 

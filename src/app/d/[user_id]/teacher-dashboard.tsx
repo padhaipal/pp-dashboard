@@ -168,6 +168,8 @@ const inputCls = "w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm foc
 const nextChildType = (t: GeoRef["type"]): ChildType =>
   t === "country" ? "state" : t === "state" ? "district" : t === "district" ? "block" : t === "block" ? "school" : t === "school" ? "teacher" : "student";
 
+const PUBLIC_RELABEL: Record<string, string> = { Time: "Usage time" };
+
 export function TeacherDashboard({ profile: initialProfile, incompleteStates, variant }: TeacherDashboardProps) {
   const isPublic = variant === "public";
   const [profile, setProfile] = useState<PublicProfile>(initialProfile);
@@ -195,7 +197,12 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates, va
   const [reportOpen, setReportOpen] = useState(false);
   const [lang, setLangState] = useState<Lang>("en");
   const incomplete = useMemo(() => new Set(incompleteStates), [incompleteStates]);
-  const t: T = useMemo(() => makeT(lang), [lang]);
+  // the donor page (public variant) words a few labels for the general
+  // public: "Time" → "Usage time" (English only)
+  const t: T = useMemo(() => {
+    const base = makeT(lang);
+    return isPublic && lang === "en" ? (s: string) => base(PUBLIC_RELABEL[s] ?? s) : base;
+  }, [lang, isPublic]);
 
   // Language: English on the server, the viewer's saved choice once mounted
   // (deferred a tick so the effect never sets state synchronously).

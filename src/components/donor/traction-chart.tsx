@@ -1,11 +1,11 @@
 "use client";
 
-// The donor page's Traction chart: ONE line chart from 1 September (IST
-// days), every series drawn as a faint grey line with the selected one in
-// colour on top, its units on the y-axis. Above it the /d page's pill
-// toggle picks the series; under it a slider averages every line over the
-// trailing 1–14 days (default 7). Data: GET users/dashboard/traction
-// (public proxy) — aggregates only, computed once a day by pp-sketch.
+// The donor page's Traction chart: one series at a time from 1 September,
+// one point per IST day (no averaging), its units on the y-axis. Above it
+// the /d page's pill toggle picks the series. A cohort series (`dots`) is
+// drawn as one dot per day, with a note that a missing dot is a day nobody
+// was onboarded. Data: GET users/dashboard/traction (public proxy) —
+// aggregates only, computed once a day by pp-sketch.
 
 import { useEffect, useMemo, useState } from "react";
 import { MvpMetricToggle } from "@/app/d/[user_id]/mvp-widgets";
@@ -14,10 +14,6 @@ import { useIsMobile } from "@/app/d/[user_id]/use-is-mobile";
 import {
   seriesOf,
   shortDate,
-  smooth,
-  SMOOTH_DEFAULT,
-  SMOOTH_MAX,
-  SMOOTH_MIN,
   TRACTION_METRICS,
   TRACTION_URL,
   type TractionKey,
@@ -26,7 +22,6 @@ import {
 
 // the /d toggle's selected pill (bg-blue-600)
 const LINE = "#2563eb";
-const GREY = "#d4d4d8";
 
 // drawing size: a narrower viewBox on phones keeps the type readable
 const SIZE = { desktop: { W: 720, H: 300 }, mobile: { W: 420, H: 320 } };
@@ -36,7 +31,6 @@ export function TractionChart() {
   const [data, setData] = useState<TractionResponse | null>(null);
   const [error, setError] = useState(false);
   const [metric, setMetric] = useState<TractionKey>("users_over_5min");
-  const [days, setDays] = useState(SMOOTH_DEFAULT);
   const [hover, setHover] = useState<number | null>(null);
   const mobile = useIsMobile();
 
@@ -59,36 +53,24 @@ export function TractionChart() {
   }, []);
 
   const daily = useMemo(() => data?.daily ?? [], [data]);
-  const lines = useMemo(() => Object.fromEntries(TRACTION_METRICS.map((m) => [m.key, smooth(seriesOf(daily, m.key), days)])) as Record<TractionKey, (number | null)[]>, [daily, days]);
   const cfg = TRACTION_METRICS.find((m) => m.key === metric)!;
+  const values = useMemo(() => seriesOf(daily, metric), [daily, metric]);
 
   return (
     <div data-testid="traction-chart">
-      <div className="mb-4 flex flex-col items-center gap-3">
+      <div className="mb-4 flex justify-center">
         <MvpMetricToggle metric={metric} setMetric={setMetric} options={TRACTION_METRICS} />
-        <label className="inline-flex items-center gap-3 rounded-full bg-zinc-100 px-4 py-1.5 text-xs font-semibold text-zinc-600 ring-1 ring-zinc-200">
-          <span className="whitespace-nowrap">Average over</span>
-          <input
-            type="range"
-            min={SMOOTH_MIN}
-            max={SMOOTH_MAX}
-            step={1}
-            value={days}
-            onChange={(e) => setDays(Number(e.target.value))}
-            className="w-32 accent-blue-600 sm:w-48"
-            aria-label="Days to average over"
-            data-testid="traction-smoothing"
-          />
-          <span className="w-14 whitespace-nowrap rounded-full bg-zinc-900 px-2 py-0.5 text-center text-white">
-            {days} {days === 1 ? "day" : "days"}
-          </span>
-        </label>
       </div>
       {error && <p className="py-16 text-center text-sm text-zinc-400">Traction figures are unavailable right now.</p>}
       {!error && !data && <p className="py-16 text-center text-sm text-zinc-400">Loading…</p>}
       {data && daily.length === 0 && <p className="py-16 text-center text-sm text-zinc-400">No data yet.</p>}
       {data && daily.length > 0 && (
-        <Plot size={mobile ? SIZE.mobile : SIZE.desktop} dates={daily.map((d) => d.date)} lines={lines} selected={metric} unit={cfg.unit} format={cfg.format} hover={hover} setHover={setHover} />
+        <Plot size={mobile ? SIZE.mobile : SIZE.desktop} dates={daily.map((d) => d.date)} values={values} dots={!!cfg.dots} unit={cfg.unit} format={cfg.format} hover={hover} setHover={setHover} />
+      )}
+      {data && daily.length > 0 && cfg.note && (
+        <p className="mt-2 text-center text-xs text-zinc-500" data-testid="traction-note">
+          {cfg.note}
+        </p>
       )}
       {data && (
         <div className="mt-1 text-right text-[10px] text-zinc-400">
@@ -102,8 +84,8 @@ export function TractionChart() {
 function Plot({
   size: { W, H },
   dates,
-  lines,
-  selected,
+  values: sel,
+  dots,
   unit,
   format,
   hover,
@@ -111,8 +93,8 @@ function Plot({
 }: {
   size: { W: number; H: number };
   dates: string[];
-  lines: Record<TractionKey, (number | null)[]>;
-  selected: TractionKey;
+  values: (number | null)[];
+  dots: boolean;
   unit: string;
   format: (v: number) => string;
   hover: number | null;
@@ -123,8 +105,7 @@ function Plot({
   const n = dates.length;
   const x = (i: number) => PAD.left + (n === 1 ? plotW / 2 : (i / (n - 1)) * plotW);
 
-  // selected series: its own "nice" axis from 0
-  const sel = lines[selected];
+  // the series' own "nice" axis from 0
   const selMax = Math.max(0, ...sel.filter((v): v is number => v !== null));
   // niceTicks can stop a step short of the maximum: add the tick above it
   const ticks = niceTicks(0, selMax || 1);
@@ -174,19 +155,16 @@ function Plot({
         {unit}
       </text>
 
-      {/* every other series, greyed out, each on its own scale (shape only) */}
-      {TRACTION_METRICS.filter((m) => m.key !== selected).map((m) => {
-        const vals = lines[m.key];
-        const max = Math.max(0, ...vals.filter((v): v is number => v !== null));
-        return <path key={m.key} d={path(vals, max)} fill="none" stroke={GREY} strokeWidth={1.25} strokeLinejoin="round" data-testid="traction-grey-line" />;
-      })}
-      {/* the selected series, in colour, on the axis */}
-      <path d={path(sel, top)} fill="none" stroke={LINE} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" data-testid="traction-line" />
+      {dots ? (
+        sel.map((v, i) => (v === null ? null : <circle key={dates[i]} cx={x(i)} cy={yOf(v, top)} r={3} fill={LINE} data-testid="traction-dot" />))
+      ) : (
+        <path d={path(sel, top)} fill="none" stroke={LINE} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" data-testid="traction-line" />
+      )}
 
       {hover !== null && (
         <>
           <line x1={x(hover)} y1={PAD.top} x2={x(hover)} y2={PAD.top + plotH} stroke="#a1a1aa" strokeWidth={0.5} strokeDasharray="2,2" />
-          {hv !== null && <circle cx={x(hover)} cy={yOf(hv, top)} r={4} fill={LINE} />}
+          {hv !== null && <circle cx={x(hover)} cy={yOf(hv, top)} r={dots ? 5 : 4} fill={LINE} />}
         </>
       )}
       {dates.map((d, i) => {
@@ -205,7 +183,7 @@ function Plot({
                   {shortDate(dates[hover])}
                 </text>
                 <text x={bx + 8} y={PAD.top + 27} fontSize={11} fontWeight={600} fill="#fafafa">
-                  {hv === null ? "—" : format(hv)} {hv === null ? "" : unit.toLowerCase()}
+                  {hv === null ? (dots ? "No one onboarded" : "—") : `${format(hv)} ${unit.toLowerCase()}`}
                 </text>
               </>
             );
