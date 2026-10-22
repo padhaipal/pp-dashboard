@@ -11,8 +11,8 @@ import { useEffect, useRef, useState, type CSSProperties, type PointerEvent, typ
 const caveat = Caveat({ subsets: ["latin"], weight: ["500", "600", "700"] });
 
 const WWHGE_PDF = "https://www.wwhge.org/wp-content/uploads/2026/02/WWHGE_Universal-Foundational-Learning-Insight-Note.pdf";
-const CEM_LINK = "https://docs.google.com/spreadsheets/d/1oU5Z5rpj47kKDunNbYjr6euMCv4FiweQ2uTVDynS6aI/edit?gid=1478707958#gid=1478707958";
-const GIVEWELL_BAR_LINK = "https://www.givewell.org/how-we-work/our-criteria/cost-effectiveness/cost-effectiveness-models";
+const CEM_LINK = "https://claude.ai/artifact/Kxii4TUevmNLubo2WqygFx";
+const AIM_BAR_LINK = "https://research.ambitiousimpact.com/ambitious-impact-eval/evaluative-criteria";
 
 const VARIATIONS = [
   { subject: "$200T of economic value", verb: "unlocked" },
@@ -101,11 +101,13 @@ export function ValueStatement() {
           <span key={v.verb} style={rollStyle}>
             {v.verb}
           </span>
-        </span>{" "}
+        </span>
+        <br />
         by 2050 if every child could read.
       </p>
       <p className="mx-auto mt-6 max-w-4xl pb-10 text-2xl leading-snug sm:text-3xl" data-testid="cost-effectiveness">
-        LIFTeracy is estimated to cost <Link href={CEM_LINK}>$31 per income doubling</Link>, beating <Link href={GIVEWELL_BAR_LINK}>GiveWell’s $55 funding bar</Link>. This estimate needs to be tested with a randomized trial.
+        LIFTeracy is estimated to cost <Link href={CEM_LINK}>$31 per income doubling at scale</Link>, beating <Link href={AIM_BAR_LINK}>Ambitious Impact’s funding bar of $60</Link>.
+        <span className="mt-2 block">This estimate needs to be tested with a randomized control trial.</span>
       </p>
     </div>
   );

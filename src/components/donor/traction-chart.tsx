@@ -1,27 +1,32 @@
 "use client";
 
-// The donor page's Traction chart: one series at a time from 1 August,
+// The donor page's Traction chart: one series at a time from 1 April,
 // one point per IST day (no averaging), its units on the y-axis. Above it
-// the /d page's pill toggle picks the series. A cohort series (`dots`) is
-// drawn as one dot per day, with a note that a missing dot is a day nobody
-// was onboarded. Data: GET users/dashboard/traction (public proxy) —
-// aggregates only, computed once a day by pp-sketch.
+// the /d page's pill toggle picks the series (minutes by default). "Monthly
+// active students" is a bar chart instead (MonthlyBars). Data: GET
+// users/dashboard/traction (public proxy) — aggregates only, computed once
+// a day by pp-sketch.
 
 import { useEffect, useMemo, useState } from "react";
 import { MvpMetricToggle } from "@/app/d/[user_id]/mvp-widgets";
 import { niceTicks } from "@/app/dashboard/metrics-charts";
 import { useIsMobile } from "@/app/d/[user_id]/use-is-mobile";
 import {
+  monthLabel,
   seriesOf,
   shortDate,
   TRACTION_METRICS,
   TRACTION_URL,
-  type TractionKey,
+  type TractionChoice,
+  type TractionMonth,
   type TractionResponse,
 } from "./traction-data";
 
 // the /d toggle's selected pill (bg-blue-600)
 const LINE = "#2563eb";
+// monthly bars: joined in an earlier month (dark) / that month (light)
+const EARLIER = "#4a7a89";
+const THIS_MONTH = "#aecbd3";
 
 // drawing size: a narrower viewBox on phones keeps the type readable
 const SIZE = { desktop: { W: 720, H: 300 }, mobile: { W: 420, H: 320 } };
@@ -30,7 +35,7 @@ const PAD = { top: 14, right: 16, bottom: 34, left: 52 };
 export function TractionChart() {
   const [data, setData] = useState<TractionResponse | null>(null);
   const [error, setError] = useState(false);
-  const [metric, setMetric] = useState<TractionKey>("users_over_5min");
+  const [metric, setMetric] = useState<TractionChoice>(TRACTION_METRICS[0].key);
   const [hover, setHover] = useState<number | null>(null);
   const mobile = useIsMobile();
 
@@ -54,7 +59,9 @@ export function TractionChart() {
 
   const daily = useMemo(() => data?.daily ?? [], [data]);
   const cfg = TRACTION_METRICS.find((m) => m.key === metric)!;
-  const values = useMemo(() => seriesOf(daily, metric), [daily, metric]);
+  const values = useMemo(() => (metric === "monthly" ? [] : seriesOf(daily, metric)), [daily, metric]);
+  const monthly = data?.monthly ?? [];
+  const size = mobile ? SIZE.mobile : SIZE.desktop;
 
   return (
     <div data-testid="traction-chart">
@@ -63,18 +70,20 @@ export function TractionChart() {
       </div>
       {error && <p className="py-16 text-center text-sm text-zinc-400">Traction figures are unavailable right now.</p>}
       {!error && !data && <p className="py-16 text-center text-sm text-zinc-400">Loading…</p>}
-      {data && daily.length === 0 && <p className="py-16 text-center text-sm text-zinc-400">No data yet.</p>}
-      {data && daily.length > 0 && (
-        <Plot size={mobile ? SIZE.mobile : SIZE.desktop} dates={daily.map((d) => d.date)} values={values} dots={!!cfg.dots} unit={cfg.unit} format={cfg.format} hover={hover} setHover={setHover} />
-      )}
-      {data && daily.length > 0 && cfg.note && (
-        <p className="mt-2 text-center text-xs text-zinc-500" data-testid="traction-note">
-          {cfg.note}
-        </p>
+      {metric === "monthly" ? (
+        <>
+          {data && monthly.length === 0 && <p className="py-16 text-center text-sm text-zinc-400">No data yet.</p>}
+          {data && monthly.length > 0 && <MonthlyBars size={size} months={monthly} />}
+        </>
+      ) : (
+        <>
+          {data && daily.length === 0 && <p className="py-16 text-center text-sm text-zinc-400">No data yet.</p>}
+          {data && daily.length > 0 && <Plot size={size} dates={daily.map((d) => d.date)} values={values} unit={cfg.unit} format={cfg.format} hover={hover} setHover={setHover} />}
+        </>
       )}
       {data && (
         <div className="mt-1 text-right text-[10px] text-zinc-400">
-          Daily, India time · updated {shortDate(data.computed_at.slice(0, 10))}
+          {metric === "monthly" ? "Monthly" : "Daily"}, India time · updated {shortDate(data.computed_at.slice(0, 10))}
         </div>
       )}
     </div>
@@ -85,7 +94,6 @@ function Plot({
   size: { W, H },
   dates,
   values: sel,
-  dots,
   unit,
   format,
   hover,
@@ -94,7 +102,6 @@ function Plot({
   size: { W: number; H: number };
   dates: string[];
   values: (number | null)[];
-  dots: boolean;
   unit: string;
   format: (v: number) => string;
   hover: number | null;
@@ -155,16 +162,12 @@ function Plot({
         {unit}
       </text>
 
-      {dots ? (
-        sel.map((v, i) => (v === null ? null : <circle key={dates[i]} cx={x(i)} cy={yOf(v, top)} r={3} fill={LINE} data-testid="traction-dot" />))
-      ) : (
-        <path d={path(sel, top)} fill="none" stroke={LINE} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" data-testid="traction-line" />
-      )}
+      <path d={path(sel, top)} fill="none" stroke={LINE} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" data-testid="traction-line" />
 
       {hover !== null && (
         <>
           <line x1={x(hover)} y1={PAD.top} x2={x(hover)} y2={PAD.top + plotH} stroke="#a1a1aa" strokeWidth={0.5} strokeDasharray="2,2" />
-          {hv !== null && <circle cx={x(hover)} cy={yOf(hv, top)} r={dots ? 5 : 4} fill={LINE} />}
+          {hv !== null && <circle cx={x(hover)} cy={yOf(hv, top)} r={4} fill={LINE} />}
         </>
       )}
       {dates.map((d, i) => {
@@ -183,7 +186,7 @@ function Plot({
                   {shortDate(dates[hover])}
                 </text>
                 <text x={bx + 8} y={PAD.top + 27} fontSize={11} fontWeight={600} fill="#fafafa">
-                  {hv === null ? (dots ? "No one onboarded" : "—") : `${format(hv)} ${unit.toLowerCase()}`}
+                  {hv === null ? "—" : `${format(hv)} ${unit.toLowerCase()}`}
                 </text>
               </>
             );
@@ -191,5 +194,115 @@ function Plot({
         </g>
       )}
     </svg>
+  );
+}
+
+// "Monthly active students": one stacked bar per IST month — students with
+// at least one 5-minute day that month, dark = onboarded in an earlier
+// month, light = onboarded that month, total above. The month in progress
+// also gets a dashed overlay up to its linear month-end projection.
+function MonthlyBars({ size: { W, H }, months }: { size: { W: number; H: number }; months: TractionMonth[] }) {
+  const [hover, setHover] = useState<number | null>(null);
+  const top0 = 6; // room for the total over the tallest bar
+  const plotW = W - PAD.left - PAD.right;
+  const plotH = H - top0 - PAD.top - PAD.bottom;
+  const y0 = top0 + PAD.top + plotH;
+  const n = months.length;
+  const slot = plotW / n;
+  const barW = Math.min(64, slot * 0.6);
+  const total = (m: TractionMonth) => m.joined_earlier + m.joined_this_month;
+  const projected = (m: TractionMonth) => (m.projected_joined_earlier === null || m.projected_joined_this_month === null ? null : m.projected_joined_earlier + m.projected_joined_this_month);
+  const maxV = Math.max(1, ...months.map((m) => Math.max(total(m), projected(m) ?? 0)));
+  const ticks = niceTicks(0, maxV);
+  const step = ticks.length > 1 ? ticks[1] - ticks[0] : 1;
+  while (ticks[ticks.length - 1] < maxV) ticks.push(ticks[ticks.length - 1] + step);
+  const top = ticks[ticks.length - 1] || 1;
+  const h = (v: number) => (v / top) * plotH;
+  const hm = hover !== null ? months[hover] : null;
+
+  return (
+    <div>
+      <div className="mb-1 text-center text-sm font-semibold text-zinc-700">Children who completed at least one 5-minute lesson in the month</div>
+      <div className="mb-1 flex flex-wrap justify-center gap-x-4 gap-y-1 text-[11px] text-zinc-600">
+        <span className="flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5" style={{ background: EARLIER }} />
+          Joined in an earlier month
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5" style={{ background: THIS_MONTH }} />
+          Joined this month
+        </span>
+        {months.some((m) => projected(m) !== null) && (
+          <span className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 border border-dashed border-zinc-600" />
+            Projected by month end
+          </span>
+        )}
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full select-none" data-testid="traction-monthly" onMouseLeave={() => setHover(null)}>
+        {ticks.map((tk) => (
+          <g key={tk}>
+            <line x1={PAD.left} y1={y0 - h(tk)} x2={W - PAD.right} y2={y0 - h(tk)} stroke={tk === 0 ? "#a1a1aa" : "#e4e4e7"} strokeWidth={tk === 0 ? 1 : 0.5} />
+            <text x={PAD.left - 6} y={y0 - h(tk) + 3} textAnchor="end" fontSize={10} className="fill-zinc-400">
+              {Math.abs(tk) >= 1000 ? `${Number((tk / 1000).toFixed(1))}k` : tk}
+            </text>
+          </g>
+        ))}
+        <text x={14} y={y0 - plotH / 2} textAnchor="middle" fontSize={10} className="fill-zinc-500" transform={`rotate(-90 14 ${y0 - plotH / 2})`}>
+          Students
+        </text>
+        {months.map((m, i) => {
+          const cx = PAD.left + slot * (i + 0.5);
+          const x = cx - barW / 2;
+          const hE = h(m.joined_earlier);
+          const hT = h(m.joined_this_month);
+          const p = projected(m);
+          const label = p !== null ? `${total(m)} → ~${p}` : String(total(m));
+          const labelTop = Math.max(h(total(m)), p !== null ? h(p) : 0);
+          return (
+            <g key={m.month} data-testid="traction-bar">
+              {p !== null && (
+                <rect x={x} y={y0 - h(p)} width={barW} height={h(p)} fill="#f4f4f5" stroke="#52525b" strokeWidth={1.2} strokeDasharray="4,3" data-testid="traction-projection" />
+              )}
+              <rect x={x} y={y0 - hE} width={barW} height={hE} fill={EARLIER} />
+              <rect x={x} y={y0 - hE - hT} width={barW} height={hT} fill={THIS_MONTH} />
+              <text x={cx} y={y0 - labelTop - 5} textAnchor="middle" fontSize={11} fontWeight={700} className="fill-zinc-700">
+                {label}
+              </text>
+              <text x={cx} y={y0 + 14} textAnchor="middle" fontSize={10} className="fill-zinc-400">
+                {monthLabel(m.month).slice(0, 3)}
+              </text>
+              <rect x={cx - slot / 2} y={top0} width={slot} height={y0 - top0} fill="transparent" onMouseEnter={() => setHover(i)} onTouchStart={() => setHover(i)} />
+            </g>
+          );
+        })}
+        {hm && hover !== null && (
+          <g pointerEvents="none">
+            {(() => {
+              const p = projected(hm);
+              const lines = [`${hm.joined_earlier} joined earlier`, `${hm.joined_this_month} joined this month`];
+              if (p !== null) lines.push(`~${p} projected by month end`);
+              const boxW = 170;
+              const boxH = 18 + lines.length * 14;
+              const cx = PAD.left + slot * (hover + 0.5);
+              const bx = Math.min(Math.max(cx - boxW / 2, PAD.left), W - PAD.right - boxW);
+              return (
+                <>
+                  <rect x={bx} y={top0 + PAD.top} width={boxW} height={boxH} rx={4} fill="#18181b" opacity={0.92} />
+                  <text x={bx + 8} y={top0 + PAD.top + 13} fontSize={10} fill="#d4d4d8">
+                    {monthLabel(hm.month)}
+                  </text>
+                  {lines.map((l, k) => (
+                    <text key={l} x={bx + 8} y={top0 + PAD.top + 28 + k * 14} fontSize={11} fontWeight={600} fill="#fafafa">
+                      {l}
+                    </text>
+                  ))}
+                </>
+              );
+            })()}
+          </g>
+        )}
+      </svg>
+    </div>
   );
 }

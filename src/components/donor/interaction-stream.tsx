@@ -86,7 +86,7 @@ export function InteractionStream() {
         <h3 className="text-lg font-bold text-zinc-800">Student interactions, live</h3>
         <span className="flex items-center gap-1.5 text-[11px] text-zinc-500">
           <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" aria-hidden="true" />
-          Names and answers masked
+          Names and student transcripts masked for child privacy reasons.
         </span>
       </div>
       {error && <p className="py-10 text-center text-sm text-zinc-400">Interactions are unavailable right now.</p>}
