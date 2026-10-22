@@ -169,6 +169,9 @@ const nextChildType = (t: GeoRef["type"]): ChildType =>
   t === "country" ? "state" : t === "state" ? "district" : t === "district" ? "block" : t === "block" ? "school" : t === "school" ? "teacher" : "student";
 
 const PUBLIC_RELABEL: Record<string, string> = { Time: "Usage time" };
+// the donor page's drill-down invitation, on Uttar Pradesh (state code 09)
+const PUBLIC_HINT_STATE_CODE = "09";
+const PUBLIC_DRILL_HINT = "Double-click Uttar Pradesh to explore its districts, schools and students.";
 
 export function TeacherDashboard({ profile: initialProfile, incompleteStates, variant }: TeacherDashboardProps) {
   const isPublic = variant === "public";
@@ -237,6 +240,11 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates, va
       // storage unavailable
     }
   }, []);
+  // The donor page (public variant): at the country level, a callout on
+  // Uttar Pradesh inviting the visitor to drill in, until dismissed or
+  // they drill anywhere (session only).
+  const [publicHintOpen, setPublicHintOpen] = useState(true);
+  const dismissPublicHint = useCallback(() => setPublicHintOpen(false), []);
   const setLang = useCallback((l: Lang) => {
     setLangState(l);
     try {
@@ -291,6 +299,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates, va
 
   const childType: ChildType | null = scores ? scores.child_type : entity ? nextChildType(entity.type) : null;
   const geoChildren: Child[] = useMemo(() => (scores ? geoChildrenOf(scores) : []), [scores]);
+  const publicHintId = isPublic && publicHintOpen && entity?.type === "country" ? (geoChildren.find((c) => c.code === PUBLIC_HINT_STATE_CODE)?.id ?? null) : null;
   const students: StudentChild[] = useMemo(() => (scores ? studentChildrenOf(scores) : []), [scores]);
   const emptyRoot = !!scores && scores.root.n == null;
   const usingN = geoChildren.filter((c) => c.using_lifteracy).length;
@@ -320,6 +329,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates, va
   // ---- navigation ----
   const drill = useCallback((c: Child) => {
     setStack((s) => [...s, toRef(c)]);
+    setPublicHintOpen(false);
     setHoverId(null);
     setSelId(null);
   }, []);
@@ -707,8 +717,15 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates, va
                   onUp={up}
                   ownId={ownId}
                   timeWindow={timeWindow}
-                  drillHint={hintOpen && ownId ? `${t("This is you. Double-click your")} ${t(nounS).toLowerCase()} ${t("to see your own results.")}` : null}
-                  onDismissHint={dismissHint}
+                  drillHint={
+                    publicHintId
+                      ? PUBLIC_DRILL_HINT
+                      : hintOpen && ownId
+                        ? `${t("This is you. Double-click your")} ${t(nounS).toLowerCase()} ${t("to see your own results.")}`
+                        : null
+                  }
+                  hintId={publicHintId}
+                  onDismissHint={publicHintId ? dismissPublicHint : dismissHint}
                   metricLabel={metricLabel}
                   time={timeMode}
                   verdict={isVerdict}

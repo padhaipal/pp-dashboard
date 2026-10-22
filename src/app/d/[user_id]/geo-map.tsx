@@ -65,9 +65,11 @@ export type GeoMapProps = {
   ownId?: string | null;
   // Time mode: the window the colours are marked for (windowColor).
   timeWindow?: TimeWindow;
-  // First visit: a callout pointing at the viewer's own area, asking them to
-  // drill in; null hides it.
+  // First visit: a callout pointing at the viewer's own area (or `hintId`'s,
+  // when given — the donor page points the public at a state), asking them
+  // to drill in; null hides it.
   drillHint?: string | null;
+  hintId?: string | null;
   onDismissHint?: () => void;
   metricLabel: string;
   // the NIPUN verdict: schools coloured Pass / Fail / Not enough data, areas by their share of passing schools
@@ -129,7 +131,7 @@ export function areaFill(d: string, child: Child, incomplete: boolean, fill: (c:
 type Tip = { x: number; y: number; title: string; sub: string | null };
 
 export function GeoMap(props: GeoMapProps) {
-  const { entity, childType, childrenRows, incompleteStates, hoverId, setHoverId, selectedId, onSelect, onDrill, onUp, ownId = null, timeWindow = "all", drillHint = null, onDismissHint, metricLabel, time = false, verdict = false, t = same } = props;
+  const { entity, childType, childrenRows, incompleteStates, hoverId, setHoverId, selectedId, onSelect, onDrill, onUp, ownId = null, timeWindow = "all", drillHint = null, hintId = null, onDismissHint, metricLabel, time = false, verdict = false, t = same } = props;
   const fillOf = time ? (c: Child) => windowFill(c, timeWindow) : childFill;
   const wrapRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 640, h: 420 });
@@ -321,9 +323,10 @@ export function GeoMap(props: GeoMapProps) {
 
   const outlineD = useMemo(() => (ready && ready.outline && proj ? ringsToPath(exteriorRings(ready.outline, project)) : ""), [ready, proj, project]);
 
-  // Where the viewer's own child sits (an area's centre, or its label / dot).
-  const ownXYOf = (areasNow: { child: Child; c: [number, number] }[], pts: { child: Child; xy: [number, number] }[]): [number, number] | null =>
-    ownId ? (areasNow.find((a) => a.child.id === ownId)?.c ?? pts.find((p) => p.child.id === ownId)?.xy ?? null) : null;
+  // Where a child sits (an area's centre, or its label / dot): the viewer's
+  // own (the "You" tag) and the hint's (`hintId`, else the own).
+  const xyOf = (id: string | null, areasNow: { child: Child; c: [number, number] }[], pts: { child: Child; xy: [number, number] }[]): [number, number] | null =>
+    id ? (areasNow.find((a) => a.child.id === id)?.c ?? pts.find((p) => p.child.id === id)?.xy ?? null) : null;
   const projected = useMemo(
     () =>
       points
@@ -335,7 +338,8 @@ export function GeoMap(props: GeoMapProps) {
     [points, project],
   );
 
-  const ownXY = ownXYOf(areas, projected);
+  const ownXY = xyOf(ownId, areas, projected);
+  const hintXY = xyOf(hintId ?? ownId, areas, projected);
   // the viewer's own label's box (district → blocks drawn as labels): others must not cover it
   const ownLabelPt = childType !== "school" ? projected.find((p) => p.child.id === ownId) : undefined;
   const ownLabelBox = ownLabelPt ? labelBox(ownLabelPt.child.name, ownLabelPt.xy, 12 / tf.k) : null;
@@ -601,8 +605,8 @@ export function GeoMap(props: GeoMapProps) {
         </div>
       )}
 
-      {drillHint && ownXY && (
-        <DrillHint x={tf.x + ownXY[0] * k} y={tf.y + ownXY[1] * k - 30} text={drillHint} onDismiss={onDismissHint} t={t} />
+      {drillHint && hintXY && (
+        <DrillHint x={tf.x + hintXY[0] * k} y={tf.y + hintXY[1] * k - 30} text={drillHint} onDismiss={onDismissHint} t={t} />
       )}
       {/* zoom — top-right, clear of the legend (bottom-left) and the up button (bottom-right) */}
       <div className="absolute right-2 top-2 z-20 flex flex-col overflow-hidden rounded-lg border border-zinc-300 bg-white shadow-md" data-testid="map-zoom">

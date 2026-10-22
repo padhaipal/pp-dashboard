@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { initialRows, reveal, revealGapMs, STREAM_SIZE, unseen, type StreamRow } from "./interaction-stream-data";
+import { initialRows, QUESTION_TYPE, reveal, revealGapMs, STREAM_SIZE, timeAgo, unseen, type StreamRow } from "./interaction-stream-data";
 
 const row = (n: number): StreamRow => ({
   key: `k${n}`,
@@ -42,5 +42,18 @@ describe("interaction stream", () => {
     expect(revealGapMs(1)).toBe(30_000);
     expect(revealGapMs(5)).toBe(10_000);
     expect(revealGapMs(100)).toBe(1500);
+  });
+
+  it("says how long ago", () => {
+    const now = Date.parse("2026-10-22T12:00:00Z");
+    expect(timeAgo("2026-10-22T11:59:40Z", now)).toBe("just now");
+    expect(timeAgo("2026-10-22T11:57:00Z", now)).toBe("3 min ago");
+    expect(timeAgo("2026-10-22T09:30:00Z", now)).toBe("2 h ago");
+    expect(timeAgo("2026-10-21T11:00:00Z", now)).toBe("1 day ago");
+    expect(timeAgo("2026-10-18T12:00:00Z", now)).toBe("4 days ago");
+  });
+
+  it("names the question types", () => {
+    expect(QUESTION_TYPE).toEqual({ voice: "Reading Question", tap: "Comprehension Multi-choice" });
   });
 });

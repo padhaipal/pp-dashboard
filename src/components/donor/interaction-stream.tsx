@@ -5,12 +5,13 @@
 // name, time, voice note or tap, the answer (a voice note's transcript
 // masked to its first and last character), the expected answer, the mark
 // and reading speed. No audio. Polls pp-sketch once a minute (paused while
-// the tab is hidden); turns are at least two minutes old, and new ones are
+// the tab is hidden); turns are at least two minutes old (shown as "N min
+// ago", refreshed every 30 s), and new ones are
 // revealed one by one over the minute, the oldest rotating out, so the
 // table always shows the latest STREAM_SIZE.
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { formatIst, initialRows, POLL_MS, reveal, revealGapMs, STREAM_URL, unseen, type StreamResponse, type StreamRow } from "./interaction-stream-data";
+import { initialRows, POLL_MS, QUESTION_TYPE, reveal, revealGapMs, STREAM_URL, timeAgo, unseen, type StreamResponse, type StreamRow } from "./interaction-stream-data";
 
 export function InteractionStream() {
   const [rows, setRows] = useState<StreamRow[] | null>(null);
@@ -19,6 +20,11 @@ export function InteractionStream() {
   const queue = useRef<StreamRow[]>([]);
   const [queued, setQueued] = useState(0);
   const [fresh, setFresh] = useState<string | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(id);
+  }, []);
 
   const poll = useCallback(async () => {
     try {
@@ -80,7 +86,7 @@ export function InteractionStream() {
         <h3 className="text-lg font-bold text-zinc-800">Student interactions, live</h3>
         <span className="flex items-center gap-1.5 text-[11px] text-zinc-500">
           <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" aria-hidden="true" />
-          Delayed by two minutes · names and answers masked
+          Names and answers masked
         </span>
       </div>
       {error && <p className="py-10 text-center text-sm text-zinc-400">Interactions are unavailable right now.</p>}
@@ -92,9 +98,9 @@ export function InteractionStream() {
           <table className="w-full min-w-[760px] text-left text-sm">
             <thead>
               <tr className="border-b border-zinc-200 text-xs uppercase tracking-wide text-zinc-500">
-                <th className="px-4 py-3 font-medium">Timestamp</th>
+                <th className="px-4 py-3 font-medium">When</th>
                 <th className="px-4 py-3 font-medium">Student</th>
-                <th className="px-4 py-3 font-medium">Response</th>
+                <th className="px-4 py-3 font-medium">Question Type</th>
                 <th className="px-4 py-3 font-medium">Answer</th>
                 <th className="px-4 py-3 font-medium">Correct Answer</th>
                 <th className="px-4 py-3 font-medium">Answer Status</th>
@@ -110,13 +116,15 @@ export function InteractionStream() {
                   className={"border-b border-zinc-100 align-top " + (row.kind === "tap" ? "bg-sky-50/60" : "")}
                   style={row.key === fresh ? { animation: "ppFresh 2.5s ease-out" } : undefined}
                 >
-                  <td className="whitespace-nowrap px-4 py-2.5 text-zinc-600">{formatIst(row.at)}</td>
+                  <td className="whitespace-nowrap px-4 py-2.5 text-zinc-600" title={new Date(row.at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}>
+                    {timeAgo(row.at, now)}
+                  </td>
                   <td className="whitespace-nowrap px-4 py-2.5 text-zinc-700">{row.student}</td>
                   <td className="px-4 py-2.5">
                     {row.kind === "tap" ? (
-                      <span className="inline-block whitespace-nowrap rounded bg-sky-100 px-2 py-0.5 text-xs font-medium text-sky-700">Flow tap</span>
+                      <span className="inline-block whitespace-nowrap rounded bg-sky-100 px-2 py-0.5 text-xs font-medium text-sky-700">{QUESTION_TYPE.tap}</span>
                     ) : (
-                      <span className="inline-block whitespace-nowrap rounded bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600">Voice note</span>
+                      <span className="inline-block whitespace-nowrap rounded bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600">{QUESTION_TYPE.voice}</span>
                     )}
                   </td>
                   <td className="px-4 py-2.5">{row.answer ? <span className="text-zinc-700">{row.answer}</span> : <span className="italic text-zinc-400">--</span>}</td>
