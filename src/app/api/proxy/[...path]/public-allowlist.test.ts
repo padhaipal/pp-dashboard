@@ -37,6 +37,8 @@ describe("proxy public allowlist", () => {
   it("accepts the donor page's traction series (GET only) but not the staff summary", () => {
     expect(isPublicAllowed("users/dashboard/traction", "GET")).toBe(true);
     expect(isPublicAllowed("users/dashboard/traction", "POST")).toBe(false);
+    expect(isPublicAllowed("users/dashboard/interactions", "GET")).toBe(true);
+    expect(isPublicAllowed("users/dashboard/interactions", "POST")).toBe(false);
     expect(isPublicAllowed("users/dashboard/summary", "GET")).toBe(false);
     expect(isPublicAllowed("users/dashboard", "GET")).toBe(false);
   });

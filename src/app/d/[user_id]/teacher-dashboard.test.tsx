@@ -734,6 +734,15 @@ describe("TeacherDashboard — public variant (the donor page)", () => {
     expect(within(example).getByTestId("example-audio").getAttribute("src")).toBe("/example-voice-note.wav");
     expect(calls.some((u) => u.includes("/audio"))).toBe(false);
   });
+
+  it("calls the usage metric 'Usage time' for the public (the /d dashboards keep 'Time')", async () => {
+    const { fn } = makeFetch({ scoresById: { "g-sch": SCORES_SCHOOL } });
+    vi.stubGlobal("fetch", vi.fn(fn));
+    render(<TeacherDashboard profile={publicProfile(PROFILE_SCHOOL.geo_entity!)} incompleteStates={[]} variant="public" />);
+    await screen.findAllByTestId("teacher-card");
+    expect(screen.getAllByRole("button", { name: "Usage time" }).length).toBeGreaterThan(0);
+    expect(screen.queryByRole("button", { name: "Time" })).toBeNull();
+  });
 });
 
 describe("TeacherDashboard — the WhatsApp-group message", () => {

@@ -1,16 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { shortDate, smooth, TRACTION_METRICS } from "./traction-data";
-
-describe("smooth", () => {
-  it("is a trailing mean whose window shrinks at the start", () => {
-    expect(smooth([2, 4, 6, 8], 2)).toEqual([2, 3, 5, 7]);
-    expect(smooth([2, 4, 6], 1)).toEqual([2, 4, 6]);
-    expect(smooth([2, 4, 6], 14)).toEqual([2, 3, 4]);
-  });
-  it("skips nulls; a window of nulls stays null", () => {
-    expect(smooth([null, 4, null, null, null], 2)).toEqual([null, 4, 4, null, null]);
-  });
-});
+import { shortDate, TRACTION_METRICS } from "./traction-data";
 
 describe("TRACTION_METRICS", () => {
   it("offers the ten series in the asked order", () => {
@@ -26,6 +15,10 @@ describe("TRACTION_METRICS", () => {
       "states",
       "cohort_avg_lifetime_hours",
     ]);
+  });
+  it("draws only the cohort series as dots, with a note", () => {
+    expect(TRACTION_METRICS.filter((m) => m.dots).map((m) => m.key)).toEqual(["cohort_avg_lifetime_hours"]);
+    expect(TRACTION_METRICS.find((m) => m.dots)?.note).toMatch(/no student was onboarded/);
   });
 });
 

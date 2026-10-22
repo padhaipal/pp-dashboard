@@ -28,6 +28,9 @@ export const PUBLIC_ALLOWED: { pattern: RegExp; methods: string[] }[] = [
   { pattern: /^scores\/letter-bins$/, methods: ["GET"] },
   // The donor page's traction chart: daily aggregates, no personal data.
   { pattern: /^users\/dashboard\/traction$/, methods: ["GET"] },
+  // The donor page's interaction stream: masked names and transcripts
+  // (first and last character), no audio, no ids.
+  { pattern: /^users\/dashboard\/interactions$/, methods: ["GET"] },
 ];
 
 // The media feed; its `onboarding` param is staff-only (below).

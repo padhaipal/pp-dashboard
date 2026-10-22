@@ -9,20 +9,24 @@ import { useEffect, useRef, useState } from "react";
 const TECH_DONE = [
   { date: "2026-03-04", title: "Live on WhatsApp", detail: "Children message LIFTeracy on WhatsApp — no app to install." },
   { date: "2026-03-18", title: "Hears every letter", detail: "Spots exactly which letters a child misreads in a voice note." },
-  { date: "2026-04-14", title: "Understands speech", detail: "Turns a child's Hindi voice note into text so it can be marked." },
-  { date: "2026-04-22", title: "Teaches vowel signs", detail: "Hindi matras (vowel marks) join the lessons." },
+  { date: "2026-04-15", title: "Evening reminders", detail: "A short video at 7 pm every evening invites each child to their lesson." },
+  { date: "2026-04-22", title: "Teaches vowels", detail: "Vowels and their signs (matras) join the lessons." },
   { date: "2026-05-29", title: "Safe daily releases", detail: "Automated tests and a staging copy before every update." },
-  { date: "2026-06-15", title: "Map of every school", detail: "This site's map: drill from India down to a single school." },
+  { date: "2026-06-11", title: "Live monitoring", detail: "Every message traced end to end, with a daily health report." },
   { date: "2026-07-07", title: "Proven at scale", detail: "Handled 1,200 messages a second in load tests." },
   { date: "2026-07-27", title: "Stories, not just words", detail: "Reading passages with comprehension questions, written by AI and quality-checked before a child sees them." },
-  { date: "2026-08-21", title: "Forms inside WhatsApp", detail: "Parents answer questions without leaving the chat." },
+  { date: "2026-08-25", title: "Adapts to every child", detail: "Lesson difficulty moves up or down with each child's reading." },
   { date: "2026-09-04", title: "Measures reading speed", detail: "Words per minute from each recorded read-aloud." },
   { date: "2026-09-11", title: "Sign-up by voice", detail: "Parents give consent and child details just by speaking." },
-  { date: "2026-09-16", title: "Every school in India", detail: "1.7 million schools mapped, ready for teacher dashboards." },
+  { date: "2026-09-16", title: "Mapped every school in India", detail: "1.7 million schools mapped, ready for teacher dashboards." },
+  { date: "2026-10-02", title: "Fourth speech engine", detail: "A fourth transcription service checks every voice note." },
+  { date: "2026-10-08", title: "Dashboards for officials", detail: "Teachers and education officials see their own schools' progress every day." },
+  { date: "2026-10-12", title: "Daily NIPUN verdicts", detail: "Every school gets a NIPUN pass or fail estimate, updated daily." },
+  { date: "2026-10-13", title: "Reading-speed gate", detail: "From level 9, a child reads at 40 words a minute before moving on." },
 ];
 
 const T0 = Date.parse("2026-02-24T00:00:00Z");
-const T1 = Date.parse("2026-09-28T00:00:00Z");
+const T1 = Date.parse("2026-10-24T00:00:00Z");
 const MONTHS: [string, string][] = [
   ["Mar", "2026-03-01"],
   ["Apr", "2026-04-01"],
@@ -31,9 +35,11 @@ const MONTHS: [string, string][] = [
   ["Jul", "2026-07-01"],
   ["Aug", "2026-08-01"],
   ["Sep", "2026-09-01"],
+  ["Oct", "2026-10-01"],
 ];
-// label lanes: above-near, below-near, above-far, below-far, …
-const LANES = [-34, 34, -70, 70, -106, 106];
+// label lanes: above-near, below-near, above-far, below-far, … (eight: the
+// September–October milestones crowd the right end)
+const LANES = [-34, 34, -70, 70, -106, 106, -142, 142];
 
 const xOf = (d: string) => ((Date.parse(d + "T00:00:00Z") - T0) / (T1 - T0)) * 100;
 const fmtD = (d: string) => new Date(d + "T00:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
@@ -67,7 +73,7 @@ export function TechRoadmap() {
     lastRight[lane] = left + w;
     return lane;
   });
-  const usedFar = laneOf.some((l) => l >= 4);
+  const farthest = Math.max(...laneOf);
   return (
     <div className="p-5 sm:p-8" data-testid="tech-roadmap">
       <div className="mb-2 text-center text-sm text-zinc-500">
@@ -76,7 +82,7 @@ export function TechRoadmap() {
           github.com/padhaipal ↗
         </a>
       </div>
-      <div className={"relative mx-auto mb-10 mt-14 max-w-5xl overflow-x-auto sm:overflow-visible " + (usedFar ? "h-80" : "h-64")}>
+      <div className={"relative mx-auto mb-10 mt-14 max-w-5xl overflow-x-auto sm:overflow-visible " + (farthest >= 6 ? "h-96" : farthest >= 4 ? "h-80" : "h-64")}>
         <div ref={trackRef} className="relative h-full min-w-[720px]">
           <div className="absolute left-0 right-0 top-1/2 h-px -translate-y-1/2 bg-zinc-300" />
           {MONTHS.map(([m, d]) => (
