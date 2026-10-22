@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   ageBandLabel,
+  beforeDay,
+  istToday,
   ageBandOf,
   binColor,
   binOf,
@@ -268,5 +270,13 @@ describe("metric families (2026-10)", () => {
     expect(verdictColor(null)).toBe(UNCOVERED);
     expect(verdictDecided({ school_passed: null, schools_pass: 3, schools_fail: 2, schools_insufficient: 9 })).toBe(5);
     expect(verdictDecided(undefined)).toBe(0);
+  });
+});
+
+describe("istToday / beforeDay", () => {
+  it("India's date (+5:30) and the points before it", () => {
+    expect(istToday(Date.parse("2026-09-09T18:29:00Z"))).toBe("2026-09-09");
+    expect(istToday(Date.parse("2026-09-09T18:30:00Z"))).toBe("2026-09-10");
+    expect(beforeDay([{ date: "2026-09-09" }, { date: "2026-09-10" }], "2026-09-10")).toEqual([{ date: "2026-09-09" }]);
   });
 });

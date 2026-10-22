@@ -443,6 +443,10 @@ export const WINDOW_DAYS: Record<TimeWindow, number | null> = { yesterday: 1, "7
 // The data range to fetch for a trend window: all time needs the full
 // history, the rest fit in the 30-day range.
 export const rangeForWindow = (w: TimeWindow): Range => (w === "all" ? "all" : 30);
+// Today's India date (IST is a fixed +5:30, no DST), "YYYY-MM-DD".
+export const istToday = (now: number = Date.now()): string => new Date(now + 330 * 60_000).toISOString().slice(0, 10);
+// Points dated before `today` — drops the day still in progress.
+export const beforeDay = <P extends { date: string }>(points: P[], today: string): P[] => points.filter((p) => p.date < today);
 // Points of a series within the last `days` days up to its newest date.
 export function lastDays<P extends { date: string }>(points: P[], days: number | null, newest?: string): P[] {
   if (days == null || !points.length) return points;

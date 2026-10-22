@@ -69,6 +69,8 @@ import {
   UNNAMED,
   isPiiFull,
   rangeForWindow,
+  beforeDay,
+  istToday,
   lastDays,
   WINDOW_DAYS,
   csvUrl,
@@ -557,8 +559,13 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates, va
             : "officials"
           : null
       : null;
+  // The donor page's Usage time trend leaves out today (India time): the day
+  // is still in progress, so its point would dip. NIPUN / MPL-B points dated
+  // today are complete nightly results and stay; the /d dashboards keep it.
+  const trendDays = <P extends { date: string }>(points: P[]): P[] => (isPublic && isUsageMetric ? beforeDay(points, istToday()) : points);
+  const trendSeries = scores ? trendDays(scores.series) : [];
   // The newest date of the root series: the trend's window ends there for every line.
-  const newestDate = scores?.series.length ? scores.series[scores.series.length - 1].date : undefined;
+  const newestDate = trendSeries.length ? trendSeries[trendSeries.length - 1].date : undefined;
   const closeModal = useCallback(() => setModal(null), []);
   const closeReport = useCallback(() => setReportOpen(false), []);
 
@@ -793,7 +800,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates, va
                           </div>
                         </div>
                         <RepTrend
-                          series={lastDays(scores.series, WINDOW_DAYS[pickedWindow])}
+                          series={lastDays(trendSeries, WINDOW_DAYS[pickedWindow])}
                           label={isUsageMetric ? t("Total minutes") : isVerdict ? t("Schools passing NIPUN") : t(METRIC_BY[metric].short)}
                           metric={metric}
                           passMark={scores.pass_mark}
@@ -802,13 +809,13 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates, va
                               ? (scores.students_series ?? []).map((ss) => ({
                                   id: ss.student_id,
                                   label: ((s) => withPhone(s?.name?.split(/\s+/)[0] ?? UNNAMED, s?.phone))(students.find((s) => s.student_id === ss.student_id)),
-                                  points: lastDays(ss.points, WINDOW_DAYS[pickedWindow], newestDate),
+                                  points: lastDays(trendDays(ss.points), WINDOW_DAYS[pickedWindow], newestDate),
                                 }))
                               : // one faint line per child (area, or a teacher's class) — hover a marker / card to light it up
                                 (scores.children_series ?? []).map((cs) => ({
                                   id: cs.id,
                                   label: geoChildren.find((c) => c.id === cs.id)?.name ?? "",
-                                  points: lastDays(cs.points, WINDOW_DAYS[pickedWindow], newestDate),
+                                  points: lastDays(trendDays(cs.points), WINDOW_DAYS[pickedWindow], newestDate),
                                 }))
                           }
                           hoverId={hoverId}

@@ -40,7 +40,8 @@ on top; the month in progress adds a dashed overlay to its linear
 month-end projection ("10 → ~31"). Missing `monthly` (older pp-sketch) →
 "No data yet."
 
-InteractionStream: GET `users/dashboard/interactions` (public allowlist;
+InteractionStream: graded turns only (marked correct or incorrect — pp-sketch
+filters). GET `users/dashboard/interactions` (public allowlist;
 pp-sketch users/interaction-stream.prompt.md) on load and every 60 s while
 the tab is visible. Shows the newest `STREAM_SIZE` (10) turns; turns not
 seen before are revealed one by one over the next minute (`revealGapMs`),
@@ -51,7 +52,8 @@ Student (masked name, or a masked common Indian name when unnamed), Question Typ
 tapped option), Correct Answer, Answer Status, WPM. No audio.
 
 "Measuring Every Child": `TeacherDashboard variant="public"` opens on All time (the /d dashboards
-on 30 days) and relabels
+on 30 days), leaves today (IST, in progress) out of the Usage time trend
+(NIPUN / MPL-B keep today's complete nightly point; /d keeps it) and relabels
 "Time" as "Usage time" (English only, via its `t`); the /d dashboards keep
 "Time". At the country level a dismissible `DrillHint` points at Uttar
 Pradesh (state code 09, GeoMap `hintId`) inviting a double-click; it closes
