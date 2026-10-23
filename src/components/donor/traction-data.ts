@@ -59,7 +59,7 @@ export const TRACTION_METRICS: TractionMetric[] = [
   { key: "minutes", label: "Minutes spent", short: "Minutes", unit: "Minutes", format: fmtInt },
   { key: "users_over_5min", label: "Users over 5 min", short: "Users 5+ min", unit: "Users", format: fmtInt },
   { key: "students_onboarded", label: "Students onboarded", short: "Students", unit: "Students", format: fmtInt },
-  { key: "mpl_b_passed", label: "Passed MPL-b", short: "MPL-b", unit: "Students", format: fmtInt },
+  { key: "mpl_b_passed", label: "Passed MPL-B", short: "MPL-B", unit: "Students", format: fmtInt },
   { key: "teachers_onboarded", label: "Teachers onboarded", short: "Teachers", unit: "Teachers", format: fmtInt },
   { key: "schools", label: "Schools", short: "Schools", unit: "Schools", format: fmtInt },
   { key: "blocks", label: "Blocks", short: "Blocks", unit: "Blocks", format: fmtInt },

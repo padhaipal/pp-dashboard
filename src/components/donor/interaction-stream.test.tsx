@@ -57,6 +57,21 @@ describe("InteractionStream", () => {
     expect(rows[0].textContent).toContain("Incorrect");
   });
 
+  it("shows a speed over 200 wpm as --, like no speed; phones get a compact feed", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(respond([row(1, { wpm: 250 }), row(2, { wpm: 42 })])));
+    render(<InteractionStream />);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+    const wpm = screen.getAllByTestId("stream-wpm").map((c) => c.textContent);
+    expect(wpm).toEqual(["42", "--"]);
+    const items = screen.getAllByTestId("stream-item");
+    expect(items).toHaveLength(2);
+    expect(items[0].textContent).toContain("42 wpm");
+    expect(items[1].textContent).not.toContain("wpm");
+    expect(items[0].textContent).toContain("✓");
+  });
+
   it("never asks for audio", async () => {
     const fetchMock = vi.fn().mockResolvedValue(respond([row(1)]));
     vi.stubGlobal("fetch", fetchMock);

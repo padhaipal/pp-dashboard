@@ -146,11 +146,14 @@ export function MvpMetricToggle<M extends string = Family>({
   setMetric,
   options,
   t = same,
+  selectedClass = "rounded-full px-3.5 py-1.5 transition bg-blue-600 text-white shadow-sm",
 }: {
   metric: M;
   setMetric: (m: M) => void;
   options?: { key: M; label: string; short?: string }[];
   t?: T;
+  // the selected pill's classes (the donor page uses its brand blue)
+  selectedClass?: string;
 }) {
   const opts = (options ?? FAMILIES) as { key: M; label: string; short?: string }[];
   const mobile = useIsMobile();
@@ -162,7 +165,7 @@ export function MvpMetricToggle<M extends string = Family>({
           type="button"
           onClick={() => setMetric(m.key)}
           aria-pressed={metric === m.key}
-          className={"rounded-full px-3.5 py-1.5 transition " + (metric === m.key ? "bg-blue-600 text-white shadow-sm" : "text-zinc-600 hover:bg-white")}
+          className={metric === m.key ? selectedClass : "rounded-full px-3.5 py-1.5 transition text-zinc-600 hover:bg-white"}
         >
           {t(mobile && m.short ? m.short : m.label)}
         </button>

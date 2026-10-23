@@ -55,6 +55,14 @@ export function timeAgo(iso: string, now: number): string {
   return d === 1 ? "1 day ago" : `${d} days ago`;
 }
 
+// Reading speeds above this are measurement noise (a clipped or empty voice
+// note), shown as "--" like a turn with no speed.
+export const MAX_WPM = 200;
+export const shownWpm = (wpm: number | null): number | null => (wpm === null || wpm > MAX_WPM ? null : wpm);
+
+// Hindi text gets the Devanagari face, a little larger than the Latin around it
+export const isDevanagari = (s: string): boolean => /[\u0900-\u097F]/.test(s);
+
 export const QUESTION_TYPE: Record<StreamRow["kind"], string> = {
   voice: "Reading Question",
   tap: "Comprehension Multi-choice",

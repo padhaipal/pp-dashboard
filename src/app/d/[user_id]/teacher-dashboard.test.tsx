@@ -741,6 +741,9 @@ describe("TeacherDashboard — public variant (the donor page)", () => {
     render(<TeacherDashboard profile={publicProfile(PROFILE.geo_entity!)} incompleteStates={[]} variant="public" />);
     const hint = await screen.findByTestId("drill-hint");
     expect(hint.textContent).toContain("Double-click Uttar Pradesh");
+    // under the donor page's h2 sections: the location is an h3, no h1
+    expect(screen.getByTestId("location-title").tagName).toBe("H3");
+    expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
     // no "You" tag: the public has no own area
     expect(screen.queryByTestId("own-bar-tag")).toBeNull();
     fireEvent.click(screen.getByTestId("drill-hint-dismiss"));
