@@ -67,11 +67,15 @@ Reading · 42 wpm", then ✓/✗ and the answer (+ "expected …" when wrong).
 WPM over 200 (`MAX_WPM`) shows "--" like a missing speed. Loading = ten
 skeleton rows. No audio.
 
-"Measuring Every Child": intro on the band (NIPUN / MPL-B), then
+"Measuring Every Child": intro on the band ("… daily basis with full
+transparency, allowing a much larger & richer sample than current
+once-a-year tests with a random sample of students."; "Names and phone
+numbers are masked."), then
 `TeacherDashboard variant="public"` opened on India (resolved server-side
 via geo-entities/search with the badge; "unavailable" when that fails). The
 public variant renders the location title as an h3 (no h1 under the page's
-h2s), opens on All time, leaves today (IST, in progress) out of the Usage
+h2s), draws incomplete states plain grey (GeoMap `quietIncomplete`: no
+hover, tooltip or legend entry; still not drillable), opens on All time, leaves today (IST, in progress) out of the Usage
 time trend, relabels "Time" as "Usage time" and shows the Uttar Pradesh
 `DrillHint` at country level.
 
@@ -79,9 +83,10 @@ time trend, relabels "Time" as "Usage time" and shows the Uttar Pradesh
 24 Feb – 24 Oct 2026, labels in lanes, story on hover; below md a vertical
 timeline grouped by month (newest first) with every story visible.
 
-Team: the founders' photo (public/donor/founders.jpg) and
-www.lifteracy.ai's founder bios (Tom Delaney, Co-Founder; David Nelson,
-Technical Co-Founder).
+Team: the founders' photo (public/donor/founders.jpg) beside one block per
+founder — name + LinkedIn icon link, role (Tom Delaney: Pedagogy, Programs
+& Operations; David Nelson: Software, Fundraising & Strategy), bullet bio
+(David's links the open-source code on GitHub).
 
 "Help us measure what works" (`DonorContact`): the seed-funding ask with
 hello@lifteracy.ai, beside the "Get updates" form (placeholder
