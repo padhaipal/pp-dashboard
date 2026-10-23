@@ -89,8 +89,9 @@ you@example.org) — POST /api/quiz/subscribe, the /quiz page's mailing list
 (pp-sketch mailing_list_entries; lifteracy.ai's Framer form only takes
 posts from that site).
 
-Footer (`DonorFooter`): Dignity Education logo; Privacy Policy / Terms and
-Conditions / Child Protection Policy at /privacy, /terms,
+Footer (`DonorFooter`): Dignity Education logo; Privacy Policy / Terms of
+Use / Child Protection Policy at /privacy, /terms,
 /child-protection (next.config.ts rewrites to public/legal/*.pdf, the PDFs
-from lifteracy.ai's Google Drive links); Development Consortium
+LIFTeracy versions, Oct 2026); Development Consortium
 registration.
+The team photo's caption names Tom Delaney (left) and David Nelson (right).

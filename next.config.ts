@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
   async rewrites() {
     return [
       { source: "/privacy", destination: "/legal/privacy-policy.pdf" },
-      { source: "/terms", destination: "/legal/terms-and-conditions.pdf" },
+      { source: "/terms", destination: "/legal/terms-of-use.pdf" },
       { source: "/child-protection", destination: "/legal/child-protection-policy.pdf" },
     ];
   },

@@ -12,7 +12,7 @@ describe("DonorFooter", () => {
     render(<DonorFooter />);
     expect(screen.getByAltText("Dignity Education")).toBeTruthy();
     expect(screen.getByText("Privacy Policy").getAttribute("href")).toBe("/privacy");
-    expect(screen.getByText("Terms and Conditions").getAttribute("href")).toBe("/terms");
+    expect(screen.getByText("Terms of Use").getAttribute("href")).toBe("/terms");
     expect(screen.getByText("Child Protection Policy").getAttribute("href")).toBe("/child-protection");
     expect(screen.getByText(/FCRA Registration Number: 231661457/)).toBeTruthy();
     const text = screen.getByTestId("donor-footer").textContent ?? "";
