@@ -70,4 +70,4 @@ export function formatResearchAnswer(q: QuestionData): string {
 }
 
 export const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ?? "https://dashboard.padhaipal.com";
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://dashboard.lifteracy.ai";
