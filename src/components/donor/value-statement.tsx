@@ -2,8 +2,7 @@
 
 // The donor page's headline value proposition (ported from
 // sandbox-global-map/donor.html ValueStatement): a rotating subject / verb
-// with an odometer roll, a drag-to-scrub subject, a superscript source link
-// and a hand-scribbled "counterfactually" note (Caveat; hover, or tap on
+// with an odometer roll, a drag-to-scrub subject and a hand-scribbled "counterfactually" note (Caveat; hover, or tap on
 // touch screens); a row of dots under it shows and picks the variation; then
 // the MPL-B claim. The cost-effectiveness figures are CostEffectiveness.
 
@@ -12,7 +11,6 @@ import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } fr
 
 const caveat = Caveat({ subsets: ["latin"], weight: ["500", "600", "700"] });
 
-const WWHGE_PDF = "https://www.wwhge.org/wp-content/uploads/2026/02/WWHGE_Universal-Foundational-Learning-Insight-Note.pdf";
 
 const VARIATIONS = [
   { subject: "$200T of economic value", verb: "unlocked" },
@@ -83,11 +81,6 @@ export function ValueStatement() {
           <span key={vIdx} className="font-extrabold text-brand-ink" style={rollStyle}>
             {v.subject}
           </span>
-          <sup className="ml-0.5 text-sm font-semibold sm:text-base">
-            <a href={WWHGE_PDF} target="_blank" rel="noreferrer" title="Source: What Works Hub for Global Education, Universal Foundational Learning insight note" className="text-brand-ink hover:text-brand-deep" data-testid="value-source">
-              [1]
-            </a>
-          </sup>
         </span>{" "}
         would be{" "}
         <button

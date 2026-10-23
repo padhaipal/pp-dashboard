@@ -354,6 +354,9 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates, va
     },
     [childType],
   );
+  // the donor page: a single click on a teacher (card or bar) does nothing — no
+  // popup; a double click still drills into the class
+  const quietTeachers = isPublic && childType === "teacher";
   const barClickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const openStudent = useCallback((s: StudentChild) => setModal({ kind: "student", student: s }), []);
   // A student renamed anywhere (tile, modal header) → every copy on the page follows.
@@ -673,7 +676,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates, va
                       if (st) openStudent(st);
                     } else {
                       const c = geoChildren.find((x) => x.id === b.id);
-                      if (!c) return;
+                      if (!c || quietTeachers) return;
                       select(c);
                       if (barClickTimer.current) clearTimeout(barClickTimer.current);
                       barClickTimer.current = setTimeout(() => openChild(c), 260);
@@ -707,7 +710,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates, va
                   </div>
                 )
               ) : entity.type === "school" ? (
-                scores && <TeacherCards teachers={geoChildren} metric={metric} range={range} time={timeMode} timeWindow={timeWindow} timeCaption={timeSuffix} selId={selId} ownId={ownId} onOpen={openChild} drillHint={hintOpen && ownId ? t("This is you. Double-click your card to see your class.") : null} onDismissHint={dismissHint} onSelect={select} onDrill={drill} onClear={() => setSelId(null)} onUp={up} t={t} />
+                scores && <TeacherCards teachers={geoChildren} metric={metric} range={range} time={timeMode} timeWindow={timeWindow} timeCaption={timeSuffix} selId={selId} ownId={ownId} onOpen={quietTeachers ? undefined : openChild} drillHint={hintOpen && ownId ? t("This is you. Double-click your card to see your class.") : null} onDismissHint={dismissHint} onSelect={quietTeachers ? () => {} : select} onDrill={drill} onClear={() => setSelId(null)} onUp={up} t={t} />
               ) : entity.type === "teacher" ? (
                 scores && <StudentTiles students={students} metric={metric} time={timeMode} timeWindow={timeWindow} timeCaption={timeSuffix} onOpen={openStudent} onRename={renameStudent} onUp={up} t={t}
                     hoverId={hoverId}
