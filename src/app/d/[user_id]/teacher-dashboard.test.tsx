@@ -725,6 +725,11 @@ describe("TeacherDashboard — public variant (the donor page)", () => {
     expect(screen.queryByTestId("own-card-tag")).toBeNull();
     expect(calls.some((u) => u.includes("share-message"))).toBe(false);
 
+    // a single click on a teacher opens nothing (the /d dashboards open a popup)
+    fireEvent.click(cards[0]);
+    await new Promise((r) => setTimeout(r, 400));
+    expect(screen.queryByRole("dialog")).toBeNull();
+
     fireEvent.dblClick(cards[0]);
     const tiles = await screen.findAllByTestId("student-tile");
     fireEvent.click(tiles[0]);
