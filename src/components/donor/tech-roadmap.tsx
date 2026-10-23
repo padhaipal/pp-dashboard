@@ -1,8 +1,10 @@
 "use client";
 
-// The donor page's Technical Roadmap (ported from sandbox-global-map/
-// donor.html TechRoadmap): a to-scale timeline of shipped milestones, labels
-// packed into lanes so titles never collide, a one-line story on hover.
+// The donor page's "What we built in 8 months" (ported from
+// sandbox-global-map/donor.html TechRoadmap): from md up a to-scale timeline
+// of shipped milestones, labels packed into lanes so titles never collide, a
+// one-line story on hover; below md a vertical timeline grouped by month with
+// every story visible (no hover, no sideways scroll).
 
 import { useEffect, useRef, useState } from "react";
 
@@ -44,8 +46,8 @@ const LANES = [-34, 34, -70, 70, -106, 106, -142, 142];
 const xOf = (d: string) => ((Date.parse(d + "T00:00:00Z") - T0) / (T1 - T0)) * 100;
 const fmtD = (d: string) => new Date(d + "T00:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
 const anchorOf = (x: number) => (x < 7 ? "0%" : x > 93 ? "-100%" : "-50%");
-// text-[11px] font-semibold + padding
-const labelW = (t: string) => t.length * 6.4 + 18;
+// text-xs font-semibold + padding
+const labelW = (t: string) => t.length * 7 + 18;
 
 export function TechRoadmap() {
   const events = [...TECH_DONE].sort((a, b) => (a.date < b.date ? -1 : 1));
@@ -76,19 +78,20 @@ export function TechRoadmap() {
   const farthest = Math.max(...laneOf);
   return (
     <div className="p-5 sm:p-8" data-testid="tech-roadmap">
-      <div className="mb-2 text-center text-sm text-zinc-500">
-        What we&apos;ve built so far, month by month. Hover a milestone for the one-line story. Every line of code is open source:{" "}
-        <a href="https://github.com/orgs/padhaipal/repositories" target="_blank" rel="noreferrer" className="font-semibold text-blue-600 hover:underline">
+      <div className="mb-2 text-sm text-zinc-600">
+        What we&apos;ve built so far, month by month<span className="hidden md:inline">. Hover a milestone for the one-line story</span>. Every line of code is open source:{" "}
+        <a href="https://github.com/orgs/padhaipal/repositories" target="_blank" rel="noreferrer" className="font-semibold text-brand-ink hover:underline">
           GitHub ↗
         </a>
       </div>
-      <div className={"relative mx-auto mb-10 mt-14 max-w-5xl overflow-x-auto sm:overflow-visible " + (farthest >= 6 ? "h-96" : farthest >= 4 ? "h-80" : "h-64")}>
-        <div ref={trackRef} className="relative h-full min-w-[720px]">
+      <ByMonth events={events} />
+      <div className={"relative mx-auto mb-10 mt-14 hidden max-w-5xl md:block " + (farthest >= 6 ? "h-96" : farthest >= 4 ? "h-80" : "h-64")}>
+        <div ref={trackRef} className="relative h-full">
           <div className="absolute left-0 right-0 top-1/2 h-px -translate-y-1/2 bg-zinc-300" />
           {MONTHS.map(([m, d]) => (
             <div key={m} className="absolute top-1/2 -translate-y-1/2" style={{ left: xOf(d) + "%" }}>
               <div className="absolute -top-1.5 left-0 h-3 w-px -translate-x-1/2 bg-zinc-300" />
-              <div className="absolute left-0 top-2 -translate-x-1/2 text-[10px] font-semibold uppercase tracking-wide text-zinc-400">{m}</div>
+              <div className="absolute left-0 top-2 -translate-x-1/2 text-xs font-semibold uppercase tracking-wide text-zinc-500">{m}</div>
             </div>
           ))}
           {events.map((e, i) => {
@@ -98,19 +101,19 @@ export function TechRoadmap() {
             const anchor = anchorOf(x);
             return (
               <div key={e.date + e.title} className="group/m absolute top-1/2" style={{ left: x + "%" }}>
-                <div className="absolute -translate-x-1/2 bg-zinc-300 transition-colors group-hover/m:bg-emerald-400" style={{ width: 1, height: Math.abs(off) - 6, top: up ? off + 6 : 0 }} />
-                <div className="absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-emerald-500 ring-2 ring-white transition group-hover/m:scale-125 group-hover/m:bg-emerald-600" style={{ top: 0 }} />
+                <div className="absolute -translate-x-1/2 bg-zinc-300 transition-colors group-hover/m:bg-brand" style={{ width: 1, height: Math.abs(off) - 6, top: up ? off + 6 : 0 }} />
+                <div className="absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-brand ring-2 ring-white transition group-hover/m:scale-125 group-hover/m:bg-brand-ink" style={{ top: 0 }} />
                 <div
-                  className="absolute z-10 cursor-default whitespace-nowrap rounded-md border border-zinc-200 bg-white px-2 py-0.5 text-[11px] font-semibold text-zinc-800 shadow-sm transition group-hover/m:border-emerald-400 group-hover/m:text-emerald-700"
+                  className="absolute z-10 cursor-default whitespace-nowrap rounded-md border border-zinc-200 bg-white px-2 py-0.5 text-xs font-semibold text-zinc-800 shadow-sm transition group-hover/m:border-brand group-hover/m:text-brand-ink"
                   style={{ top: off - 11, transform: "translateX(" + anchor + ")" }}
                 >
                   {e.title}
                 </div>
                 <div
-                  className="pointer-events-none absolute z-30 hidden w-56 whitespace-normal rounded-lg bg-zinc-900 px-3 py-2 text-[11px] font-medium leading-snug text-white shadow-xl group-hover/m:block"
+                  className="pointer-events-none absolute z-30 hidden w-60 whitespace-normal rounded-lg bg-zinc-900 px-3 py-2 text-xs font-medium leading-snug text-white shadow-xl group-hover/m:block"
                   style={{ top: up ? off - 11 - 8 : off + 18, transform: "translate(" + anchor + ", " + (up ? "-100%" : "0") + ")" }}
                 >
-                  <div className="mb-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-300">{fmtD(e.date)}</div>
+                  <div className="mb-0.5 text-xs font-semibold uppercase tracking-wide text-brand-mute">{fmtD(e.date)}</div>
                   {e.detail}
                 </div>
               </div>
@@ -119,5 +122,32 @@ export function TechRoadmap() {
         </div>
       </div>
     </div>
+  );
+}
+
+// below md: a vertical timeline, one group per month, newest month first
+function ByMonth({ events }: { events: typeof TECH_DONE }) {
+  const months = MONTHS.map(([m, d]) => ({ m, items: events.filter((e) => e.date.slice(0, 7) === d.slice(0, 7)) }))
+    .filter((g) => g.items.length > 0)
+    .reverse();
+  return (
+    <ol className="mt-5 space-y-5 md:hidden" data-testid="roadmap-by-month">
+      {months.map((g) => (
+        <li key={g.m}>
+          <div className="mb-2 text-xs font-bold uppercase tracking-wide text-zinc-500">{g.m} 2026</div>
+          <ul className="space-y-3 border-l-2 border-brand-soft pl-4">
+            {[...g.items].reverse().map((e) => (
+              <li key={e.date + e.title} className="relative">
+                <span className="absolute -left-[1.3rem] top-1.5 h-2.5 w-2.5 rounded-full bg-brand ring-2 ring-white" />
+                <div className="text-sm font-semibold text-zinc-900">
+                  {e.title} <span className="font-normal text-zinc-500">· {fmtD(e.date)}</span>
+                </div>
+                <p className="text-sm leading-snug text-zinc-600">{e.detail}</p>
+              </li>
+            ))}
+          </ul>
+        </li>
+      ))}
+    </ol>
   );
 }

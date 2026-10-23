@@ -2,21 +2,23 @@
 
 import { useState } from "react";
 
-// The footer of www.lifteracy.ai: partner logo, newsletter sign-up,
-// contact, policies, registration. The sign-up joins the same mailing list
-// as the /quiz page (POST /api/quiz/subscribe → pp-sketch
+// The donor page's last two blocks. DonorContact: the "help us measure"
+// ask, the contact email and the newsletter sign-up (the same mailing list
+// as the /quiz page: POST /api/quiz/subscribe → pp-sketch
 // mailing_list_entries; the lifteracy.ai form is Framer's and only accepts
-// posts from that site).
-const CONTACT_EMAIL = "hello@lifteracy.ai";
+// posts from that site). DonorFooter: www.lifteracy.ai's partner logo,
+// policies (self-hosted PDFs at /privacy, /terms, /child-protection — see
+// next.config.ts) and registration.
+export const CONTACT_EMAIL = "hello@lifteracy.ai";
 const POLICIES: [string, string][] = [
-  ["Privacy Policy", "https://drive.google.com/file/d/1U1eMbmRu1NUVKAcSXsJzFhMUkaZTsXVE/view?usp=drive_link"],
-  ["Terms and Conditions", "https://drive.google.com/file/d/1lgUB2JxpuX6MjdvSL0fLdKohYGXZ6HW7/view?usp=drive_link"],
-  ["Child Protection Policy", "https://drive.google.com/file/d/1imqEMVpaPaERlr6RZrhtcYTf_cxe-sNV/view?usp=drive_link"],
+  ["Privacy Policy", "/privacy"],
+  ["Terms and Conditions", "/terms"],
+  ["Child Protection Policy", "/child-protection"],
 ];
 
 export const SUBSCRIBE_URL = "/api/quiz/subscribe";
 
-export function DonorFooter() {
+export function DonorContact() {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "sending" | "done" | "error">("idle");
   const subscribe = async () => {
@@ -29,59 +31,67 @@ export function DonorFooter() {
     }
   };
   return (
-    <footer className="mt-2 rounded-2xl border border-zinc-200 bg-white p-6 sm:p-8" data-testid="donor-footer">
-      <div className="grid gap-8 md:grid-cols-2">
+    <div className="grid gap-8 md:grid-cols-[3fr_2fr] md:gap-12" data-testid="donor-contact">
+      <p className="text-lg leading-relaxed text-zinc-700">
+        Our seed funding from Ambitious Impact covers the next stage: measuring how many children keep learning and how much reading they gain per hour. Those numbers decide how far LIFTeracy can scale, and that next step is where we’d love your help. Email{" "}
+        <a href={`mailto:${CONTACT_EMAIL}`} className="font-semibold text-brand-ink underline decoration-brand-mute underline-offset-2 hover:text-brand-deep">
+          {CONTACT_EMAIL}
+        </a>
+        , or sign up for updates and we’ll share the results as they come in.
+      </p>
+      <form
+        className="flex flex-col gap-2 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void subscribe();
+        }}
+      >
+        <div className="text-lg font-bold text-zinc-900">Get updates</div>
+        <label htmlFor="donor-newsletter-email" className="text-xs font-semibold text-zinc-600">
+          Email
+        </label>
+        <div className="flex gap-2">
+          <input
+            id="donor-newsletter-email"
+            type="email"
+            required
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="you@example.org"
+            className="min-w-0 flex-1 rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-brand-ink focus:outline-none"
+          />
+          <button type="submit" disabled={status === "sending"} className="rounded-lg bg-brand-ink px-4 py-2 text-sm font-semibold text-white hover:bg-brand-deep disabled:opacity-60">
+            Submit
+          </button>
+        </div>
+        {status === "done" && <div className="text-sm font-semibold text-emerald-700">Thanks — you’re signed up.</div>}
+        {status === "error" && <div className="text-sm font-semibold text-red-600">That didn’t work. Please check the email and try again.</div>}
+        <div className="text-xs text-zinc-500">Occasional updates on LIFTeracy. No more than monthly. Unsubscribe any time.</div>
+      </form>
+    </div>
+  );
+}
+
+export function DonorFooter() {
+  return (
+    <footer className="mx-auto max-w-6xl px-6 py-10" data-testid="donor-footer">
+      <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
         <div>
-          <div className="text-xs font-bold uppercase tracking-wide text-zinc-400">Partners &amp; Supporters</div>
+          <div className="text-xs font-bold uppercase tracking-wide text-zinc-500">Partners &amp; Supporters</div>
           <a href="https://dignityeducation.org/" target="_blank" rel="noreferrer" className="mt-3 inline-block">
             {/* eslint-disable-next-line @next/next/no-img-element -- small static SVG */}
-            <img src="/donor/dignity-education.svg" alt="Dignity Education" className="h-20 w-auto" />
+            <img src="/donor/dignity-education.svg" alt="Dignity Education" className="h-16 w-auto" />
           </a>
         </div>
-        <form
-          className="flex flex-col gap-2"
-          onSubmit={(e) => {
-            e.preventDefault();
-            void subscribe();
-          }}
-        >
-          <div className="text-lg font-bold text-zinc-800">Sign up for Updates!</div>
-          <label htmlFor="donor-newsletter-email" className="text-xs font-semibold text-zinc-600">
-            Email
-          </label>
-          <div className="flex gap-2">
-            <input
-              id="donor-newsletter-email"
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="jane@gmail.com"
-              className="min-w-0 flex-1 rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
-            />
-            <button type="submit" disabled={status === "sending"} className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60">
-              Submit
-            </button>
-          </div>
-          {status === "done" && <div className="text-sm font-semibold text-emerald-700">Thanks — you’re signed up.</div>}
-          {status === "error" && <div className="text-sm font-semibold text-red-600">That didn’t work. Please check the email and try again.</div>}
-          <div className="text-xs text-zinc-500">Occasional updates on LIFTeracy. No more than monthly. Unsubscribe any time.</div>
-          <div className="text-sm text-zinc-700">
-            Contact us at{" "}
-            <a href={`mailto:${CONTACT_EMAIL}`} className="font-semibold text-blue-600 hover:underline">
-              {CONTACT_EMAIL}
+        <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm md:justify-end">
+          {POLICIES.map(([n, u]) => (
+            <a key={n} href={u} target="_blank" rel="noreferrer" className="text-zinc-600 hover:text-brand-ink">
+              {n}
             </a>
-          </div>
-        </form>
+          ))}
+        </div>
       </div>
-      <div className="mt-6 flex flex-wrap gap-x-6 gap-y-2 border-t border-zinc-100 pt-4 text-sm">
-        {POLICIES.map(([n, u]) => (
-          <a key={n} href={u} target="_blank" rel="noreferrer" className="text-zinc-600 hover:text-blue-600">
-            {n}
-          </a>
-        ))}
-      </div>
-      <div className="mt-4 space-y-1 text-xs leading-relaxed text-zinc-500">
+      <div className="mt-6 space-y-1 border-t border-zinc-200 pt-4 text-xs leading-relaxed text-zinc-500">
         <div className="font-bold text-zinc-700">LIFTeracy</div>
         <p>LIFTeracy is a project of Development Consortium, a society registered under the Societies Registration Act 1860 (Reg. No. S/57363 of 2006).</p>
         <p>Registered office: Narmada 7, Flat No. 6, Nelson Mandela Marg, Vasant Kunj, New Delhi 110070, India</p>

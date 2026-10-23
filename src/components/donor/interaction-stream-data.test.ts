@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { initialRows, QUESTION_TYPE, reveal, revealGapMs, STREAM_SIZE, timeAgo, unseen, type StreamRow } from "./interaction-stream-data";
+import { initialRows, isDevanagari, QUESTION_TYPE, reveal, revealGapMs, STREAM_SIZE, shownWpm, timeAgo, unseen, type StreamRow } from "./interaction-stream-data";
 
 const row = (n: number): StreamRow => ({
   key: `k${n}`,
@@ -55,5 +55,17 @@ describe("interaction stream", () => {
 
   it("names the question types", () => {
     expect(QUESTION_TYPE).toEqual({ voice: "Reading Question", tap: "Comprehension Multi-choice" });
+  });
+
+  it("shownWpm: over 200 is noise, shown as no speed", () => {
+    expect(shownWpm(null)).toBeNull();
+    expect(shownWpm(42)).toBe(42);
+    expect(shownWpm(200)).toBe(200);
+    expect(shownWpm(201)).toBeNull();
+  });
+
+  it("isDevanagari", () => {
+    expect(isDevanagari("क...ल")).toBe(true);
+    expect(isDevanagari("A...l")).toBe(false);
   });
 });

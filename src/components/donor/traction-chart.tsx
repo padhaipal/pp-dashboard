@@ -23,15 +23,13 @@ import {
   type TractionResponse,
 } from "./traction-data";
 
-// the /d toggle's selected pill (bg-blue-600)
-const LINE = "#2563eb";
-// monthly bars: joined in an earlier month (dark) / that month (light)
-const EARLIER = "#4a7a89";
-const THIS_MONTH = "#aecbd3";
+// colours are the globals.css brand tokens: the line and "joined in an
+// earlier month" bars brand-ink, "joined this month" brand-mute
+const SELECTED = "rounded-full bg-brand-ink px-3.5 py-1.5 text-white shadow-sm transition";
 
 // drawing size: a narrower viewBox on phones keeps the type readable
 const SIZE = { desktop: { W: 720, H: 300 }, mobile: { W: 420, H: 320 } };
-const PAD = { top: 14, right: 16, bottom: 34, left: 52 };
+const PAD = { top: 14, right: 16, bottom: 36, left: 56 };
 
 export function TractionChart() {
   const [data, setData] = useState<TractionResponse | null>(null);
@@ -66,13 +64,14 @@ export function TractionChart() {
 
   return (
     <>
+      {!data && !error && <HeadlineSkeleton />}
       {data?.totals && <Headline hours={data.totals.hours} students={data.totals.students} />}
       <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-6" data-testid="traction-chart">
       <div className="mb-4 flex justify-center">
-        <MvpMetricToggle metric={metric} setMetric={setMetric} options={TRACTION_METRICS} />
+        <MvpMetricToggle metric={metric} setMetric={setMetric} options={TRACTION_METRICS} selectedClass={SELECTED} />
       </div>
-      {error && <p className="py-16 text-center text-sm text-zinc-400">Traction figures are unavailable right now.</p>}
-      {!error && !data && <p className="py-16 text-center text-sm text-zinc-400">Loading…</p>}
+      {error && <p className="py-16 text-center text-sm text-zinc-500">Traction figures are unavailable right now.</p>}
+      {!error && !data && <div className={"w-full animate-pulse rounded-lg bg-zinc-100 " + (mobile ? "aspect-[21/16]" : "aspect-[12/5]")} data-testid="traction-skeleton" aria-label="Loading" />}
       {metric === "monthly" ? (
         <>
           {data && monthly.length === 0 && <p className="py-16 text-center text-sm text-zinc-400">No data yet.</p>}
@@ -85,7 +84,7 @@ export function TractionChart() {
         </>
       )}
       {data && (
-        <div className="mt-1 text-right text-[10px] text-zinc-400">
+        <div className="mt-1 text-right text-xs text-zinc-500">
           {metric === "monthly" ? "Monthly" : "Daily"}, India time · updated {shortDate(data.computed_at.slice(0, 10))}
         </div>
       )}
@@ -100,13 +99,27 @@ function Headline({ hours, students }: { hours: number; students: number }) {
     ["traction-students", students, "students"],
   ];
   return (
-    <div className="mb-6 grid grid-cols-2 gap-4" data-testid="traction-headline">
+    <div className="mb-8 grid grid-cols-2 gap-6 sm:max-w-2xl" data-testid="traction-headline">
       {figs.map(([id, v, label]) => (
-        <div key={id} className="rounded-xl border border-zinc-200 bg-white px-4 py-5 text-center shadow-sm">
-          <div className="text-3xl font-extrabold tracking-tight text-blue-700 sm:text-5xl" data-testid={id}>
+        <div key={id}>
+          <div className="text-4xl font-extrabold tracking-tight text-brand-ink sm:text-6xl" data-testid={id}>
             {v.toLocaleString("en-IN")}
           </div>
           <div className="mt-1 text-sm font-semibold text-zinc-600 sm:text-base">{label}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// same footprint as Headline, so the page doesn't jump when the data lands
+function HeadlineSkeleton() {
+  return (
+    <div className="mb-8 grid grid-cols-2 gap-6 sm:max-w-2xl" aria-hidden="true" data-testid="traction-headline-skeleton">
+      {[0, 1].map((k) => (
+        <div key={k}>
+          <div className="h-10 w-3/4 animate-pulse rounded-md bg-blue-100 sm:h-[3.75rem]" />
+          <div className="mt-2 h-4 w-1/2 animate-pulse rounded bg-blue-100 sm:h-5" />
         </div>
       ))}
     </div>
@@ -169,28 +182,28 @@ function Plot({
       {ticks.map((tk) => (
         <g key={tk}>
           <line x1={PAD.left} y1={yOf(tk, top)} x2={W - PAD.right} y2={yOf(tk, top)} stroke={tk === 0 ? "#a1a1aa" : "#e4e4e7"} strokeWidth={tk === 0 ? 1 : 0.5} />
-          <text x={PAD.left - 6} y={yOf(tk, top) + 3} textAnchor="end" fontSize={10} className="fill-zinc-400">
+          <text x={PAD.left - 6} y={yOf(tk, top) + 3} textAnchor="end" fontSize={12} className="fill-zinc-500">
             {Math.abs(tk) >= 1000 ? `${Number((tk / 1000).toFixed(1))}k` : Number(tk.toFixed(2))}
           </text>
         </g>
       ))}
       {dates.map((d, i) =>
         labelIdx.has(i) ? (
-          <text key={d} x={x(i)} y={H - PAD.bottom + 14} textAnchor="middle" fontSize={10} className="fill-zinc-400">
+          <text key={d} x={x(i)} y={H - PAD.bottom + 14} textAnchor="middle" fontSize={12} className="fill-zinc-500">
             {shortDate(d)}
           </text>
         ) : null,
       )}
-      <text x={14} y={PAD.top + plotH / 2} textAnchor="middle" fontSize={10} className="fill-zinc-500" transform={`rotate(-90 14 ${PAD.top + plotH / 2})`}>
+      <text x={14} y={PAD.top + plotH / 2} textAnchor="middle" fontSize={12} className="fill-zinc-500" transform={`rotate(-90 14 ${PAD.top + plotH / 2})`}>
         {unit}
       </text>
 
-      <path d={path(sel, top)} fill="none" stroke={LINE} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" data-testid="traction-line" />
+      <path d={path(sel, top)} fill="none" className="stroke-brand-ink" strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" data-testid="traction-line" />
 
       {hover !== null && (
         <>
           <line x1={x(hover)} y1={PAD.top} x2={x(hover)} y2={PAD.top + plotH} stroke="#a1a1aa" strokeWidth={0.5} strokeDasharray="2,2" />
-          {hv !== null && <circle cx={x(hover)} cy={yOf(hv, top)} r={4} fill={LINE} />}
+          {hv !== null && <circle cx={x(hover)} cy={yOf(hv, top)} r={4} className="fill-brand-ink" />}
         </>
       )}
       {dates.map((d, i) => {
@@ -200,15 +213,15 @@ function Plot({
       {hover !== null && (
         <g pointerEvents="none">
           {(() => {
-            const boxW = 150;
+            const boxW = 170;
             const bx = Math.min(Math.max(x(hover) - boxW / 2, PAD.left), W - PAD.right - boxW);
             return (
               <>
-                <rect x={bx} y={PAD.top} width={boxW} height={34} rx={4} fill="#18181b" opacity={0.92} />
-                <text x={bx + 8} y={PAD.top + 13} fontSize={10} fill="#d4d4d8">
+                <rect x={bx} y={PAD.top} width={boxW} height={38} rx={4} fill="#18181b" opacity={0.92} />
+                <text x={bx + 8} y={PAD.top + 13} fontSize={12} fill="#d4d4d8">
                   {shortDate(dates[hover])}
                 </text>
-                <text x={bx + 8} y={PAD.top + 27} fontSize={11} fontWeight={600} fill="#fafafa">
+                <text x={bx + 8} y={PAD.top + 30} fontSize={12} fontWeight={600} fill="#fafafa">
                   {hv === null ? "—" : `${format(hv)} ${unit.toLowerCase()}`}
                 </text>
               </>
@@ -246,13 +259,13 @@ function MonthlyBars({ size: { W, H }, months }: { size: { W: number; H: number 
   return (
     <div>
       <div className="mb-1 text-center text-sm font-semibold text-zinc-700">Children who completed at least one 5-minute lesson in the month</div>
-      <div className="mb-1 flex flex-wrap justify-center gap-x-4 gap-y-1 text-[11px] text-zinc-600">
+      <div className="mb-1 flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-zinc-600">
         <span className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5" style={{ background: EARLIER }} />
+          <span className="h-2.5 w-2.5 bg-brand-ink" />
           Joined in an earlier month
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5" style={{ background: THIS_MONTH }} />
+          <span className="h-2.5 w-2.5 bg-brand-mute" />
           Joined this month
         </span>
         {months.some((m) => projected(m) !== null) && (
@@ -266,12 +279,12 @@ function MonthlyBars({ size: { W, H }, months }: { size: { W: number; H: number 
         {ticks.map((tk) => (
           <g key={tk}>
             <line x1={PAD.left} y1={y0 - h(tk)} x2={W - PAD.right} y2={y0 - h(tk)} stroke={tk === 0 ? "#a1a1aa" : "#e4e4e7"} strokeWidth={tk === 0 ? 1 : 0.5} />
-            <text x={PAD.left - 6} y={y0 - h(tk) + 3} textAnchor="end" fontSize={10} className="fill-zinc-400">
+            <text x={PAD.left - 6} y={y0 - h(tk) + 3} textAnchor="end" fontSize={12} className="fill-zinc-500">
               {Math.abs(tk) >= 1000 ? `${Number((tk / 1000).toFixed(1))}k` : tk}
             </text>
           </g>
         ))}
-        <text x={14} y={y0 - plotH / 2} textAnchor="middle" fontSize={10} className="fill-zinc-500" transform={`rotate(-90 14 ${y0 - plotH / 2})`}>
+        <text x={14} y={y0 - plotH / 2} textAnchor="middle" fontSize={12} className="fill-zinc-500" transform={`rotate(-90 14 ${y0 - plotH / 2})`}>
           Students
         </text>
         {months.map((m, i) => {
@@ -287,12 +300,12 @@ function MonthlyBars({ size: { W, H }, months }: { size: { W: number; H: number 
               {p !== null && (
                 <rect x={x} y={y0 - h(p)} width={barW} height={h(p)} fill="#f4f4f5" stroke="#52525b" strokeWidth={1.2} strokeDasharray="4,3" data-testid="traction-projection" />
               )}
-              <rect x={x} y={y0 - hE} width={barW} height={hE} fill={EARLIER} />
-              <rect x={x} y={y0 - hE - hT} width={barW} height={hT} fill={THIS_MONTH} />
-              <text x={cx} y={y0 - labelTop - 5} textAnchor="middle" fontSize={11} fontWeight={700} className="fill-zinc-700">
+              <rect x={x} y={y0 - hE} width={barW} height={hE} className="fill-brand-ink" />
+              <rect x={x} y={y0 - hE - hT} width={barW} height={hT} className="fill-brand-mute" />
+              <text x={cx} y={y0 - labelTop - 5} textAnchor="middle" fontSize={12} fontWeight={700} className="fill-zinc-700">
                 {label}
               </text>
-              <text x={cx} y={y0 + 14} textAnchor="middle" fontSize={10} className="fill-zinc-400">
+              <text x={cx} y={y0 + 14} textAnchor="middle" fontSize={12} className="fill-zinc-500">
                 {monthLabel(m.month).slice(0, 3)}
               </text>
               <rect x={cx - slot / 2} y={top0} width={slot} height={y0 - top0} fill="transparent" onMouseEnter={() => setHover(i)} onTouchStart={() => setHover(i)} />
@@ -305,18 +318,18 @@ function MonthlyBars({ size: { W, H }, months }: { size: { W: number; H: number 
               const p = projected(hm);
               const lines = [`${hm.joined_earlier} joined earlier`, `${hm.joined_this_month} joined this month`];
               if (p !== null) lines.push(`~${p} projected by month end`);
-              const boxW = 170;
-              const boxH = 18 + lines.length * 14;
+              const boxW = 200;
+              const boxH = 20 + lines.length * 15;
               const cx = PAD.left + slot * (hover + 0.5);
               const bx = Math.min(Math.max(cx - boxW / 2, PAD.left), W - PAD.right - boxW);
               return (
                 <>
                   <rect x={bx} y={top0 + PAD.top} width={boxW} height={boxH} rx={4} fill="#18181b" opacity={0.92} />
-                  <text x={bx + 8} y={top0 + PAD.top + 13} fontSize={10} fill="#d4d4d8">
+                  <text x={bx + 8} y={top0 + PAD.top + 13} fontSize={12} fill="#d4d4d8">
                     {monthLabel(hm.month)}
                   </text>
                   {lines.map((l, k) => (
-                    <text key={l} x={bx + 8} y={top0 + PAD.top + 28 + k * 14} fontSize={11} fontWeight={600} fill="#fafafa">
+                    <text key={l} x={bx + 8} y={top0 + PAD.top + 30 + k * 15} fontSize={12} fontWeight={600} fill="#fafafa">
                       {l}
                     </text>
                   ))}

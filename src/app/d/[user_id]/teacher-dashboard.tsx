@@ -177,6 +177,7 @@ const PUBLIC_DRILL_HINT = "Double-click Uttar Pradesh to explore its districts, 
 
 export function TeacherDashboard({ profile: initialProfile, incompleteStates, variant }: TeacherDashboardProps) {
   const isPublic = variant === "public";
+  const LocationTitle = isPublic ? "h3" : "h1";
   const [profile, setProfile] = useState<PublicProfile>(initialProfile);
   // What the toggles are on. The page body renders `metric` / `range` /
   // `timeWindow` below — the same, except while a new selection is loading.
@@ -608,14 +609,15 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates, va
           <>
             {/* large location title */}
             <div className="mx-auto max-w-6xl px-6 pt-8">
-              <h1 className="text-center text-3xl font-extrabold tracking-tight sm:text-4xl" data-testid="location-title">
+              {/* under the donor page's h2 sections the location is an h3 */}
+              <LocationTitle className="text-center text-3xl font-extrabold tracking-tight sm:text-4xl" data-testid="location-title">
                 {titleSegments.map((s, i) => (
                   <span key={i} className={i === 0 ? "text-zinc-900" : "font-semibold text-zinc-400"}>
                     {i > 0 ? "  -  " : ""}
                     {s}
                   </span>
                 ))}
-              </h1>
+              </LocationTitle>
             </div>
 
             {/* headline stats — narrower, with the shared metric tab */}
