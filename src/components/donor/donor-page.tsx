@@ -146,8 +146,8 @@ export function DonorPage({ country, incompleteStates }: { country: GeoRef | nul
           <h2 className={"mb-6 " + H}>Team</h2>
           <div className="grid items-center gap-8 md:grid-cols-[2fr_3fr]" data-testid="team">
             <figure>
-              <Image src="/donor/founders.jpg" alt="Tom Delaney and David Nelson in LIFTeracy shirts outside Ambitious Impact in London" width={893} height={1000} className="aspect-[4/5] w-full max-w-sm rounded-2xl object-cover shadow-md" />
-              <figcaption className="mt-2 text-sm text-zinc-500">The founders at Ambitious Impact, London.</figcaption>
+              <Image src="/donor/founders.jpg" alt="Tom Delaney (left) and David Nelson (right) in LIFTeracy shirts outside Ambitious Impact in London" width={893} height={1000} className="aspect-[4/5] w-full max-w-sm rounded-2xl object-cover shadow-md" />
+              <figcaption className="mt-2 text-sm text-zinc-500">Tom Delaney (left) and David Nelson (right) at Ambitious Impact, London.</figcaption>
             </figure>
             <div className="space-y-6">
               {TEAM.map((m) => (

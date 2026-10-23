@@ -12,7 +12,7 @@ import { useState } from "react";
 export const CONTACT_EMAIL = "hello@lifteracy.ai";
 const POLICIES: [string, string][] = [
   ["Privacy Policy", "/privacy"],
-  ["Terms and Conditions", "/terms"],
+  ["Terms of Use", "/terms"],
   ["Child Protection Policy", "/child-protection"],
 ];
 
