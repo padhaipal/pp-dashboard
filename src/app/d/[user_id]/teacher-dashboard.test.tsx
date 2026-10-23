@@ -896,7 +896,7 @@ describe("TeacherDashboard — the WhatsApp-group message", () => {
 
   it("a teacher sees it on THEIR class (the message ends with their referral link), not on a colleague's class; a refusal from pp-sketch leaves no card", async () => {
     const me = { ...PROFILE_SCHOOL, id: "t-1" };
-    const parents = { ...SHARE_MESSAGE, message: "रानी ने इस हफ़्ते 2 घंटे अभ्यास किया! 🎉\nhttps://dashboard.padhaipal.com/r/919000000002" };
+    const parents = { ...SHARE_MESSAGE, message: "रानी ने इस हफ़्ते 2 घंटे अभ्यास किया! 🎉\nhttps://dashboard.lifteracy.ai/r/919000000002" };
     const { fn, calls } = makeFetch({ scoresById: { "g-sch": SCORES_SCHOOL, "t-1": SCORES_CLASS }, shareMessage: parents });
     vi.stubGlobal("fetch", vi.fn(fn));
     render(<TeacherDashboard profile={me} incompleteStates={[]} />);

@@ -105,13 +105,13 @@ export default async function SharePage({
             <strong>$10</strong>. That&apos;s cheaper than everyone else out there. Here is our
             website for more information{" "}
             <a
-              href="https://www.padhaipal.com"
+              href="https://www.lifteracy.ai"
               target="_blank"
               rel="noopener noreferrer"
               className="underline"
               style={{ color: BRAND_BLUE_DARK }}
             >
-              www.padhaipal.com
+              www.lifteracy.ai
             </a>
           </p>
         </div>

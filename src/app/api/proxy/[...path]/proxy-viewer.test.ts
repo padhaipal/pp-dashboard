@@ -58,7 +58,7 @@ describe("proxyRequestHeaders", () => {
       accept: "application/json",
       "accept-language": "hi",
       range: "bytes=0-99",
-      host: "dashboard.padhaipal.com",
+      host: "dashboard.lifteracy.ai",
     });
     const out = proxyRequestHeaders(incoming, { [VIEWER_ID_HEADER]: UUID });
     expect([...out.keys()].sort()).toEqual(["accept", "accept-language", "content-type", "range", VIEWER_ID_HEADER]);

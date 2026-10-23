@@ -213,7 +213,7 @@ export default async function Image({
               fontWeight: 700,
             }}
           >
-            dashboard.padhaipal.com/quiz
+            dashboard.lifteracy.ai/quiz
           </div>
         </div>
       </div>
