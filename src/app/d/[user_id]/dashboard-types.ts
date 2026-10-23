@@ -346,6 +346,8 @@ export const studentChildrenOf = (s: ScoresResponse): StudentChild[] => (s.child
 export const UNCOVERED = "#a1a1aa";
 // incomplete states (district boundaries missing) render black and are not drillable.
 export const INCOMPLETE_FILL = "#000000";
+// the donor page's map: grey, no hover (GeoMap quietIncomplete)
+export const QUIET_INCOMPLETE_FILL = "#d4d4d8";
 export const INCOMPLETE_TOOLTIP = "District boundaries not yet available for this state";
 export const ACCENT = "#1d9edf";
 

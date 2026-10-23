@@ -719,6 +719,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates, va
                   childType={(childType && childType !== "student" && childType !== "teacher" ? childType : nextChildType(entity.type)) as Exclude<ChildType, "student" | "teacher">}
                   childrenRows={geoChildren}
                   incompleteStates={incomplete}
+                  quietIncomplete={isPublic}
                   hoverId={hoverId}
                   setHoverId={setHoverId}
                   selectedId={selId}

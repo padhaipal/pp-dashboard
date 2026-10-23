@@ -750,6 +750,24 @@ describe("TeacherDashboard — public variant (the donor page)", () => {
     expect(screen.queryByTestId("drill-hint")).toBeNull();
   });
 
+  it("incomplete states are grey for the public: no tooltip, no legend entry, still not drillable", async () => {
+    const { fn, calls } = makeFetch();
+    vi.stubGlobal("fetch", vi.fn(fn));
+    const { container } = render(<TeacherDashboard profile={publicProfile(PROFILE.geo_entity!)} incompleteStates={["28"]} variant="public" />);
+    const ap = await waitFor(() => {
+      const p = container.querySelector('path[data-code="28"]');
+      if (!p) throw new Error("state 28 not drawn yet");
+      return p;
+    });
+    expect((ap.previousElementSibling as SVGPathElement).getAttribute("fill")).toBe("#d4d4d8");
+    fireEvent.mouseEnter(ap);
+    expect(screen.queryByText(INCOMPLETE_TOOLTIP)).toBeNull();
+    expect(screen.queryByText("Boundaries pending")).toBeNull();
+    fireEvent.dblClick(ap);
+    expect(screen.getByTestId("location-title").textContent).toBe("India");
+    expect(calls.some((u) => u.includes("/geo-entities/g-28/"))).toBe(false);
+  });
+
   it("the public opens on all time (the /d dashboards on 30 days)", async () => {
     const { fn, calls } = makeFetch({ scoresById: { "g-sch": SCORES_SCHOOL } });
     vi.stubGlobal("fetch", vi.fn(fn));
