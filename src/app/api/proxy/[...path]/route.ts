@@ -28,6 +28,8 @@ const ADMIN_ALLOWED: { pattern: RegExp; methods: string[] }[] = [
   { pattern: /^media-meta-data\/passages\.csv$/, methods: ["GET"] },
   { pattern: /^media-meta-data\/generation-failures$/, methods: ["GET"] },
   { pattern: /^media-meta-data\/llm-generate$/, methods: ["POST"] },
+  // Hand-written passage family (CSV upload) — same gates as llm-generate.
+  { pattern: /^media-meta-data\/manual-passage$/, methods: ["POST"] },
   { pattern: /^media-meta-data\/elevenlabs-generate$/, methods: ["POST"] },
   { pattern: /^media-meta-data\/upload-static$/, methods: ["POST"] },
   // GET :id = read-only single-row fetch (comprehension modal's passage row).
