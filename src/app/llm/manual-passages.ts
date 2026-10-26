@@ -9,26 +9,123 @@
 // the export's other columns (passage_id, level, status, …) are ignored —
 // the level is always computed server-side from word count.
 
-export const MANUAL_REQUIRED_COLUMNS = [
-  "passage_type",
-  "passage_text",
-  "question_type",
-  "question_text",
-  "option_a",
-  "option_b",
-  "correct_option",
-  "explanation_a",
-  "explanation_b",
-] as const;
-
-export const MANUAL_OPTIONAL_COLUMNS = ["option_c", "option_d", "explanation_c", "explanation_d"] as const;
-
 // Mirrors pp-sketch llm-generate.dto.ts (VALID_PASSAGE_TYPES,
-// VALID_QUESTION_TYPES, PASSAGE_DIGITS_RE).
-const PASSAGE_TYPES = ["narrative", "expository"];
-const QUESTION_TYPES = ["R1.1", "R1.2", "R1.3", "R2.1", "R2.2", "R2.3", "R3.1", "R3.2"];
-const DIGITS_RE = /[0-9०-९]/;
+// VALID_QUESTION_TYPES, PASSAGE_DIGITS_RE, PASSAGE_MAX_CHARS,
+// FLOW_QUESTION_MAX_CHARS, FLOW_OPTION_DESCRIPTION_MAX_CHARS,
+// EXPLANATION_MAX_CHARS).
+export const PASSAGE_TYPES = ["narrative", "expository"];
+export const QUESTION_TYPES = ["R1.1", "R1.2", "R1.3", "R2.1", "R2.2", "R2.3", "R3.1", "R3.2"];
+const DIGITS_RE = /[0-9\u0966-\u096F]/;
 const LETTERS = ["a", "b", "c", "d"] as const;
+const PASSAGE_MAX_CHARS = 4096;
+const QUESTION_MAX_CHARS = 1000;
+const OPTION_MAX_CHARS = 300;
+const EXPLANATION_MAX_CHARS = 4096;
+
+export type ManualColumn = {
+  name: string;
+  required: boolean;
+  rule: string;
+  example: string;
+  maxChars?: number;
+};
+
+// THE column spec: the dashboard's column table, the template download and
+// the parser's required-column check all read from this list, so they
+// cannot drift apart.
+export const MANUAL_COLUMNS: ManualColumn[] = [
+  {
+    name: "passage_type",
+    required: true,
+    rule: `Exactly one of: ${PASSAGE_TYPES.join(", ")}.`,
+    example: "narrative",
+  },
+  {
+    name: "passage_text",
+    required: true,
+    rule: `The full reading passage in Hindi. No digits (0-9 or ०-९) — write numbers as words. Must not match a passage that is already live or another row in the file. Max ${PASSAGE_MAX_CHARS} characters.`,
+    example:
+      "राम सुबह जल्दी उठा। उसने अपनी माँ के साथ बाज़ार जाकर ताज़े आम खरीदे और घर लौटकर अपनी छोटी बहन के साथ बाँट दिए।",
+    maxChars: PASSAGE_MAX_CHARS,
+  },
+  {
+    name: "question_type",
+    required: true,
+    rule: `Exactly one of: ${QUESTION_TYPES.join(", ")} (capital R).`,
+    example: "R1.2",
+  },
+  {
+    name: "question_text",
+    required: true,
+    rule: `The one comprehension question. Max ${QUESTION_MAX_CHARS} characters.`,
+    example: "राम ने बाज़ार से क्या खरीदा?",
+    maxChars: QUESTION_MAX_CHARS,
+  },
+  {
+    name: "option_a",
+    required: true,
+    rule: `Answer option A. Max ${OPTION_MAX_CHARS} characters.`,
+    example: "आम",
+    maxChars: OPTION_MAX_CHARS,
+  },
+  {
+    name: "option_b",
+    required: true,
+    rule: `Answer option B. Max ${OPTION_MAX_CHARS} characters.`,
+    example: "केले",
+    maxChars: OPTION_MAX_CHARS,
+  },
+  {
+    name: "option_c",
+    required: false,
+    rule: `Answer option C. Leave empty for a 2-option question. Max ${OPTION_MAX_CHARS} characters.`,
+    example: "सेब",
+    maxChars: OPTION_MAX_CHARS,
+  },
+  {
+    name: "option_d",
+    required: false,
+    rule: `Answer option D. Only allowed if option_c is filled. Max ${OPTION_MAX_CHARS} characters.`,
+    example: "",
+    maxChars: OPTION_MAX_CHARS,
+  },
+  {
+    name: "correct_option",
+    required: true,
+    rule: "Exactly one letter: a, b, c or d. It must name a filled option. Only one option can be correct.",
+    example: "a",
+  },
+  {
+    name: "explanation_a",
+    required: true,
+    rule: `Why option A is right or wrong (the student hears this after answering). Max ${EXPLANATION_MAX_CHARS} characters.`,
+    example: "सही! राम ने बाज़ार से आम खरीदे थे।",
+    maxChars: EXPLANATION_MAX_CHARS,
+  },
+  {
+    name: "explanation_b",
+    required: true,
+    rule: `Why option B is right or wrong. Max ${EXPLANATION_MAX_CHARS} characters.`,
+    example: "नहीं, कहानी में केले की बात नहीं है।",
+    maxChars: EXPLANATION_MAX_CHARS,
+  },
+  {
+    name: "explanation_c",
+    required: false,
+    rule: "Required if option_c is filled; must be empty if option_c is empty.",
+    example: "नहीं, राम ने सेब नहीं खरीदे।",
+    maxChars: EXPLANATION_MAX_CHARS,
+  },
+  {
+    name: "explanation_d",
+    required: false,
+    rule: "Required if option_d is filled; must be empty if option_d is empty.",
+    example: "",
+    maxChars: EXPLANATION_MAX_CHARS,
+  },
+];
+
+export const MANUAL_REQUIRED_COLUMNS = MANUAL_COLUMNS.filter((c) => c.required).map((c) => c.name);
 
 export const MANUAL_MAX_ROWS = 1000;
 
@@ -60,7 +157,7 @@ export type ParseResult =
 
 /** RFC 4180: quoted fields, "" escapes, CRLF/LF, embedded newlines, BOM. */
 export function parseCsv(text: string): string[][] {
-  const src = text.replace(/^﻿/, "");
+  const src = text.replace(/^\uFEFF/, "");
   const records: string[][] = [];
   let record: string[] = [];
   let field = "";
@@ -141,6 +238,12 @@ export function parseManualPassagesCsv(text: string, filename: string): ParseRes
     if (questionType && !QUESTION_TYPES.includes(questionType)) {
       errors.push(`question_type must be one of ${QUESTION_TYPES.join(", ")}`);
     }
+    for (const c of MANUAL_COLUMNS) {
+      const v = col(r, c.name);
+      if (c.maxChars !== undefined && v.length > c.maxChars) {
+        errors.push(`${c.name} is ${v.length} characters (max ${c.maxChars})`);
+      }
+    }
     if (DIGITS_RE.test(passageText)) {
       errors.push("passage_text contains digits — write numbers as words");
     }
@@ -189,6 +292,12 @@ export function parseManualPassagesCsv(text: string, filename: string): ParseRes
     };
   });
   return { ok: true, rows };
+}
+
+/** Header + one example row, every column in MANUAL_COLUMNS order. */
+export function manualTemplateCsv(): string {
+  const line = (cells: string[]) => cells.map(csvCell).join(",");
+  return "\uFEFF" + line(MANUAL_COLUMNS.map((c) => c.name)) + "\r\n" + line(MANUAL_COLUMNS.map((c) => c.example)) + "\r\n";
 }
 
 // ─── Per-row outcome + results download ─────────────────────────────────────
@@ -259,5 +368,5 @@ export function manualResultsCsv(rows: ParsedRow[], runs: ManualRun[]): string {
     const level = run.status === "created" || run.status === "rejected" || run.status === "failed" ? run.level : undefined;
     lines.push([r.row, r.passagePreview, run.status, level, reason, explanation].map(csvCell).join(","));
   });
-  return "﻿" + lines.join("\r\n") + "\r\n";
+  return "\uFEFF" + lines.join("\r\n") + "\r\n";
 }

@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import {
-  MANUAL_OPTIONAL_COLUMNS,
-  MANUAL_REQUIRED_COLUMNS,
+  MANUAL_COLUMNS,
+  MANUAL_MAX_ROWS,
   manualResultsCsv,
+  manualTemplateCsv,
   parseManualPassagesCsv,
   toManualRun,
   type ManualRun,
@@ -75,13 +76,7 @@ export function ManualUpload() {
 
   function downloadResults() {
     if (!loaded) return;
-    const blob = new Blob([manualResultsCsv(loaded.rows, runs)], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = loaded.filename.replace(/\.csv$/i, "") + "-results.csv";
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadCsv(manualResultsCsv(loaded.rows, runs), loaded.filename.replace(/\.csv$/i, "") + "-results.csv");
   }
 
   const sendable = loaded?.rows.filter((r) => r.body).length ?? 0;
@@ -98,14 +93,60 @@ export function ManualUpload() {
         repeated in the file, is rejected even with a different question. Rows are checked one at a time, ~1–2.5
         min each — keep this tab open until it finishes.
       </p>
-      <p className="text-xs text-zinc-500 mb-2">
-        Columns: <code className="rounded bg-zinc-100 px-1">{MANUAL_REQUIRED_COLUMNS.join(", ")}</code>, optional{" "}
-        <code className="rounded bg-zinc-100 px-1">{MANUAL_OPTIONAL_COLUMNS.join(", ")}</code>.{" "}
-        <code className="rounded bg-zinc-100 px-1">passage_type</code> = narrative | expository;{" "}
-        <code className="rounded bg-zinc-100 px-1">question_type</code> = R1.1…R3.2;{" "}
-        <code className="rounded bg-zinc-100 px-1">correct_option</code> = a | b | c | d; every option needs an
-        explanation; no digits in the passage. The Download CSV export above has the same column names.
-      </p>
+      <details className="mb-3 rounded border border-zinc-200 p-2" open>
+        <summary className="cursor-pointer text-xs font-medium text-zinc-700">Required CSV format</summary>
+        <ul className="mt-2 mb-2 list-disc pl-5 text-xs text-zinc-600 space-y-0.5">
+          <li>
+            File: <strong>.csv</strong>, comma-separated, saved as <strong>UTF-8</strong> (Google Sheets: File →
+            Download → .csv; Excel: Save As → &ldquo;CSV UTF-8&rdquo;).
+          </li>
+          <li>
+            Row 1 is the header: the column names below, spelled exactly as shown. Column order doesn&apos;t matter.
+            Any other columns are ignored.
+          </li>
+          <li>
+            Each row after the header is <strong>one passage with exactly one question</strong> (2–4 options,
+            exactly one correct, an explanation for every option). Up to {MANUAL_MAX_ROWS} rows per file.
+          </li>
+          <li>
+            Don&apos;t add a level column: the level is set from the passage&apos;s word count (under 10 words → 8,
+            under 40 → 9, under 70 → 10, under 110 → 11, under 250 → 12; 250+ is stored but never shown to students).
+          </li>
+          <li>Cells with commas or line breaks are fine as long as the spreadsheet app quotes them (it does by default).</li>
+        </ul>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs border-collapse">
+            <thead>
+              <tr className="text-left text-zinc-500 border-b border-zinc-200">
+                <th className="py-1 pr-3 font-medium">Column</th>
+                <th className="py-1 pr-3 font-medium">Required?</th>
+                <th className="py-1 pr-3 font-medium">Rule</th>
+                <th className="py-1 font-medium">Example</th>
+              </tr>
+            </thead>
+            <tbody>
+              {MANUAL_COLUMNS.map((c) => (
+                <tr key={c.name} className="border-b border-zinc-100 align-top">
+                  <td className="py-1 pr-3">
+                    <code className="rounded bg-zinc-100 px-1">{c.name}</code>
+                  </td>
+                  <td className="py-1 pr-3 whitespace-nowrap">
+                    {c.required ? <span className="text-zinc-900">required</span> : <span className="text-zinc-500">optional</span>}
+                  </td>
+                  <td className="py-1 pr-3 text-zinc-700">{c.rule}</td>
+                  <td className="py-1 text-zinc-600">{c.example || <span className="text-zinc-400">(empty)</span>}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <button
+          onClick={() => downloadCsv(manualTemplateCsv(), "passages-template.csv")}
+          className="mt-2 text-xs text-blue-600 underline"
+        >
+          Download template CSV (header + one example row)
+        </button>
+      </details>
       <div className="flex flex-wrap items-center gap-3">
         <input
           type="file"
@@ -177,4 +218,14 @@ export function ManualUpload() {
       )}
     </div>
   );
+}
+
+function downloadCsv(content: string, filename: string) {
+  const blob = new Blob([content], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
 }

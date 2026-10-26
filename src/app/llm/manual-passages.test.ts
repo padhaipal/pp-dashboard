@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { manualResultsCsv, parseCsv, parseManualPassagesCsv, toManualRun } from "./manual-passages";
+import {
+  MANUAL_COLUMNS,
+  manualResultsCsv,
+  manualTemplateCsv,
+  parseCsv,
+  parseManualPassagesCsv,
+  toManualRun,
+} from "./manual-passages";
 
 const HEADER =
   "passage_type,passage_text,question_type,question_text,option_a,option_b,option_c,option_d,correct_option,explanation_a,explanation_b,explanation_c,explanation_d";
@@ -145,5 +152,25 @@ describe("manualResultsCsv", () => {
     expect(csv.startsWith("﻿row,passage,outcome,level,reason,explanation\r\n")).toBe(true);
     expect(csv).toContain("2,राम ने बाज़ार से आम खरीदे।,created,9,,\r\n");
     expect(csv).toContain('3,दूसरी,rejected,8,"judge, failed","picked ""B"""\r\n');
+  });
+});
+
+describe("manualTemplateCsv", () => {
+  it("lists every column and its example row parses as a valid, sendable row", () => {
+    const csv = manualTemplateCsv();
+    expect(parseCsv(csv)[0]).toEqual(MANUAL_COLUMNS.map((c) => c.name));
+    const r = parseManualPassagesCsv(csv, "passages-template.csv");
+    if (!r.ok) throw new Error(r.error);
+    expect(r.rows).toHaveLength(1);
+    expect(r.rows[0].errors).toEqual([]);
+    expect(r.rows[0].body!.question.options).toHaveLength(3);
+  });
+});
+
+describe("length caps (mirror pp-sketch)", () => {
+  it("flags an option over 300 characters", () => {
+    const r = parseManualPassagesCsv(`${HEADER}\n${row({ option_b: "क".repeat(301) })}\n`, "f.csv");
+    if (!r.ok) throw new Error("expected ok");
+    expect(r.rows[0].errors).toEqual(["option_b is 301 characters (max 300)"]);
   });
 });

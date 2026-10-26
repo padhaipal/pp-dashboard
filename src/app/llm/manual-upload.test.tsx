@@ -15,6 +15,17 @@ afterEach(() => {
 });
 
 describe("ManualUpload", () => {
+  it("shows the required CSV format: every column with required/optional, rule and example", () => {
+    render(<ManualUpload />);
+    expect(screen.getByText("Required CSV format")).toBeTruthy();
+    for (const name of ["passage_type", "passage_text", "correct_option", "explanation_d"]) {
+      expect(screen.getAllByText(name).length).toBeGreaterThan(0);
+    }
+    expect(screen.getAllByText("required")).toHaveLength(9);
+    expect(screen.getAllByText("optional")).toHaveLength(4);
+    expect(screen.getByRole("button", { name: /Download template CSV/ })).toBeTruthy();
+  });
+
   it("sends only complete rows, one at a time, and shows each outcome with its explanation", async () => {
     const fetchMock = vi
       .fn()
