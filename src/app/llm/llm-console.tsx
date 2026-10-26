@@ -17,6 +17,7 @@ import {
   type SeedRun,
 } from "./seed";
 import { GenerationFailures } from "./generation-failures";
+import { ManualUpload } from "./manual-upload";
 import { PassageStats } from "../media-metadata/passage-stats";
 
 export type ClientModel = {
@@ -745,6 +746,9 @@ export function LlmConsole({ models }: { models: ClientModel[] }) {
             </div>
           )}
         </div>
+
+        {/* Hand-written passages (CSV) — same checks as seeding, no LLM call */}
+        <ManualUpload />
 
         <button
           onClick={start}
