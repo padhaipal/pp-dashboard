@@ -31,3 +31,7 @@ Admin/dev dashboard for PadhaiPal. Next.js 16, Tailwind, NextAuth.
 - `/login` — phone + password
 - `/dashboard` — admin + dev
 - `/swagger` — dev only, embedded Swagger UI pointing at pp-sketch
+
+## Licence
+
+Code: [MIT](LICENSE). The LIFTeracy name and logo are **not** licensed; forks must not use them.
