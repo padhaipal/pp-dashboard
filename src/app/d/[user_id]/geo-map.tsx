@@ -370,17 +370,60 @@ export function GeoMap(props: GeoMapProps) {
             : t("Not using LIFTeracy")) + (isPrivateSchool(c) ? ` · ${t("private school")}` : ""),
         ];
 
+  // Pan with one pointer (mouse, finger or pen); pinch with two fingers zooms
+  // around their midpoint. Capture waits until a real move, so a tap still
+  // clicks the area under it.
+  const pts = useRef(new Map<number, { x: number; y: number }>());
+  const pinch = useRef<{ d: number; mx: number; my: number; tf: { k: number; x: number; y: number } } | null>(null);
+  const tfRef = useRef(tf);
+  tfRef.current = tf;
+  const local = (e: React.PointerEvent) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+  };
+  const startPinch = () => {
+    const [a, b] = [...pts.current.values()];
+    pinch.current = { d: Math.hypot(a.x - b.x, a.y - b.y) || 1, mx: (a.x + b.x) / 2, my: (a.y + b.y) / 2, tf: tfRef.current };
+    drag.current = null;
+  };
+  const startPan = (x: number, y: number) => {
+    drag.current = { x, y, tx: tfRef.current.x, ty: tfRef.current.y };
+  };
   const onPointerDown = (e: React.PointerEvent) => {
-    if (e.pointerType !== "mouse") return;
-    drag.current = { x: e.clientX, y: e.clientY, tx: tf.x, ty: tf.y };
-    moved.current = false;
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    const p = local(e);
+    pts.current.set(e.pointerId, p);
+    if (pts.current.size === 1) {
+      moved.current = false;
+      startPan(p.x, p.y);
+    } else if (pts.current.size === 2) startPinch();
     setDragging(true);
   };
   const onPointerMove = (e: React.PointerEvent) => {
+    if (!pts.current.has(e.pointerId)) return;
+    const p = local(e);
+    pts.current.set(e.pointerId, p);
+    const pin = pinch.current;
+    if (pin && pts.current.size >= 2) {
+      const [a, b] = [...pts.current.values()];
+      const d = Math.hypot(a.x - b.x, a.y - b.y) || 1;
+      const mx = (a.x + b.x) / 2,
+        my = (a.y + b.y) / 2;
+      const k = Math.min(40, Math.max(0.5, (pin.tf.k * d) / pin.d));
+      // keep the map point that was under the start midpoint under the moving one
+      const cx = (pin.mx - pin.tf.x) / pin.tf.k,
+        cy = (pin.my - pin.tf.y) / pin.tf.k;
+      moved.current = true;
+      setTf({ k, x: mx - cx * k, y: my - cy * k });
+      return;
+    }
     if (!drag.current) return;
-    const dx = e.clientX - drag.current.x,
-      dy = e.clientY - drag.current.y;
-    if (Math.abs(dx) + Math.abs(dy) > 4) moved.current = true;
+    const dx = p.x - drag.current.x,
+      dy = p.y - drag.current.y;
+    if (!moved.current && Math.abs(dx) + Math.abs(dy) > 4) {
+      moved.current = true;
+      e.currentTarget.setPointerCapture?.(e.pointerId);
+    }
     // Read the ref here, not inside the updater: React applies continuous
     // (pointermove) updates after discrete ones (pointerup/leave), by which
     // time onPointerUp has nulled drag.current.
@@ -388,7 +431,16 @@ export function GeoMap(props: GeoMapProps) {
       ny = drag.current.ty + dy;
     setTf((t) => ({ ...t, x: nx, y: ny }));
   };
-  const onPointerUp = () => {
+  const onPointerUp = (e: React.PointerEvent) => {
+    if (!pts.current.delete(e.pointerId)) return;
+    pinch.current = null;
+    if (pts.current.size === 1) {
+      // one finger left after a pinch: carry on panning from it
+      const [rest] = pts.current.values();
+      startPan(rest.x, rest.y);
+      return;
+    }
+    if (pts.current.size >= 2) return startPinch();
     drag.current = null;
     setDragging(false);
   };
@@ -414,8 +466,9 @@ export function GeoMap(props: GeoMapProps) {
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerLeave={onPointerUp}
+        onPointerCancel={onPointerUp}
         onDoubleClick={() => onUp?.()}
-        style={{ cursor: dragging ? "grabbing" : "default" }}
+        style={{ cursor: dragging ? "grabbing" : "default", touchAction: "none" }}
         data-testid="map-svg"
       >
         <defs>
