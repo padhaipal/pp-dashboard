@@ -180,6 +180,27 @@ describe("TeacherDashboard", () => {
     expect(screen.getByTestId("geo-map")).toBeTruthy();
   });
 
+  it("pans with one finger and pinch-zooms with two (touch)", async () => {
+    render(<TeacherDashboard profile={PROFILE} incompleteStates={[]} />);
+    const svg = (await screen.findByTestId("geo-map")).querySelector("svg")!;
+    expect(svg.style.touchAction).toBe("none");
+    const g = () => svg.querySelector("g[transform]")!.getAttribute("transform");
+    const touch = (id: number, x: number, y: number) => ({ pointerType: "touch", pointerId: id, clientX: x, clientY: y });
+    fireEvent.pointerDown(svg, touch(1, 10, 10));
+    fireEvent.pointerMove(svg, touch(1, 40, 25));
+    await waitFor(() => expect(g()).toBe("translate(30,15) scale(1)"));
+    fireEvent.pointerUp(svg, touch(1, 40, 25));
+    // pinch: fingers 100px apart → 200px apart around the same midpoint doubles the zoom
+    fireEvent.pointerDown(svg, touch(2, 100, 100));
+    fireEvent.pointerDown(svg, touch(3, 200, 100));
+    fireEvent.pointerMove(svg, touch(2, 50, 100));
+    fireEvent.pointerMove(svg, touch(3, 250, 100));
+    await waitFor(() => expect(g()).toContain("scale(2)"));
+    fireEvent.pointerUp(svg, touch(2, 50, 100));
+    fireEvent.pointerUp(svg, touch(3, 250, 100));
+    expect(screen.queryByText(/Something went wrong/)).toBeNull();
+  });
+
   it("a block official opens on their district — every block ranked, their own selected — with no level above; the title is not doubled", async () => {
     const own = { ...CHILD_UP, id: "g-0901-01", code: "090101", name: "KAKORI" };
     const { fn, calls } = makeFetch({
