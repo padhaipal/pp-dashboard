@@ -176,7 +176,6 @@ const HI: Record<string, string> = {
   "Government school": "सरकारी विद्यालय",
   "Private school": "निजी विद्यालय",
   "private school": "निजी विद्यालय",
-  "Boundaries pending": "सीमाएँ लंबित",
   "are not using LIFTeracy at all": "लिफ्टरेसी बिल्कुल उपयोग नहीं कर रहे",
   "Hover or click a row or map area to see its details.": "विवरण देखने के लिए किसी पंक्ति या मानचित्र क्षेत्र पर माउस ले जाएँ या क्लिक करें।",
   // profile

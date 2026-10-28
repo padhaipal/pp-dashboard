@@ -6,7 +6,7 @@
 // mvp2's CARTO Positron street underlay (the one external host).
 //
 // Level → what is drawn
-//   country  : every child state polygon (state/{code}); incomplete states black
+//   country  : every child state polygon (state/{code}); incomplete states grey
 //   state    : state outline + child district polygons; districts without a
 //              boundary file (has_boundary false) render as labels at lat/lng
 //   district : tiles + district border + one label per block at its lat/lng
@@ -18,8 +18,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { T } from "./i18n";
 import {
   childFill,
-  INCOMPLETE_FILL,
-  QUIET_INCOMPLETE_FILL,
   INCOMPLETE_TOOLTIP,
   isPrivateSchool,
   UNCOVERED,
@@ -73,9 +71,6 @@ export type GeoMapProps = {
   hintId?: string | null;
   onDismissHint?: () => void;
   metricLabel: string;
-  // The donor page: incomplete states are plain grey, without hover, tooltip
-  // or legend entry (still not drillable); /d keeps them black and explained.
-  quietIncomplete?: boolean;
   // the NIPUN verdict: schools coloured Pass / Fail / Not enough data, areas by their share of passing schools
   verdict?: boolean;
   // Time mode: areas / labels / dots are coloured by minutes per student per
@@ -127,15 +122,17 @@ async function loadBoundary(url: string): Promise<Feature | null> {
 
 // Solid area fill: grey when the area has no LIFTeracy user, otherwise the
 // score colour. Interactions live on the outline path drawn on top.
-export function areaFill(d: string, child: Child, incomplete: boolean, fill: (c: Child) => string = childFill, incompleteFill: string = INCOMPLETE_FILL) {
+// Incomplete states (2026-10) are the "Not using LIFTeracy" grey on every map
+// — black confused people — and stay undrillable.
+export function areaFill(d: string, child: Child, incomplete: boolean, fill: (c: Child) => string = childFill) {
   if (!d) return null;
-  return <path d={d} fill={incomplete ? incompleteFill : fill(child)} fillOpacity={1} pointerEvents="none" />;
+  return <path d={d} fill={incomplete ? UNCOVERED : fill(child)} fillOpacity={1} pointerEvents="none" />;
 }
 
 type Tip = { x: number; y: number; title: string; sub: string | null };
 
 export function GeoMap(props: GeoMapProps) {
-  const { entity, childType, childrenRows, incompleteStates, hoverId, setHoverId, selectedId, onSelect, onDrill, onUp, ownId = null, timeWindow = "all", drillHint = null, hintId = null, onDismissHint, metricLabel, quietIncomplete = false, time = false, verdict = false, t = same } = props;
+  const { entity, childType, childrenRows, incompleteStates, hoverId, setHoverId, selectedId, onSelect, onDrill, onUp, ownId = null, timeWindow = "all", drillHint = null, hintId = null, onDismissHint, metricLabel, time = false, verdict = false, t = same } = props;
   const fillOf = time ? (c: Child) => windowFill(c, timeWindow) : childFill;
   const wrapRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 640, h: 420 });
@@ -492,10 +489,9 @@ export function GeoMap(props: GeoMapProps) {
             const own = ownId === a.child.id;
             const on = hoverId === a.child.id || selectedId === a.child.id;
             const [t1, t2] = tipFor(a.child, a.incomplete);
-            const quiet = quietIncomplete && a.incomplete;
             return (
               <g key={a.child.id}>
-                {areaFill(a.d, a.child, a.incomplete, fillOf, quietIncomplete ? QUIET_INCOMPLETE_FILL : INCOMPLETE_FILL)}
+                {areaFill(a.d, a.child, a.incomplete, fillOf)}
                 {/* own area: a soft blue halo under a crisp outline */}
                 {own && <path d={a.d} fill="none" stroke="#60a5fa" strokeOpacity={0.5} strokeWidth={7 / k} strokeLinejoin="round" pointerEvents="none" data-testid="own-halo" />}
                 <path
@@ -509,26 +505,26 @@ export function GeoMap(props: GeoMapProps) {
                   strokeWidth={(own ? 2 : on ? 1.6 : 0.6) / k}
                   strokeLinejoin="round"
                   data-own={own ? "1" : undefined}
-                  style={{ cursor: a.incomplete ? (quietIncomplete ? "default" : "not-allowed") : "pointer" }}
+                  style={{ cursor: a.incomplete ? "not-allowed" : "pointer" }}
                   onMouseEnter={(e) => {
-                    if (quiet) return;
                     setHoverId(a.child.id);
                     showTip(e, t1, t2);
                   }}
-                  onMouseMove={(e) => !quiet && showTip(e, t1, t2)}
+                  onMouseMove={(e) => showTip(e, t1, t2)}
                   onMouseLeave={() => {
-                    if (quiet) return;
                     setHoverId(null);
                     hideTip();
                   }}
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (moved.current || a.incomplete) return;
+                    if (moved.current) return;
+                    // an incomplete state: a tap (mobile has no hover) explains why it won't open
+                    if (a.incomplete) return showTip(e, t1, t2);
                     onSelect(a.child);
                   }}
                   onDoubleClick={(e) => {
                     e.stopPropagation();
-                    if (a.incomplete) return;
+                    if (a.incomplete) return showTip(e, t1, t2);
                     onDrill(a.child);
                   }}
                 />
@@ -717,12 +713,6 @@ export function GeoMap(props: GeoMapProps) {
             {l}
           </div>
         ))}
-        {childType === "state" && incompleteStates.size > 0 && !quietIncomplete && (
-          <div className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-full" style={{ background: INCOMPLETE_FILL }} />
-            {t("Boundaries pending")}
-          </div>
-        )}
         {/* block level: marker shape = management (colour stays the score) */}
       </div>
     </div>
