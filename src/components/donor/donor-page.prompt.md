@@ -74,8 +74,8 @@ numbers are masked."), then
 `TeacherDashboard variant="public"` opened on India (resolved server-side
 via geo-entities/search with the badge; "unavailable" when that fails). The
 public variant renders the location title as an h3 (no h1 under the page's
-h2s), draws incomplete states plain grey (GeoMap `quietIncomplete`: no
-hover, tooltip or legend entry; still not drillable), opens on All time, leaves today (IST, in progress) out of the Usage
+h2s), draws incomplete states in the same Not-using grey as /d (tooltip on
+hover or tap, no legend entry, not drillable), opens on All time, leaves today (IST, in progress) out of the Usage
 time trend, ignores a single click on a teacher (card or bar — no popup;
 double-click still drills), relabels "Time" as "Usage time" and shows the Uttar Pradesh
 `DrillHint` at country level.

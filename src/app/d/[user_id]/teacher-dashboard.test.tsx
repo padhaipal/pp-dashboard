@@ -131,7 +131,7 @@ describe("TeacherDashboard", () => {
     expect(screen.getByRole("link", { name: "Terms and Conditions" })).toBeDefined();
   });
 
-  it("black (incomplete) states are not drillable and show the tooltip", async () => {
+  it("incomplete states are Not-using grey, not drillable, and explain themselves on hover or tap", async () => {
     const { fn, calls } = makeFetch();
     vi.stubGlobal("fetch", vi.fn(fn));
     const { container } = render(<TeacherDashboard profile={PROFILE} incompleteStates={["28"]} />);
@@ -144,9 +144,13 @@ describe("TeacherDashboard", () => {
     expect(ap.getAttribute("data-incomplete")).toBe("true");
     // fill lives on the sibling fill path (interaction path has fill="none")
     const fill = ap.previousElementSibling as SVGPathElement;
-    expect(fill.getAttribute("fill")).toBe("#000000");
+    expect(fill.getAttribute("fill")).toBe("#a1a1aa");
+    expect(screen.queryByText("Boundaries pending")).toBeNull();
 
+    // a tap (mobile: no hover) shows why it won't open instead of selecting it
     fireEvent.click(ap);
+    expect(screen.getByText(INCOMPLETE_TOOLTIP)).toBeDefined();
+    fireEvent.mouseLeave(ap);
     fireEvent.dblClick(ap);
     expect(screen.getByTestId("geo-map").getAttribute("data-level")).toBe("country");
     expect(screen.getByTestId("location-title").textContent).toBe("India");
@@ -776,7 +780,7 @@ describe("TeacherDashboard — public variant (the donor page)", () => {
     expect(screen.queryByTestId("drill-hint")).toBeNull();
   });
 
-  it("incomplete states are grey for the public: no tooltip, no legend entry, still not drillable", async () => {
+  it("incomplete states on the donor map: the same grey, tooltip on hover, no legend entry, not drillable", async () => {
     const { fn, calls } = makeFetch();
     vi.stubGlobal("fetch", vi.fn(fn));
     const { container } = render(<TeacherDashboard profile={publicProfile(PROFILE.geo_entity!)} incompleteStates={["28"]} variant="public" />);
@@ -785,9 +789,10 @@ describe("TeacherDashboard — public variant (the donor page)", () => {
       if (!p) throw new Error("state 28 not drawn yet");
       return p;
     });
-    expect((ap.previousElementSibling as SVGPathElement).getAttribute("fill")).toBe("#d4d4d8");
+    expect((ap.previousElementSibling as SVGPathElement).getAttribute("fill")).toBe("#a1a1aa");
+    expect(ap.getAttribute("style")).toContain("not-allowed");
     fireEvent.mouseEnter(ap);
-    expect(screen.queryByText(INCOMPLETE_TOOLTIP)).toBeNull();
+    expect(screen.getByText(INCOMPLETE_TOOLTIP)).toBeDefined();
     expect(screen.queryByText("Boundaries pending")).toBeNull();
     fireEvent.dblClick(ap);
     expect(screen.getByTestId("location-title").textContent).toBe("India");
