@@ -238,6 +238,7 @@ export const GEO: Record<string, unknown> = {
   "/boundaries/country/IN.geojson": square("IN", "India", "country", 76, 14),
   "/boundaries/state/09.geojson": square("09", "Uttar Pradesh", "state", 80, 26),
   "/boundaries/state/28.geojson": square("28", "Andhra Pradesh", "state", 78, 15),
+  "/boundaries/state/01.geojson": square("01", "Jammu & Kashmir", "state", 75, 33),
   "/boundaries/district/0901.geojson": square("0901", "LUCKNOW", "district", 80.5, 26.5),
 };
 

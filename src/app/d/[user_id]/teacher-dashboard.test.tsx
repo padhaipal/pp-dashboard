@@ -765,12 +765,13 @@ describe("TeacherDashboard — public variant (the donor page)", () => {
     expect(calls.some((u) => u.includes("/audio"))).toBe(false);
   });
 
-  it("at India, a dismissible callout points at Uttar Pradesh inviting a drill-down", async () => {
-    const { fn } = makeFetch({});
+  it("at India, a dismissible callout points at Jammu & Kashmir inviting a drill-down", async () => {
+    const jk = { ...CHILD_AP, id: "g-01", code: "01", name: "JAMMU & KASHMIR", lat: 33.5, lng: 75.5 };
+    const { fn } = makeFetch({ scores: { ...SCORES, children: [CHILD_UP, CHILD_AP, jk] } });
     vi.stubGlobal("fetch", vi.fn(fn));
     render(<TeacherDashboard profile={publicProfile(PROFILE.geo_entity!)} incompleteStates={[]} variant="public" />);
     const hint = await screen.findByTestId("drill-hint");
-    expect(hint.textContent).toContain("Double-click Uttar Pradesh");
+    expect(hint.textContent).toContain("Double-click Jammu & Kashmir to explore its districts, schools and students.");
     // under the donor page's h2 sections: the location is an h3, no h1
     expect(screen.getByTestId("location-title").tagName).toBe("H3");
     expect(screen.queryByRole("heading", { level: 1 })).toBeNull();
@@ -778,6 +779,19 @@ describe("TeacherDashboard — public variant (the donor page)", () => {
     expect(screen.queryByTestId("own-bar-tag")).toBeNull();
     fireEvent.click(screen.getByTestId("drill-hint-dismiss"));
     expect(screen.queryByTestId("drill-hint")).toBeNull();
+  });
+
+  it("donor map: the callout comes back on every level drilled into, on the northernmost area, worded for that level", async () => {
+    const { fn } = makeFetch({ scoresById: { "g-09": SCORES_UP } });
+    vi.stubGlobal("fetch", vi.fn(fn));
+    const { container } = render(<TeacherDashboard profile={publicProfile(PROFILE.geo_entity!)} incompleteStates={[]} variant="public" />);
+    // no Jammu & Kashmir in the data: the northernmost state in use (UP, above AP)
+    expect((await screen.findByTestId("drill-hint")).textContent).toContain("Double-click Uttar Pradesh to explore its districts");
+    fireEvent.click(screen.getByTestId("drill-hint-dismiss"));
+    expect(screen.queryByTestId("drill-hint")).toBeNull();
+    fireEvent.dblClick(container.querySelector('path[data-code="09"]')!);
+    await waitFor(() => expect(screen.getByTestId("location-title").textContent).toContain("Uttar Pradesh"));
+    expect((await screen.findByTestId("drill-hint")).textContent).toContain("Double-click Lucknow to explore its blocks, schools and students.");
   });
 
   it("incomplete states on the donor map: the same grey, tooltip on hover, no legend entry, not drillable", async () => {

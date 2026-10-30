@@ -1,7 +1,8 @@
 "use client";
 
 // The public donor page (ported from sandbox-global-map/donor.html,
-// 2026-10): value statement, learner photos, What LIFTeracy Does (video +
+// 2026-10): value statement, learner photos, partners (CE / Devi Sansthan +
+// the report PDF), What LIFTeracy Does (video +
 // cost-effectiveness), Traction (real daily series + a live stream of masked
 // student turns), Measuring Every Child (the /d dashboard's drillable map of
 // India for the general public — every person masked by pp-sketch,
@@ -28,9 +29,43 @@ const H = "text-3xl font-extrabold tracking-tight text-brand-ink sm:text-4xl";
 const NAV: [string, string][] = [
   ["#what-does", "What we do"],
   ["#traction", "Traction"],
-  ["#measure", "Measuring"],
+  ["#measure", "Impact"],
   ["#roadmap", "What we built"],
   ["#team", "Team"],
+];
+
+// "Try it Out": a referral link that starts the WhatsApp bot
+const TRY_IT_URL = "https://dashboard.padhaipal.com/r/919565897842";
+const REPORT_URL = "/donor/lifteracy-report.pdf";
+
+// learners in the field (the first three from www.lifteracy.ai, the rest
+// from the LIFTeracy report), ordered so the masonry columns come out even
+const PHOTOS: { src: string; w: number; h: number; alt: string }[] = [
+  { src: "/donor/learner-2.webp", w: 1178, h: 776, alt: "Children learning together with LIFTeracy" },
+  { src: "/donor/learner-1.avif", w: 598, h: 735, alt: "A learner using LIFTeracy" },
+  { src: "/donor/learner-7.webp", w: 500, h: 787, alt: "A girl doing a LIFTeracy lesson on a phone" },
+  { src: "/donor/learner-5.webp", w: 922, h: 427, alt: "Classmates gathered round a LIFTeracy lesson" },
+  { src: "/donor/learner-4.webp", w: 725, h: 543, alt: "A class and their teacher" },
+  { src: "/donor/learner-3.avif", w: 497, h: 696, alt: "A learner using LIFTeracy" },
+  { src: "/donor/learner-8.webp", w: 750, h: 1000, alt: "A teacher and children with LIFTeracy on a phone" },
+  { src: "/donor/learner-6.webp", w: 615, h: 410, alt: "A schoolboy reading a LIFTeracy lesson" },
+];
+
+const PARTNERS: { logo: string; w: number; h: number; name: string; text: string }[] = [
+  {
+    logo: "/donor/ambitious-impact.webp",
+    w: 600,
+    h: 261,
+    name: "Charity Entrepreneurship (Ambitious Impact)",
+    text: "LIFTeracy is a 2026 incubatee of Charity Entrepreneurship, Ambitious Impact’s charity incubation program.",
+  },
+  {
+    logo: "/donor/devi-sansthan.webp",
+    w: 752,
+    h: 345,
+    name: "Devi Sansthan (Dignity Education Vision International)",
+    text: "Devi Sansthan is our on-the-ground partner, bringing LIFTeracy to schools and families in India.",
+  },
 ];
 
 // the founders (www.lifteracy.ai bios, expanded 2026-10)
@@ -71,10 +106,10 @@ export function DonorPage({ country, incompleteStates }: { country: GeoRef | nul
     <div className="flex-1 scroll-smooth overflow-x-clip bg-zinc-50 text-zinc-900">
       {/* sticky top bar — logo + nav upper-left, Talk to us + GitHub upper-right */}
       <header className="sticky top-0 z-40 border-b border-zinc-200/70 bg-zinc-50/90 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-2.5">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-2.5 sm:gap-4 sm:px-6">
           <div className="flex items-center gap-8">
             <a href="#top" className="shrink-0">
-              <Image src="/lifteracy-logo-only.svg" alt="LIFTeracy" width={160} height={64} className="h-11 w-auto sm:h-12" priority />
+              <Image src="/lifteracy-logo-only.svg" alt="LIFTeracy" width={160} height={64} className="h-9 w-auto sm:h-12" priority />
             </a>
             <nav className="hidden items-center gap-6 text-sm font-semibold text-zinc-600 lg:flex">
               {NAV.map(([href, label]) => (
@@ -84,11 +119,14 @@ export function DonorPage({ country, incompleteStates }: { country: GeoRef | nul
               ))}
             </nav>
           </div>
-          <div className="flex items-center gap-4">
-            <a href="#contact" className="rounded-full bg-brand-ink px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-deep" data-testid="cta-talk">
+          <div className="flex items-center gap-2 sm:gap-4">
+            <a href={TRY_IT_URL} target="_blank" rel="noreferrer" className="whitespace-nowrap rounded-full border-2 border-brand-ink px-3 py-1.5 text-sm font-semibold text-brand-ink shadow-sm transition-colors hover:bg-brand-ink hover:text-white sm:px-4" data-testid="cta-try">
+              Try it Out
+            </a>
+            <a href="#contact" className="whitespace-nowrap rounded-full bg-brand-ink px-3 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-deep sm:px-4" data-testid="cta-talk">
               Talk to us
             </a>
-            <a href={GITHUB_URL} target="_blank" rel="noreferrer" title="Source on GitHub" aria-label="Source on GitHub" className="text-zinc-500 transition-colors hover:text-zinc-900">
+            <a href={GITHUB_URL} target="_blank" rel="noreferrer" title="Source on GitHub" aria-label="Source on GitHub" className="hidden text-zinc-500 transition-colors hover:text-zinc-900 sm:block">
               <svg viewBox="0 0 16 16" className="h-6 w-6" fill="currentColor" aria-hidden="true">
                 <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z" />
               </svg>
@@ -106,15 +144,34 @@ export function DonorPage({ country, incompleteStates }: { country: GeoRef | nul
         </div>
       </section>
 
-      {/* 2 · learners in the field — fixed aspect ratios in a max-width row; phones get the centre photo only */}
+      {/* 2 · learners in the field — a masonry of whole photos (no cropping): two columns on phones, four on desktop */}
       <section className="bg-zinc-50 py-10">
-        <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-3 px-6 sm:grid-cols-[3fr_4fr_3fr]" data-testid="photo-strip">
-          {/* eslint-disable-next-line @next/next/no-img-element -- static photo strip, already compressed */}
-          <img src="/donor/learner-1.avif" alt="A learner using LIFTeracy" className="hidden aspect-[4/5] w-full rounded-2xl bg-zinc-100 object-cover shadow-md sm:block" />
-          {/* eslint-disable-next-line @next/next/no-img-element -- as above */}
-          <img src="/donor/learner-2.webp" alt="Children learning together with LIFTeracy" className="aspect-[4/3] w-full rounded-3xl bg-zinc-100 object-cover shadow-lg" />
-          {/* eslint-disable-next-line @next/next/no-img-element -- as above */}
-          <img src="/donor/learner-3.avif" alt="A learner using LIFTeracy" className="hidden aspect-[4/5] w-full rounded-2xl bg-zinc-100 object-cover shadow-md sm:block" />
+        <div className="mx-auto max-w-6xl columns-2 gap-3 px-6 sm:gap-4 lg:columns-4" data-testid="photo-strip">
+          {PHOTOS.map((p) => (
+            <div key={p.src} className="mb-3 break-inside-avoid overflow-hidden rounded-2xl bg-zinc-100 shadow-md ring-1 ring-black/5 sm:mb-4">
+              {/* eslint-disable-next-line @next/next/no-img-element -- static photos, already compressed */}
+              <img src={p.src} alt={p.alt} width={p.w} height={p.h} loading="lazy" className="block h-auto w-full transition-transform duration-500 hover:scale-[1.03]" />
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* 2b · partners — incubator and on-the-ground partner, and the report */}
+      <section id="partners" className="scroll-mt-20 bg-white py-10" data-testid="partners">
+        <div className="mx-auto max-w-6xl px-6">
+          <div className="grid gap-6 md:grid-cols-2">
+            {PARTNERS.map((p) => (
+              <div key={p.logo} className="flex flex-col items-center gap-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-6 text-center sm:flex-row sm:text-left" data-testid="partner">
+                <Image src={p.logo} alt={p.name} width={p.w} height={p.h} className="h-20 w-auto shrink-0 object-contain sm:h-24" />
+                <p className="leading-relaxed text-zinc-700">{p.text}</p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-6 flex justify-center">
+            <a href={REPORT_URL} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full bg-brand-ink px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-deep" data-testid="report-link">
+              Read the LIFTeracy report (PDF)
+            </a>
+          </div>
         </div>
       </section>
 
