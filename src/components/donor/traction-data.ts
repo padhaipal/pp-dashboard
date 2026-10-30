@@ -83,3 +83,30 @@ export function shortDate(iso: string): string {
   const [, m, d] = iso.split("-").map(Number);
   return `${d} ${MONTHS[m - 1] ?? ""}`;
 }
+
+// The CSV behind "Download CSV": every toggle's data, one row per IST day.
+// Daily series as served; "Monthly active students" is a per-month figure,
+// so each day carries its month's values (blank for a month pp-sketch has
+// no row for). Header = the toggle labels. Rows are aggregates only.
+export function tractionCsv(data: TractionResponse): string {
+  const daily = TRACTION_METRICS.filter((m): m is TractionMetric & { key: TractionKey } => m.key !== "monthly");
+  const byMonth = new Map((data.monthly ?? []).map((m) => [m.month, m]));
+  const header = [
+    "Date",
+    ...daily.map((m) => m.label),
+    "Monthly active students (whole month)",
+    "Monthly active students: joined in an earlier month",
+    "Monthly active students: joined this month",
+    "Monthly active students: projected by month end",
+  ];
+  const cell = (v: number | null | undefined) => (v == null ? "" : String(v));
+  const rows = data.daily.map((d) => {
+    const m = byMonth.get(d.date.slice(0, 7));
+    const projected = m && m.projected_joined_earlier !== null && m.projected_joined_this_month !== null ? m.projected_joined_earlier + m.projected_joined_this_month : null;
+    return [d.date, ...daily.map((k) => cell(d[k.key])), cell(m && m.joined_earlier + m.joined_this_month), cell(m?.joined_earlier), cell(m?.joined_this_month), cell(projected)];
+  });
+  const escape = (c: string) => (/[",\n]/.test(c) ? `"${c.replace(/"/g, '""')}"` : c);
+  return [header, ...rows].map((r) => r.map(escape).join(",")).join("\n") + "\n";
+}
+
+export const tractionCsvFilename = (data: TractionResponse) => `lifteracy-traction-${data.computed_at.slice(0, 10)}.csv`;

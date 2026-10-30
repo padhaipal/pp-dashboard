@@ -18,6 +18,8 @@ import {
   shortDate,
   TRACTION_METRICS,
   TRACTION_URL,
+  tractionCsv,
+  tractionCsvFilename,
   type TractionChoice,
   type TractionMonth,
   type TractionResponse,
@@ -84,13 +86,32 @@ export function TractionChart() {
         </>
       )}
       {data && (
-        <div className="mt-1 text-right text-xs text-zinc-500">
-          {metric === "monthly" ? "Monthly" : "Daily"}, India time · updated {shortDate(data.computed_at.slice(0, 10))}
+        <div className="mt-1 flex flex-wrap items-center justify-end gap-x-3 gap-y-1 text-xs text-zinc-500">
+          <span>
+            {metric === "monthly" ? "Monthly" : "Daily"}, India time · updated {shortDate(data.computed_at.slice(0, 10))}
+          </span>
+          {data.daily.length > 0 && (
+            <button type="button" onClick={() => downloadCsv(data)} className="rounded-lg border border-zinc-300 bg-white px-3 py-1.5 font-semibold text-zinc-600 shadow-sm hover:bg-zinc-50" data-testid="traction-csv">
+              Download CSV
+            </button>
+          )}
         </div>
       )}
       </div>
     </>
   );
+}
+
+// every toggle's data at daily resolution (tractionCsv); the BOM lets Excel
+// read it as UTF-8
+function downloadCsv(data: TractionResponse) {
+  const blob = new Blob(["\uFEFF" + tractionCsv(data)], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = tractionCsvFilename(data);
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 function Headline({ hours, students }: { hours: number; students: number }) {

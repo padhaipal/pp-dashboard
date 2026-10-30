@@ -70,4 +70,26 @@ describe("TractionChart", () => {
     fireEvent.click(screen.getByRole("button", { name: "Monthly active students" }));
     expect(screen.getByText("No data yet.")).toBeTruthy();
   });
+
+  it("Download CSV saves every toggle's data as one file", async () => {
+    const createObjectURL = vi.fn().mockReturnValue("blob:x");
+    const { createObjectURL: origCreate, revokeObjectURL: origRevoke } = URL;
+    Object.assign(URL, { createObjectURL, revokeObjectURL: vi.fn() });
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+    await mount(DATA);
+    fireEvent.click(screen.getByTestId("traction-csv"));
+    expect(click).toHaveBeenCalledTimes(1);
+    const blob = createObjectURL.mock.calls[0][0] as Blob;
+    const text = await blob.text();
+    expect(text).toContain("Date,Minutes spent,");
+    expect(text).toContain("2026-05-10,45,");
+    expect((click.mock.instances[0] as unknown as HTMLAnchorElement).download).toBe("lifteracy-traction-2026-05-11.csv");
+    click.mockRestore();
+    Object.assign(URL, { createObjectURL: origCreate, revokeObjectURL: origRevoke });
+  });
+
+  it("no Download CSV without daily data", async () => {
+    await mount({ ...DATA, daily: [] });
+    expect(screen.queryByTestId("traction-csv")).toBeNull();
+  });
 });

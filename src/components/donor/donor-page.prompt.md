@@ -53,7 +53,13 @@ first = default). "Monthly active students" (`monthly`) is `MonthlyBars`:
 one stacked bar per month of students with ≥ 1 five-minute day — brand-ink
 = joined in an earlier month, brand-mute = joined that month, total on top;
 the month in progress adds a dashed overlay to its linear month-end
-projection ("10 → ~31"). Missing `monthly` → "No data yet."
+projection ("10 → ~31"). Missing `monthly` → "No data yet." "Download CSV" (beside
+"updated …", shown when there are daily rows, on mobile too): built in the
+browser from the same response (`tractionCsv`, no pp-sketch call) — one row
+per IST day, a column per daily toggle (header = toggle label), then the
+day's month's "Monthly active students" figures (total, joined earlier,
+joined this month, projected; blank without a month row). UTF-8 with BOM,
+`lifteracy-traction-<computed_at date>.csv`.
 
 InteractionStream: graded turns only (pp-sketch filters). GET
 `users/dashboard/interactions` (public allowlist; pp-sketch
