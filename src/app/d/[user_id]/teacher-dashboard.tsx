@@ -222,8 +222,11 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates, va
   }, [lang, isPublic]);
 
   // Language: English on the server, the viewer's saved choice once mounted
-  // (deferred a tick so the effect never sets state synchronously).
+  // (deferred a tick so the effect never sets state synchronously). The
+  // donor page (no toggle) stays English: the choice saved on a /d
+  // dashboard of the same site must not turn it Hindi.
   useEffect(() => {
+    if (isPublic) return;
     const id = setTimeout(() => {
       try {
         const v = window.localStorage.getItem(LANG_STORAGE_KEY);
@@ -233,7 +236,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates, va
       }
     }, 0);
     return () => clearTimeout(id);
-  }, []);
+  }, [isPublic]);
   // First-visit callout pointing at the viewer's own area: shown until dismissed.
   const [hintOpen, setHintOpen] = useState(false);
   useEffect(() => {

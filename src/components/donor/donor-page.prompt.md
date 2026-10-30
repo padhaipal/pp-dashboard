@@ -85,7 +85,8 @@ public variant renders the location title as an h3 (no h1 under the page's
 h2s), draws incomplete states in the same Not-using grey as /d (tooltip on
 hover or tap, no legend entry, not drillable), opens on All time, leaves today (IST, in progress) out of the Usage
 time trend, ignores a single click on a teacher (card or bar — no popup;
-double-click still drills), relabels "Time" as "Usage time" and shows a `DrillHint` on every map
+double-click still drills), is always English (ignores the language a /d dashboard saved in
+localStorage), relabels "Time" as "Usage time" and shows a `DrillHint` on every map
 level (country / state / district / block): at India on Jammu & Kashmir
 (code 01), below that on the northernmost area in use (GeoMap `hintNorth`;
 on a block's school dots, the school with the most students), worded for the level ("Double-click Lucknow to explore its blocks, schools
@@ -102,9 +103,11 @@ LIFTeracy report (2026-10).
 
 Partners (`PARTNERS`, white band just above "What LIFTeracy Does"): two
 cards, logo + one line — Ambitious Impact's logo (Charity Entrepreneurship
-is its incubation program; "2026 incubatee") and Devi Sansthan's (Dignity
+is its incubation program; "LIFTeracy is a 2026 incubatee of Ambitious
+Impact’s Charity Entrepreneurship Program.") and DEVI Sansthan's (Dignity
 Education Vision International; "on-the-ground partner") — then "Read the
-LIFTeracy report (PDF)" → public/donor/lifteracy-report.pdf.
+LIFTeracy report (PDF)" → public/donor/lifteracy-report.pdf (a copy of
+"LIFTeracy Proposal.pdf", 2026-10-30).
 
 "What we built in 8 months" (`tech-roadmap.tsx`): from md up, to scale,
 24 Feb – 24 Oct 2026, labels in lanes, story on hover; below md a vertical
