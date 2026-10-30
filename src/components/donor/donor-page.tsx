@@ -1,7 +1,7 @@
 "use client";
 
 // The public donor page (ported from sandbox-global-map/donor.html,
-// 2026-10): value statement, learner photos, partners (CE / Devi Sansthan +
+// 2026-10): value statement, learner photos, partners (CE / DEVI Sansthan +
 // the report PDF), What LIFTeracy Does (video +
 // cost-effectiveness), Traction (real daily series + a live stream of masked
 // student turns), Measuring Every Child (the /d dashboard's drillable map of
@@ -68,14 +68,14 @@ const PARTNERS: { logo: string; w: number; h: number; name: string; text: string
     w: 600,
     h: 261,
     name: "Charity Entrepreneurship (Ambitious Impact)",
-    text: "LIFTeracy is a 2026 incubatee of Charity Entrepreneurship, Ambitious Impact’s charity incubation program.",
+    text: "LIFTeracy is a 2026 incubatee of Ambitious Impact’s Charity Entrepreneurship Program.",
   },
   {
     logo: "/donor/devi-sansthan.webp",
     w: 752,
     h: 345,
-    name: "Devi Sansthan (Dignity Education Vision International)",
-    text: "Devi Sansthan is our on-the-ground partner, bringing LIFTeracy to schools and families in India.",
+    name: "DEVI Sansthan (Dignity Education Vision International)",
+    text: "DEVI Sansthan is our on-the-ground partner, bringing LIFTeracy to schools and families in India.",
   },
 ];
 
