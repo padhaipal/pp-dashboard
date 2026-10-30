@@ -6,8 +6,7 @@ import { useState } from "react";
 // ask, the contact email and the newsletter sign-up (the same mailing list
 // as the /quiz page: POST /api/quiz/subscribe → pp-sketch
 // mailing_list_entries; the lifteracy.ai form is Framer's and only accepts
-// posts from that site). DonorFooter: www.lifteracy.ai's partner logo,
-// policies (self-hosted PDFs at /privacy, /terms, /child-protection — see
+// posts from that site). DonorFooter: policies (self-hosted PDFs at /privacy, /terms, /child-protection — see
 // next.config.ts) and registration.
 export const CONTACT_EMAIL = "hello@lifteracy.ai";
 const POLICIES: [string, string][] = [
@@ -75,21 +74,12 @@ export function DonorContact() {
 export function DonorFooter() {
   return (
     <footer className="mx-auto max-w-6xl px-6 py-10" data-testid="donor-footer">
-      <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
-        <div>
-          <div className="text-xs font-bold uppercase tracking-wide text-zinc-500">Partners &amp; Supporters</div>
-          <a href="https://dignityeducation.org/" target="_blank" rel="noreferrer" className="mt-3 inline-block">
-            {/* eslint-disable-next-line @next/next/no-img-element -- small static SVG */}
-            <img src="/donor/dignity-education.svg" alt="Dignity Education" className="h-16 w-auto" />
+      <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm md:justify-end">
+        {POLICIES.map(([n, u]) => (
+          <a key={n} href={u} target="_blank" rel="noreferrer" className="text-zinc-600 hover:text-brand-ink">
+            {n}
           </a>
-        </div>
-        <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm md:justify-end">
-          {POLICIES.map(([n, u]) => (
-            <a key={n} href={u} target="_blank" rel="noreferrer" className="text-zinc-600 hover:text-brand-ink">
-              {n}
-            </a>
-          ))}
-        </div>
+        ))}
       </div>
       <div className="mt-6 space-y-1 border-t border-zinc-200 pt-4 text-xs leading-relaxed text-zinc-500">
         <div className="font-bold text-zinc-700">LIFTeracy</div>

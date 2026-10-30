@@ -68,7 +68,8 @@ export type GeoMapProps = {
   // when given — the donor page points the public at a state), asking them
   // to drill in; null hides it. `hintNorth` (donor page, every level): with
   // no `hintId` on the map, the northernmost area in use (else any) — out of
-  // the way of most of the map; a function text gets that area.
+  // the way of most of the map; on school dots, the school with the most
+  // students instead; a function text gets that area.
   drillHint?: string | ((c: Child) => string) | null;
   hintId?: string | null;
   hintNorth?: boolean;
@@ -346,10 +347,12 @@ export function GeoMap(props: GeoMapProps) {
   const hintTarget = useMemo((): string | null => {
     if (hintId && xyOf(hintId, areas, projected)) return hintId;
     if (!hintNorth) return hintId ?? ownId;
+    if (childType === "school" && projected.length > 0)
+      return projected.reduce((best, p) => (p.child.n > best.child.n || (p.child.n === best.child.n && p.xy[1] < best.xy[1]) ? p : best)).child.id;
     const cands = [...areas.filter((a) => !a.incomplete).map((a) => ({ child: a.child, y: a.c[1] })), ...projected.map((p) => ({ child: p.child, y: p.xy[1] }))];
     const pool = cands.some((c) => c.child.using_lifteracy) ? cands.filter((c) => c.child.using_lifteracy) : cands;
     return pool.reduce<{ child: Child; y: number } | null>((best, c) => (!best || c.y < best.y ? c : best), null)?.child.id ?? null;
-  }, [hintId, hintNorth, ownId, areas, projected]);
+  }, [hintId, hintNorth, ownId, areas, projected, childType]);
   const hintXY = xyOf(hintTarget, areas, projected);
   const hintChild = hintTarget ? (childrenRows.find((c) => c.id === hintTarget) ?? null) : null;
   const hintText = typeof drillHint === "function" ? (hintChild ? drillHint(hintChild) : null) : drillHint;

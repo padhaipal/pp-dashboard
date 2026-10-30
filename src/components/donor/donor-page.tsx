@@ -22,8 +22,8 @@ import { InteractionStream } from "./interaction-stream";
 import { TractionChart } from "./traction-chart";
 import { ValueStatement } from "./value-statement";
 
-// the "See LIFTeracy in Action" clip from www.lifteracy.ai/#video
-const LIFTERACY_VIDEO_URL = "https://framerusercontent.com/assets/UzlwOpPmZp3DVtJKOUr7hrlM8.mp4";
+// the LIFTeracy demo (LIFTeracy_demo.mp4, re-encoded to 720p, faststart)
+const LIFTERACY_VIDEO_URL = "/donor/lifteracy-demo.mp4";
 
 const H = "text-3xl font-extrabold tracking-tight text-brand-ink sm:text-4xl";
 const NAV: [string, string][] = [
@@ -39,16 +39,27 @@ const TRY_IT_URL = "https://dashboard.padhaipal.com/r/919565897842";
 const REPORT_URL = "/donor/lifteracy-report.pdf";
 
 // learners in the field (the first three from www.lifteracy.ai, the rest
-// from the LIFTeracy report), ordered so the masonry columns come out even
-const PHOTOS: { src: string; w: number; h: number; alt: string }[] = [
-  { src: "/donor/learner-2.webp", w: 1178, h: 776, alt: "Children learning together with LIFTeracy" },
-  { src: "/donor/learner-1.avif", w: 598, h: 735, alt: "A learner using LIFTeracy" },
-  { src: "/donor/learner-7.webp", w: 500, h: 787, alt: "A girl doing a LIFTeracy lesson on a phone" },
-  { src: "/donor/learner-5.webp", w: 922, h: 427, alt: "Classmates gathered round a LIFTeracy lesson" },
-  { src: "/donor/learner-4.webp", w: 725, h: 543, alt: "A class and their teacher" },
-  { src: "/donor/learner-3.avif", w: 497, h: 696, alt: "A learner using LIFTeracy" },
-  { src: "/donor/learner-8.webp", w: 750, h: 1000, alt: "A teacher and children with LIFTeracy on a phone" },
-  { src: "/donor/learner-6.webp", w: 615, h: 410, alt: "A schoolboy reading a LIFTeracy lesson" },
+// from the LIFTeracy report) in four columns of two, paired so the columns'
+// natural heights nearly match (each stretches to the tallest, cropping a
+// few %, so the bottoms line up); phones: two columns of four (1+2, 3+4)
+type Photo = { src: string; w: number; h: number; alt: string };
+const PHOTO_COLUMNS: Photo[][] = [
+  [
+    { src: "/donor/learner-7.webp", w: 500, h: 787, alt: "A girl doing a LIFTeracy lesson on a phone" },
+    { src: "/donor/learner-5.webp", w: 922, h: 427, alt: "Classmates gathered round a LIFTeracy lesson" },
+  ],
+  [
+    { src: "/donor/learner-4.webp", w: 725, h: 543, alt: "A class and their teacher" },
+    { src: "/donor/learner-1.avif", w: 598, h: 735, alt: "A learner using LIFTeracy" },
+  ],
+  [
+    { src: "/donor/learner-2.webp", w: 1178, h: 776, alt: "Children learning together with LIFTeracy" },
+    { src: "/donor/learner-8.webp", w: 750, h: 1000, alt: "A teacher and children with LIFTeracy on a phone" },
+  ],
+  [
+    { src: "/donor/learner-3.avif", w: 497, h: 696, alt: "A learner using LIFTeracy" },
+    { src: "/donor/learner-6.webp", w: 615, h: 410, alt: "A schoolboy reading a LIFTeracy lesson" },
+  ],
 ];
 
 const PARTNERS: { logo: string; w: number; h: number; name: string; text: string }[] = [
@@ -144,13 +155,21 @@ export function DonorPage({ country, incompleteStates }: { country: GeoRef | nul
         </div>
       </section>
 
-      {/* 2 · learners in the field — a masonry of whole photos (no cropping): two columns on phones, four on desktop */}
+      {/* 2 · learners in the field — columns stretched to one height, so the bottoms line up: two columns on phones, four on desktop */}
       <section className="bg-zinc-50 py-10">
-        <div className="mx-auto max-w-6xl columns-2 gap-3 px-6 sm:gap-4 lg:columns-4" data-testid="photo-strip">
-          {PHOTOS.map((p) => (
-            <div key={p.src} className="mb-3 break-inside-avoid overflow-hidden rounded-2xl bg-zinc-100 shadow-md ring-1 ring-black/5 sm:mb-4">
-              {/* eslint-disable-next-line @next/next/no-img-element -- static photos, already compressed */}
-              <img src={p.src} alt={p.alt} width={p.w} height={p.h} loading="lazy" className="block h-auto w-full transition-transform duration-500 hover:scale-[1.03]" />
+        <div className="mx-auto grid max-w-6xl grid-cols-2 gap-3 px-6 sm:gap-4" data-testid="photo-strip">
+          {[PHOTO_COLUMNS.slice(0, 2), PHOTO_COLUMNS.slice(2)].map((half, i) => (
+            <div key={i} className="flex flex-col gap-3 sm:gap-4 lg:grid lg:grid-cols-2">
+              {half.map((col) => (
+                <div key={col[0].src} className="flex grow flex-col gap-3 sm:gap-4">
+                  {col.map((p) => (
+                    <div key={p.src} className="relative grow overflow-hidden rounded-2xl bg-zinc-100 shadow-md ring-1 ring-black/5" style={{ aspectRatio: `${p.w} / ${p.h}` }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element -- static photos, already compressed */}
+                      <img src={p.src} alt={p.alt} width={p.w} height={p.h} loading="lazy" className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 hover:scale-[1.03]" />
+                    </div>
+                  ))}
+                </div>
+              ))}
             </div>
           ))}
         </div>
@@ -183,7 +202,7 @@ export function DonorPage({ country, incompleteStates }: { country: GeoRef | nul
             LIFTeracy is a one-on-one AI tutor that teaches children in India to read Hindi through evening WhatsApp voice message conversations. A ten minute lesson costs just four cents.
           </p>
           <div className="grid items-center gap-8 lg:grid-cols-[3fr_2fr]">
-            <video src={LIFTERACY_VIDEO_URL} poster="/donor/lifteracy-video-poster.jpg" controls preload="metadata" playsInline className="w-full rounded-xl bg-black shadow-md" />
+            <video src={LIFTERACY_VIDEO_URL} poster="/donor/lifteracy-demo-poster.jpg" controls preload="metadata" playsInline className="w-full rounded-xl bg-black shadow-md" />
             <CostEffectiveness />
           </div>
         </div>

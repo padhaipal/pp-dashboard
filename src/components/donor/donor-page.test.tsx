@@ -25,6 +25,7 @@ describe("DonorPage", () => {
     expect(partners[0].textContent).toContain("2026 incubatee of Charity Entrepreneurship");
     expect(partners[1].textContent).toContain("on-the-ground partner");
     expect(screen.getByTestId("report-link").getAttribute("href")).toBe("/donor/lifteracy-report.pdf");
+    expect(document.querySelector("video")?.getAttribute("src")).toBe("/donor/lifteracy-demo.mp4");
     // partners sit just above What LIFTeracy Does
     expect(screen.getByTestId("partners").nextElementSibling?.id).toBe("what-does");
   });

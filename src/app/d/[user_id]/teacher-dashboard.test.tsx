@@ -4,7 +4,7 @@ import { boxesOverlap, labelBox } from "./geo-map";
 import { TeacherDashboard, publicProfile } from "./teacher-dashboard";
 import { RepTrend } from "./report-card-modal";
 import { MvpMinutesChart } from "./mvp-widgets";
-import { EMPTY_ROOT_TEXT, INCOMPLETE_TOOLTIP } from "./dashboard-types";
+import { EMPTY_ROOT_TEXT, INCOMPLETE_TOOLTIP, type Child, type ScoresResponse } from "./dashboard-types";
 import { CHILD_AP, CHILD_UP, EMPTY_SCORES, MEDIA_MASKED, PROFILE, PROFILE_BLOCK, PROFILE_SCHOOL, SCORES, SCORES_CLASS, SCORES_CLASS_MASKED, SCORES_SCHOOL, SCORES_SCHOOL_VERDICT, SCORES_UP, SCORES_VERDICT, SHARE_MESSAGE, makeFetch } from "./test-fixtures";
 
 const pressed = (name: string) => screen.getAllByRole("button", { name }).map((b) => b.getAttribute("aria-pressed"));
@@ -792,6 +792,22 @@ describe("TeacherDashboard — public variant (the donor page)", () => {
     fireEvent.dblClick(container.querySelector('path[data-code="09"]')!);
     await waitFor(() => expect(screen.getByTestId("location-title").textContent).toContain("Uttar Pradesh"));
     expect((await screen.findByTestId("drill-hint")).textContent).toContain("Double-click Lucknow to explore its blocks, schools and students.");
+  });
+
+  it("donor map, school dots: the callout points at the school with the most students", async () => {
+    const block = { id: "g-blk", type: "block" as const, code: "090101", name: "KAKORI", has_boundary: false, lat: 26.9, lng: 80.8 };
+    const school = (id: string, name: string, lat: number, n: number, private_ = false): Child => ({
+      ...CHILD_UP, id, type: "school", code: id, name, has_boundary: false, lat, lng: 80.8, n, official: null, management_group: private_ ? "private" : "government",
+    });
+    const scores: ScoresResponse = {
+      ...SCORES, entity: block, child_type: "school", children_series: [], most_improved: [],
+      // the northernmost has few students; the private school (most of all) is not drawn
+      children: [school("s-north", "P.S. NORTH", 27.2, 2), school("s-big", "P.S. BIG", 26.6, 50), school("s-pvt", "PVT ACADEMY", 26.8, 99, true)],
+    };
+    const { fn } = makeFetch({ scoresById: { "g-blk": scores } });
+    vi.stubGlobal("fetch", vi.fn(fn));
+    render(<TeacherDashboard profile={publicProfile(block)} incompleteStates={[]} variant="public" />);
+    expect((await screen.findByTestId("drill-hint")).textContent).toContain("Double-click P.S. BIG");
   });
 
   it("incomplete states on the donor map: the same grey, tooltip on hover, no legend entry, not drillable", async () => {
