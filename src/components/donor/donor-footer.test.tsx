@@ -8,9 +8,10 @@ describe("DonorFooter", () => {
     vi.unstubAllGlobals();
   });
 
-  it("matches www.lifteracy.ai: partner logo, self-hosted policies, registration", () => {
+  it("self-hosted policies and registration; no partners block (the page has its own)", () => {
     render(<DonorFooter />);
-    expect(screen.getByAltText("Dignity Education")).toBeTruthy();
+    expect(screen.queryByText(/Partners/)).toBeNull();
+    expect(screen.queryByRole("img")).toBeNull();
     expect(screen.getByText("Privacy Policy").getAttribute("href")).toBe("/privacy");
     expect(screen.getByText("Terms of Use").getAttribute("href")).toBe("/terms");
     expect(screen.getByText("Child Protection Policy").getAttribute("href")).toBe("/child-protection");

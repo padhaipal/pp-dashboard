@@ -32,11 +32,10 @@ variation, tappable, the current one wide) under it; then the MPL-B claim:
 illiterate child to pass the main internationally recognized reading
 standard (MPL-B) without supplemental teaching input."
 
-Photos: max-w-6xl row, sides 4/5 and centre 4/3 by aspect-ratio; below sm
-the centre photo only.
-
 What LIFTeracy Does: "LIFTeracy is a one-on-one AI tutor … conversations. A
-ten minute lesson costs just four cents.", then the video beside
+ten minute lesson costs just four cents.", then the demo video
+(public/donor/lifteracy-demo.mp4: LIFTeracy_demo.mp4 re-encoded to 720p,
+faststart, ~10 MB; poster lifteracy-demo-poster.jpg) beside
 `CostEffectiveness` ($31 vs $60 bars to scale, each linking its source;
 the sentence "LIFTeracy is estimated to cost [$31 per income doubling at
 scale], beating [Ambitious Impact’s funding bar of $60]." — CEM artifact /
@@ -88,16 +87,18 @@ hover or tap, no legend entry, not drillable), opens on All time, leaves today (
 time trend, ignores a single click on a teacher (card or bar — no popup;
 double-click still drills), relabels "Time" as "Usage time" and shows a `DrillHint` on every map
 level (country / state / district / block): at India on Jammu & Kashmir
-(code 01), below that on the northernmost area in use (GeoMap `hintNorth`),
-worded for the level ("Double-click Lucknow to explore its blocks, schools
+(code 01), below that on the northernmost area in use (GeoMap `hintNorth`;
+on a block's school dots, the school with the most students), worded for the level ("Double-click Lucknow to explore its blocks, schools
 and students."; blocks: "… to see its classes and students."). ✕ dismisses
 it for that level only (session state); near the map's top edge it hangs
 below its area, arrow up.
 
-Learner photos (`PHOTOS`): eight whole photos (no cropping) in a CSS-columns
-masonry, 2 columns on phones, 4 from lg; learner-1..3 from www.lifteracy.ai,
-learner-4..8 extracted from the LIFTeracy report (2026-10). Order balances
-the column heights.
+Learner photos (`PHOTO_COLUMNS`): eight photos in four columns of two from
+lg (phones: two columns of four, columns 1+2 and 3+4), paired so the
+columns' natural heights nearly match; every column stretches to the
+tallest (photos object-cover, a few % cropped) so the bottoms line up.
+learner-1..3 from www.lifteracy.ai, learner-4..8 extracted from the
+LIFTeracy report (2026-10).
 
 Partners (`PARTNERS`, white band just above "What LIFTeracy Does"): two
 cards, logo + one line — Ambitious Impact's logo (Charity Entrepreneurship
@@ -120,7 +121,8 @@ you@example.org) — POST /api/quiz/subscribe, the /quiz page's mailing list
 (pp-sketch mailing_list_entries; lifteracy.ai's Framer form only takes
 posts from that site).
 
-Footer (`DonorFooter`): Dignity Education logo; Privacy Policy / Terms of
+Footer (`DonorFooter`): no partners block (the page's partners section
+has the logos); Privacy Policy / Terms of
 Use / Child Protection Policy at /privacy, /terms,
 /child-protection (next.config.ts rewrites to public/legal/*.pdf, the PDFs
 LIFTeracy versions, Oct 2026); Development Consortium
