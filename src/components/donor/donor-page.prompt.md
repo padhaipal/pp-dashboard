@@ -107,7 +107,7 @@ is its incubation program; "LIFTeracy is a 2026 incubatee of Ambitious
 Impact’s Charity Entrepreneurship Program.") and DEVI Sansthan's (Dignity
 Education Vision International; "on-the-ground partner") — then "Read the
 LIFTeracy report (PDF)" → public/donor/lifteracy-report.pdf (a copy of
-"LIFTeracy Proposal.pdf", 2026-10-30).
+"LIFTeracy Proposal.pdf", 2026-10-30 15:23).
 
 "What we built in 8 months" (`tech-roadmap.tsx`): from md up, to scale,
 24 Feb – 24 Oct 2026, labels in lanes, story on hover; below md a vertical
