@@ -66,9 +66,12 @@ export type GeoMapProps = {
   timeWindow?: TimeWindow;
   // First visit: a callout pointing at the viewer's own area (or `hintId`'s,
   // when given — the donor page points the public at a state), asking them
-  // to drill in; null hides it.
-  drillHint?: string | null;
+  // to drill in; null hides it. `hintNorth` (donor page, every level): with
+  // no `hintId` on the map, the northernmost area in use (else any) — out of
+  // the way of most of the map; a function text gets that area.
+  drillHint?: string | ((c: Child) => string) | null;
   hintId?: string | null;
+  hintNorth?: boolean;
   onDismissHint?: () => void;
   metricLabel: string;
   // the NIPUN verdict: schools coloured Pass / Fail / Not enough data, areas by their share of passing schools
@@ -132,7 +135,7 @@ export function areaFill(d: string, child: Child, incomplete: boolean, fill: (c:
 type Tip = { x: number; y: number; title: string; sub: string | null };
 
 export function GeoMap(props: GeoMapProps) {
-  const { entity, childType, childrenRows, incompleteStates, hoverId, setHoverId, selectedId, onSelect, onDrill, onUp, ownId = null, timeWindow = "all", drillHint = null, hintId = null, onDismissHint, metricLabel, time = false, verdict = false, t = same } = props;
+  const { entity, childType, childrenRows, incompleteStates, hoverId, setHoverId, selectedId, onSelect, onDrill, onUp, ownId = null, timeWindow = "all", drillHint = null, hintId = null, hintNorth = false, onDismissHint, metricLabel, time = false, verdict = false, t = same } = props;
   const fillOf = time ? (c: Child) => windowFill(c, timeWindow) : childFill;
   const wrapRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 640, h: 420 });
@@ -340,7 +343,16 @@ export function GeoMap(props: GeoMapProps) {
   );
 
   const ownXY = xyOf(ownId, areas, projected);
-  const hintXY = xyOf(hintId ?? ownId, areas, projected);
+  const hintTarget = useMemo((): string | null => {
+    if (hintId && xyOf(hintId, areas, projected)) return hintId;
+    if (!hintNorth) return hintId ?? ownId;
+    const cands = [...areas.filter((a) => !a.incomplete).map((a) => ({ child: a.child, y: a.c[1] })), ...projected.map((p) => ({ child: p.child, y: p.xy[1] }))];
+    const pool = cands.some((c) => c.child.using_lifteracy) ? cands.filter((c) => c.child.using_lifteracy) : cands;
+    return pool.reduce<{ child: Child; y: number } | null>((best, c) => (!best || c.y < best.y ? c : best), null)?.child.id ?? null;
+  }, [hintId, hintNorth, ownId, areas, projected]);
+  const hintXY = xyOf(hintTarget, areas, projected);
+  const hintChild = hintTarget ? (childrenRows.find((c) => c.id === hintTarget) ?? null) : null;
+  const hintText = typeof drillHint === "function" ? (hintChild ? drillHint(hintChild) : null) : drillHint;
   // the viewer's own label's box (district → blocks drawn as labels): others must not cover it
   const ownLabelPt = childType !== "school" ? projected.find((p) => p.child.id === ownId) : undefined;
   const ownLabelBox = ownLabelPt ? labelBox(ownLabelPt.child.name, ownLabelPt.xy, 12 / tf.k) : null;
@@ -661,9 +673,13 @@ export function GeoMap(props: GeoMapProps) {
         </div>
       )}
 
-      {drillHint && hintXY && (
-        <DrillHint x={tf.x + hintXY[0] * k} y={tf.y + hintXY[1] * k - 30} text={drillHint} onDismiss={onDismissHint} t={t} />
-      )}
+      {hintText && hintXY && (() => {
+        const hx = tf.x + hintXY[0] * k,
+          hy = tf.y + hintXY[1] * k;
+        // too near the top for the callout above the area: hang it below, arrow up
+        const below = hy - 30 < HINT_H;
+        return <DrillHint x={Math.min(Math.max(hx, 124), Math.max(124, size.w - 124))} arrowX={hx} y={below ? hy + 30 : hy - 30} below={below} text={hintText} onDismiss={onDismissHint} t={t} />;
+      })()}
       {/* zoom — top-right, clear of the legend (bottom-left) and the up button (bottom-right) */}
       <div className="absolute right-2 top-2 z-20 flex flex-col overflow-hidden rounded-lg border border-zinc-300 bg-white shadow-md" data-testid="map-zoom">
         <button type="button" onClick={() => zoomBy(1.4)} className="h-8 w-8 text-base font-bold text-zinc-700 hover:bg-zinc-100" aria-label="Zoom in">
@@ -719,19 +735,27 @@ export function GeoMap(props: GeoMapProps) {
   );
 }
 
+// The callout's height above its point (box + stem), for the flip below.
+const HINT_H = 120;
+
 // A dismissible callout with an arrow pointing down at (x, y): used on the
 // map (the viewer's own area) and over the viewer's own teacher card.
-export function DrillHint({ x, y, text, onDismiss, t = same }: { x: number | string; y: number | string; text: string; onDismiss?: () => void; t?: T }) {
+// `below`: hangs under (x, y) pointing up instead. `arrowX`: the point when
+// the box was nudged sideways to stay inside the map (numbers only).
+export function DrillHint({ x, y, arrowX, below = false, text, onDismiss, t = same }: { x: number | string; y: number | string; arrowX?: number; below?: boolean; text: string; onDismiss?: () => void; t?: T }) {
+  const shift = typeof x === "number" && arrowX !== undefined ? Math.max(-100, Math.min(100, arrowX - x)) : 0;
+  const stem = <div className={"mx-auto h-6 w-0.5 animate-pulse bg-blue-600 " + (below ? "mb-1" : "mt-1")} style={{ transform: `translateX(${shift}px)` }} />;
   return (
-    <div className="absolute z-30 w-60 -translate-x-1/2 -translate-y-full" style={{ left: x, top: y }} data-testid="drill-hint" onClick={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
+    <div className={"absolute z-30 w-60 -translate-x-1/2 " + (below ? "" : "-translate-y-full")} style={{ left: x, top: y }} data-testid="drill-hint" onClick={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
+      {below && stem}
       <div className="relative rounded-2xl bg-blue-600 p-3 pr-8 text-[13px] font-semibold leading-snug text-white shadow-xl ring-4 ring-blue-600/20">
         {text}
         <button type="button" aria-label={t("Dismiss")} className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-white/20 text-xs hover:bg-white/30" onClick={() => onDismiss?.()} data-testid="drill-hint-dismiss">
           ✕
         </button>
-        <span className="absolute -bottom-2 left-1/2 h-4 w-4 -translate-x-1/2 rotate-45 bg-blue-600" />
+        <span className={"absolute left-1/2 h-4 w-4 bg-blue-600 " + (below ? "-top-2" : "-bottom-2")} style={{ transform: `translateX(calc(-50% + ${shift}px)) rotate(45deg)` }} />
       </div>
-      <div className="mx-auto mt-1 h-6 w-0.5 animate-pulse bg-blue-600" />
+      {!below && stem}
     </div>
   );
 }

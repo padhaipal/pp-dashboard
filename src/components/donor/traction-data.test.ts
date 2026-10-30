@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { monthLabel, shortDate, TRACTION_METRICS, tractionCsv, tractionCsvFilename, type TractionResponse } from "./traction-data";
+import { longDate, monthLabel, monthStartLabels, shortDate, TRACTION_METRICS, tractionCsv, tractionCsvFilename, type TractionResponse } from "./traction-data";
 
 describe("TRACTION_METRICS", () => {
   it("offers the ten series in the asked order, minutes first (the default)", () => {
@@ -60,5 +60,19 @@ describe("tractionCsv", () => {
 
   it("is named after the day pp-sketch computed it", () => {
     expect(tractionCsvFilename(DATA)).toBe("lifteracy-traction-2026-05-02.csv");
+  });
+});
+
+describe("x labels", () => {
+  const days = (from: string, n: number) => Array.from({ length: n }, (_, i) => new Date(Date.parse(from + "T00:00:00Z") + i * 86_400_000).toISOString().slice(0, 10));
+
+  it("only the 1st of each month, as '1 April'", () => {
+    const dates = days("2026-04-01", 212); // 1 Apr … 29 Oct
+    expect([...monthStartLabels(dates, 8)].map((i) => longDate(dates[i]))).toEqual(["1 April", "1 May", "1 June", "1 July", "1 August", "1 September", "1 October"]);
+  });
+
+  it("thinned to the cap, keeping the latest month", () => {
+    const dates = days("2026-04-01", 212);
+    expect([...monthStartLabels(dates, 4)].map((i) => shortDate(dates[i]))).toEqual(["1 Apr", "1 Jun", "1 Aug", "1 Oct"]);
   });
 });

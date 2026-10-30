@@ -122,7 +122,10 @@ so the proxy sends no viewer header and never upgrades a staff browser —
 and pp-sketch answers as to an anonymous viewer: students, teachers and
 officials all masked (first…last), no spotlight messages, no transcripts.
 Not rendered: the sticky header (the donor page has its own), "You" tags /
-drill hint (`ownId` null), the share message and share bar, the Spotlight
+the own-area drill hint (`ownId` null) — instead a public drill hint on
+every map level (`publicDrillHint`; J&K at India, else GeoMap `hintNorth`
+picks the northernmost area in use; ✕ = that level only, see
+donor-page.prompt.md), the share message and share bar, the Spotlight
 section, the CSV link, Your Profile and the footer; the wrapper drops
 `min-h-screen`. In the student pop-up `AudioButton` never requests a
 recording for the public viewer: "▶ audio" opens a dialog

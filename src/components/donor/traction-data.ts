@@ -78,6 +78,22 @@ export function monthLabel(ym: string): string {
   return `${MONTHS[m - 1] ?? ""} ${y}`;
 }
 
+const MONTHS_LONG = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+// "2026-09-01" → "1 September"
+export function longDate(iso: string): string {
+  const [, m, d] = iso.split("-").map(Number);
+  return `${d} ${MONTHS_LONG[m - 1] ?? ""}`;
+}
+
+// The chart's x labels: indexes of the dates that are a month's 1st, thinned
+// to at most `max` (every 2nd, 3rd… month, always keeping the latest).
+export function monthStartLabels(dates: string[], max: number): Set<number> {
+  const firsts = dates.flatMap((d, i) => (d.endsWith("-01") ? [i] : []));
+  const step = Math.max(1, Math.ceil(firsts.length / max));
+  return new Set(firsts.filter((_, k) => (firsts.length - 1 - k) % step === 0));
+}
+
 // "2026-09-01" → "1 Sep" (a fixed table: ICU builds differ — "Sept")
 export function shortDate(iso: string): string {
   const [, m, d] = iso.split("-").map(Number);

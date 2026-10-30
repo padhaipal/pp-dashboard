@@ -171,9 +171,19 @@ const nextChildType = (t: GeoRef["type"]): ChildType =>
   t === "country" ? "state" : t === "state" ? "district" : t === "district" ? "block" : t === "block" ? "school" : t === "school" ? "teacher" : "student";
 
 const PUBLIC_RELABEL: Record<string, string> = { Time: "Usage time" };
-// the donor page's drill-down invitation, on Uttar Pradesh (state code 09)
-const PUBLIC_HINT_STATE_CODE = "09";
-const PUBLIC_DRILL_HINT = "Double-click Uttar Pradesh to explore its districts, schools and students.";
+// the donor page's drill-down invitation: at India on Jammu & Kashmir (state
+// code 01), below that on the map's northernmost area (GeoMap's hintNorth)
+const PUBLIC_HINT_STATE_CODE = "01";
+const PUBLIC_DRILL_WHAT: Partial<Record<GeoRef["type"], string>> = {
+  country: "to explore its districts, schools and students.",
+  state: "to explore its blocks, schools and students.",
+  district: "to explore its schools and students.",
+  block: "to see its classes and students.",
+};
+export const publicDrillHint = (level: GeoRef["type"], c: Child): string | null => {
+  const what = PUBLIC_DRILL_WHAT[level];
+  return what ? `Double-click ${displayName(c.name, c.type)} ${what}` : null;
+};
 
 export function TeacherDashboard({ profile: initialProfile, incompleteStates, variant }: TeacherDashboardProps) {
   const isPublic = variant === "public";
@@ -244,11 +254,9 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates, va
       // storage unavailable
     }
   }, []);
-  // The donor page (public variant): at the country level, a callout on
-  // Uttar Pradesh inviting the visitor to drill in, until dismissed or
-  // they drill anywhere (session only).
-  const [publicHintOpen, setPublicHintOpen] = useState(true);
-  const dismissPublicHint = useCallback(() => setPublicHintOpen(false), []);
+  // The donor page (public variant): on every map level, a callout inviting
+  // the visitor to drill in, until dismissed on that level (session only).
+  const [publicHintDismissed, setPublicHintDismissed] = useState<ReadonlySet<string>>(() => new Set());
   const setLang = useCallback((l: Lang) => {
     setLangState(l);
     try {
@@ -303,7 +311,11 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates, va
 
   const childType: ChildType | null = scores ? scores.child_type : entity ? nextChildType(entity.type) : null;
   const geoChildren: Child[] = useMemo(() => (scores ? geoChildrenOf(scores) : []), [scores]);
-  const publicHintId = isPublic && publicHintOpen && entity?.type === "country" ? (geoChildren.find((c) => c.code === PUBLIC_HINT_STATE_CODE)?.id ?? null) : null;
+  const publicHintOn = isPublic && !!entity && !publicHintDismissed.has(entity.id) && !!PUBLIC_DRILL_WHAT[entity.type];
+  const publicHintId = publicHintOn && entity?.type === "country" ? (geoChildren.find((c) => c.code === PUBLIC_HINT_STATE_CODE)?.id ?? null) : null;
+  const dismissPublicHint = useCallback(() => {
+    if (entity) setPublicHintDismissed((s) => new Set(s).add(entity.id));
+  }, [entity]);
   const students: StudentChild[] = useMemo(() => (scores ? studentChildrenOf(scores) : []), [scores]);
   const emptyRoot = !!scores && scores.root.n == null;
   const usingN = geoChildren.filter((c) => c.using_lifteracy).length;
@@ -333,7 +345,6 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates, va
   // ---- navigation ----
   const drill = useCallback((c: Child) => {
     setStack((s) => [...s, toRef(c)]);
-    setPublicHintOpen(false);
     setHoverId(null);
     setSelId(null);
   }, []);
@@ -731,14 +742,15 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates, va
                   ownId={ownId}
                   timeWindow={timeWindow}
                   drillHint={
-                    publicHintId
-                      ? PUBLIC_DRILL_HINT
+                    publicHintOn
+                      ? (c: Child) => publicDrillHint(entity.type, c) ?? ""
                       : hintOpen && ownId
                         ? `${t("This is you. Double-click your")} ${t(nounS).toLowerCase()} ${t("to see your own results.")}`
                         : null
                   }
                   hintId={publicHintId}
-                  onDismissHint={publicHintId ? dismissPublicHint : dismissHint}
+                  hintNorth={publicHintOn}
+                  onDismissHint={publicHintOn ? dismissPublicHint : dismissHint}
                   metricLabel={metricLabel}
                   time={timeMode}
                   verdict={isVerdict}

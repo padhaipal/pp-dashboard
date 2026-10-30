@@ -13,7 +13,9 @@ import { MvpMetricToggle } from "@/app/d/[user_id]/mvp-widgets";
 import { niceTicks } from "@/app/dashboard/metrics-charts";
 import { useIsMobile } from "@/app/d/[user_id]/use-is-mobile";
 import {
+  longDate,
   monthLabel,
+  monthStartLabels,
   seriesOf,
   shortDate,
   TRACTION_METRICS,
@@ -193,9 +195,9 @@ function Plot({
     return d;
   };
 
-  // ~6 x labels
-  const labelCount = Math.min(W < 600 ? 4 : 6, n);
-  const labelIdx = new Set(Array.from({ length: labelCount }, (_, k) => Math.round((k * (n - 1)) / Math.max(1, labelCount - 1))));
+  // x labels on the 1st of each month ("1 April"); phones: fewer, short names
+  const labelIdx = monthStartLabels(dates, W < 600 ? 4 : 8);
+  const xLabel = W < 600 ? shortDate : longDate;
   const hv = hover !== null ? sel[hover] : null;
 
   return (
@@ -210,8 +212,8 @@ function Plot({
       ))}
       {dates.map((d, i) =>
         labelIdx.has(i) ? (
-          <text key={d} x={x(i)} y={H - PAD.bottom + 14} textAnchor="middle" fontSize={12} className="fill-zinc-500">
-            {shortDate(d)}
+          <text key={d} x={x(i)} y={H - PAD.bottom + 14} textAnchor="middle" fontSize={12} className="fill-zinc-500" data-testid="traction-x-label">
+            {xLabel(d)}
           </text>
         ) : null,
       )}

@@ -1,9 +1,11 @@
 # Donor page — `/` (src/app/page.tsx → DonorPage)
 
 Public, no session. Ported 2026-10 from sandbox-global-map/donor.html.
-Sections: sticky bar (logo; What we do / Traction / Measuring / What we
-built / Team; "Talk to us" button → #contact; GitHub) — no donate flow, no
-sign-in; ValueStatement; learner photos; "What LIFTeracy Does"; Traction;
+Sections: sticky bar (logo; What we do / Traction / Impact (→ #measure) /
+What we built / Team; "Try it Out" outline button → the referral link
+dashboard.padhaipal.com/r/919565897842 (new tab); "Talk to us" button →
+#contact; GitHub, hidden on phones) — no donate flow, no sign-in;
+ValueStatement; learner photos; partners; "What LIFTeracy Does"; Traction;
 "Measuring Every Child"; "What we built in 8 months"; Team; "Help us
 measure what works" (#contact); footer. No mention of PadhaiPal anywhere
 visible (GitHub URLs keep the org name). The brand is written "LIFTeracy",
@@ -46,7 +48,8 @@ LIFTeracy, students; plain on the band, hidden when pp-sketch has none),
 then the chart card; fixed-size pulse skeletons while loading (no layout
 jump). GET `users/dashboard/traction` (public allowlist; pp-sketch
 users/traction.prompt.md). One series at a time from 1 Apr, one point per
-IST day, brand-ink line on a nice 0-based axis titled with its unit; hover =
+IST day, x labels on each month's 1st ("1 April"; phones: short names, at
+most four), brand-ink line on a nice 0-based axis titled with its unit; hover =
 date + value; chart text ≥ 12 px. Toggle: `MvpMetricToggle` (brand-ink
 selected pill via `selectedClass`) with `TRACTION_METRICS` ("Minutes spent"
 first = default). "Monthly active students" (`monthly`) is `MonthlyBars`:
@@ -83,8 +86,24 @@ public variant renders the location title as an h3 (no h1 under the page's
 h2s), draws incomplete states in the same Not-using grey as /d (tooltip on
 hover or tap, no legend entry, not drillable), opens on All time, leaves today (IST, in progress) out of the Usage
 time trend, ignores a single click on a teacher (card or bar — no popup;
-double-click still drills), relabels "Time" as "Usage time" and shows the Uttar Pradesh
-`DrillHint` at country level.
+double-click still drills), relabels "Time" as "Usage time" and shows a `DrillHint` on every map
+level (country / state / district / block): at India on Jammu & Kashmir
+(code 01), below that on the northernmost area in use (GeoMap `hintNorth`),
+worded for the level ("Double-click Lucknow to explore its blocks, schools
+and students."; blocks: "… to see its classes and students."). ✕ dismisses
+it for that level only (session state); near the map's top edge it hangs
+below its area, arrow up.
+
+Learner photos (`PHOTOS`): eight whole photos (no cropping) in a CSS-columns
+masonry, 2 columns on phones, 4 from lg; learner-1..3 from www.lifteracy.ai,
+learner-4..8 extracted from the LIFTeracy report (2026-10). Order balances
+the column heights.
+
+Partners (`PARTNERS`, white band just above "What LIFTeracy Does"): two
+cards, logo + one line — Ambitious Impact's logo (Charity Entrepreneurship
+is its incubation program; "2026 incubatee") and Devi Sansthan's (Dignity
+Education Vision International; "on-the-ground partner") — then "Read the
+LIFTeracy report (PDF)" → public/donor/lifteracy-report.pdf.
 
 "What we built in 8 months" (`tech-roadmap.tsx`): from md up, to scale,
 24 Feb – 24 Oct 2026, labels in lanes, story on hover; below md a vertical
