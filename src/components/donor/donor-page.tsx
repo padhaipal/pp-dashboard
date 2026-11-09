@@ -41,7 +41,8 @@ const REPORT_URL = "/donor/lifteracy-report.pdf";
 // learners in the field (the first three from www.lifteracy.ai, the rest
 // from the LIFTeracy report) in four columns of two, paired so the columns'
 // natural heights nearly match (each stretches to the tallest, cropping a
-// few %, so the bottoms line up); phones: two columns of four (1+2, 3+4)
+// few %, so the bottoms line up); phones and narrow windows (below lg):
+// half of them — columns 1 and 3 only, two columns of two
 type Photo = { src: string; w: number; h: number; alt: string };
 const PHOTO_COLUMNS: Photo[][] = [
   [
@@ -155,13 +156,13 @@ export function DonorPage({ country, incompleteStates }: { country: GeoRef | nul
         </div>
       </section>
 
-      {/* 2 · learners in the field — columns stretched to one height, so the bottoms line up: two columns on phones, four on desktop */}
+      {/* 2 · learners in the field — columns stretched to one height, so the bottoms line up: four columns on desktop; below lg only the first column of each half (four photos, not eight) */}
       <section className="bg-zinc-50 py-10">
         <div className="mx-auto grid max-w-6xl grid-cols-2 gap-3 px-6 sm:gap-4" data-testid="photo-strip">
           {[PHOTO_COLUMNS.slice(0, 2), PHOTO_COLUMNS.slice(2)].map((half, i) => (
             <div key={i} className="flex flex-col gap-3 sm:gap-4 lg:grid lg:grid-cols-2">
-              {half.map((col) => (
-                <div key={col[0].src} className="flex grow flex-col gap-3 sm:gap-4">
+              {half.map((col, k) => (
+                <div key={col[0].src} className={"grow flex-col gap-3 sm:gap-4 " + (k === 0 ? "flex" : "hidden lg:flex")} data-testid={k === 0 ? "photo-column" : "photo-column-wide"}>
                   {col.map((p) => (
                     <div key={p.src} className="relative grow overflow-hidden rounded-2xl bg-zinc-100 shadow-md ring-1 ring-black/5" style={{ aspectRatio: `${p.w} / ${p.h}` }}>
                       {/* eslint-disable-next-line @next/next/no-img-element -- static photos, already compressed */}

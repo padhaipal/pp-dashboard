@@ -24,6 +24,15 @@ export interface TractionMonth {
   joined_this_month: number;
   projected_joined_earlier: number | null;
   projected_joined_this_month: number | null;
+  // DAU / MAU (absent from a pp-sketch older than 2026-11), over students
+  // onboarded by the end of the month; active on a day = sent a message.
+  // mau = wrote at least once that month; dau_avg = how many wrote on an
+  // average day of the month; dau_mau = dau_avg ÷ mau, % (null at mau 0);
+  // projected_dau_mau = the month in progress's month-end estimate.
+  mau?: number;
+  dau_avg?: number;
+  dau_mau?: number | null;
+  projected_dau_mau?: number | null;
 }
 
 export interface TractionResponse {
@@ -38,12 +47,15 @@ export interface TractionResponse {
 }
 
 export type TractionKey = Exclude<keyof TractionDay, "date">;
-// a daily series, or the monthly bar chart
-export type TractionChoice = TractionKey | "monthly";
+// a daily series, or one of the monthly bar charts
+export type TractionChoice = TractionKey | "monthly" | "dau_mau";
+export const isMonthlyChoice = (k: TractionChoice): k is "monthly" | "dau_mau" => k === "monthly" || k === "dau_mau";
 
 export const TRACTION_URL = "/api/proxy/users/dashboard/traction";
 
 const fmtInt = (v: number) => Math.round(v).toLocaleString("en-IN");
+// "23.6" → "24%"; under 10 keeps a decimal ("7.4%")
+export const fmtPct = (v: number) => `${v < 10 ? Number(v.toFixed(1)) : Math.round(v)}%`;
 
 // Toggle order = the order asked for; the first is the default. `unit` is
 // the y-axis title.
@@ -66,6 +78,7 @@ export const TRACTION_METRICS: TractionMetric[] = [
   { key: "districts", label: "Districts", short: "Districts", unit: "Districts", format: fmtInt },
   { key: "states", label: "States", short: "States", unit: "States", format: fmtInt },
   { key: "monthly", label: "Monthly active students", short: "Monthly", unit: "Students", format: fmtInt },
+  { key: "dau_mau", label: "DAU / MAU", short: "DAU/MAU", unit: "DAU / MAU", format: fmtPct },
 ];
 
 export const seriesOf = (daily: TractionDay[], key: TractionKey): (number | null)[] => daily.map((d) => d[key]);
@@ -101,11 +114,11 @@ export function shortDate(iso: string): string {
 }
 
 // The CSV behind "Download CSV": every toggle's data, one row per IST day.
-// Daily series as served; "Monthly active students" is a per-month figure,
-// so each day carries its month's values (blank for a month pp-sketch has
+// Daily series as served; "Monthly active students" and "DAU / MAU" are
+// per-month figures, so each day carries its month's values (blank for a month pp-sketch has
 // no row for). Header = the toggle labels. Rows are aggregates only.
 export function tractionCsv(data: TractionResponse): string {
-  const daily = TRACTION_METRICS.filter((m): m is TractionMetric & { key: TractionKey } => m.key !== "monthly");
+  const daily = TRACTION_METRICS.filter((m): m is TractionMetric & { key: TractionKey } => !isMonthlyChoice(m.key));
   const byMonth = new Map((data.monthly ?? []).map((m) => [m.month, m]));
   const header = [
     "Date",
@@ -114,12 +127,27 @@ export function tractionCsv(data: TractionResponse): string {
     "Monthly active students: joined in an earlier month",
     "Monthly active students: joined this month",
     "Monthly active students: projected by month end",
+    "DAU / MAU % (whole month)",
+    "DAU / MAU: students who sent a message in the month (MAU)",
+    "DAU / MAU: students who sent a message on an average day (DAU)",
+    "DAU / MAU %: estimated by month end",
   ];
   const cell = (v: number | null | undefined) => (v == null ? "" : String(v));
   const rows = data.daily.map((d) => {
     const m = byMonth.get(d.date.slice(0, 7));
     const projected = m && m.projected_joined_earlier !== null && m.projected_joined_this_month !== null ? m.projected_joined_earlier + m.projected_joined_this_month : null;
-    return [d.date, ...daily.map((k) => cell(d[k.key])), cell(m && m.joined_earlier + m.joined_this_month), cell(m?.joined_earlier), cell(m?.joined_this_month), cell(projected)];
+    return [
+      d.date,
+      ...daily.map((k) => cell(d[k.key])),
+      cell(m && m.joined_earlier + m.joined_this_month),
+      cell(m?.joined_earlier),
+      cell(m?.joined_this_month),
+      cell(projected),
+      cell(m?.dau_mau),
+      cell(m?.mau),
+      cell(m?.dau_avg),
+      cell(m?.projected_dau_mau),
+    ];
   });
   const escape = (c: string) => (/[",\n]/.test(c) ? `"${c.replace(/"/g, '""')}"` : c);
   return [header, ...rows].map((r) => r.map(escape).join(",")).join("\n") + "\n";

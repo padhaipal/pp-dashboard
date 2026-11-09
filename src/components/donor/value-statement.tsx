@@ -22,6 +22,12 @@ const VARIATIONS = [
   { subject: "12 million child marriages", verb: "averted" },
 ];
 
+// Where the headline figures come from: the What Works Hub for Global
+// Education insight note (Kaffenberger, Wong, Everett & Egbetayo, January
+// 2026; CC BY 4.0), a copy kept in public/donor so the link never breaks
+// and opens in a phone's own PDF viewer.
+export const SOURCE_URL = "/donor/wwhge-universal-foundational-learning-insight-note.pdf";
+
 // vertical pixels per value step while scrubbing
 const STEP_PY = 46;
 
@@ -114,6 +120,12 @@ export function ValueStatement() {
           </button>
         ))}
       </div>
+      <p className="mt-1 text-xs text-zinc-400">
+        Source:{" "}
+        <a href={SOURCE_URL} target="_blank" rel="noreferrer" className="underline decoration-zinc-300 underline-offset-2 transition-colors hover:text-zinc-600" data-testid="value-source">
+          What Works Hub for Global Education, 2026
+        </a>
+      </p>
       <p className="mx-auto mt-6 max-w-3xl pb-10 text-lg leading-relaxed text-zinc-700 sm:text-xl" data-testid="mpl-b-claim">
         LIFTeracy is the only Hindi EdTech tool designed to teach a fully illiterate child to pass the main internationally recognized reading standard (MPL-B) without supplemental teaching input.
       </p>

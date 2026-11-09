@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { boxesOverlap, labelBox } from "./geo-map";
+import { boxesOverlap, hintRoomTf, labelBox } from "./geo-map";
 import { TeacherDashboard, publicProfile } from "./teacher-dashboard";
 import { RepTrend } from "./report-card-modal";
 import { MvpMinutesChart } from "./mvp-widgets";
@@ -792,6 +792,33 @@ describe("TeacherDashboard — public variant (the donor page)", () => {
     fireEvent.dblClick(container.querySelector('path[data-code="09"]')!);
     await waitFor(() => expect(screen.getByTestId("location-title").textContent).toContain("Uttar Pradesh"));
     expect((await screen.findByTestId("drill-hint")).textContent).toContain("Double-click Lucknow to explore its blocks, schools and students.");
+  });
+
+  it("donor map: a callout too near the top shrinks the map (bottom-centre) to fit above its area", () => {
+    // already 156 px or more from the top: nothing to do
+    expect(hintRoomTf(200, 600, 500)).toBeNull();
+    // 40 px from the top of a 600 × 500 map → scaled so it lands 156 px down
+    const tf = hintRoomTf(40, 600, 500)!;
+    expect(tf.y + 40 * tf.k).toBeCloseTo(156);
+    expect(tf.y + 500 * tf.k).toBeCloseTo(500); // bottom edge stays put
+    expect(tf.x + 300 * tf.k).toBeCloseTo(300); // centred
+    // never below half size
+    expect(hintRoomTf(10, 600, 200)!.k).toBe(0.5);
+  });
+
+  it("donor page, school and class: a callout says the teacher / student is real and invites one more step", async () => {
+    const { fn } = makeFetch({ scoresById: { "g-sch": SCORES_SCHOOL, "t-1": SCORES_CLASS_MASKED }, media: MEDIA_MASKED });
+    vi.stubGlobal("fetch", vi.fn(fn));
+    render(<TeacherDashboard profile={publicProfile(PROFILE_SCHOOL.geo_entity!)} incompleteStates={[]} variant="public" />);
+    const cards = await screen.findAllByTestId("teacher-card");
+    expect(within(cards[0]).getByTestId("drill-hint").textContent).toContain("This is a real teacher. Double-click to see their class and students.");
+    expect(screen.getAllByTestId("drill-hint").length).toBe(1);
+    fireEvent.dblClick(cards[0]);
+    const tiles = await screen.findAllByTestId("student-tile");
+    expect(within(tiles[0]).getByTestId("drill-hint").textContent).toContain("This is a real student. Click to see how they are doing.");
+    fireEvent.click(screen.getByTestId("drill-hint-dismiss"));
+    expect(screen.queryByTestId("drill-hint")).toBeNull();
+    expect(screen.queryByRole("dialog")).toBeNull(); // dismissing is not a click on the tile
   });
 
   it("donor map, school dots: the callout points at the school with the most students", async () => {

@@ -356,6 +356,27 @@ export function GeoMap(props: GeoMapProps) {
   const hintXY = xyOf(hintTarget, areas, projected);
   const hintChild = hintTarget ? (childrenRows.find((c) => c.id === hintTarget) ?? null) : null;
   const hintText = typeof drillHint === "function" ? (hintChild ? drillHint(hintChild) : null) : drillHint;
+  // The callout sits ABOVE the area it points at, so it never covers the map
+  // under it. When that area is too near the top of the card for the callout
+  // to fit, the whole map is drawn smaller, anchored bottom-centre, until it
+  // does (`hintRoomTf`). Only while the visitor has not moved the map
+  // themselves; dismissing the callout puts the map back.
+  const hintY = hintText && hintXY ? hintXY[1] : null;
+  const autoTf = useRef<{ k: number; x: number; y: number } | null>(null);
+  useEffect(() => {
+    const id = setTimeout(() => {
+      const cur = tfRef.current;
+      const same = (a: { k: number; x: number; y: number }, b: { k: number; x: number; y: number }) => a.k === b.k && a.x === b.x && a.y === b.y;
+      const identity = { k: 1, x: 0, y: 0 };
+      const wasAuto = autoTf.current !== null && same(cur, autoTf.current);
+      if (!wasAuto && !same(cur, identity)) return; // the visitor zoomed or panned: leave it
+      const next = hintY === null ? null : hintRoomTf(hintY, size.w, size.h);
+      autoTf.current = next;
+      const want = next ?? identity;
+      if (!same(cur, want)) setTf(want);
+    }, 0);
+    return () => clearTimeout(id);
+  }, [hintY, size.w, size.h, entity.id, ready]);
   // the viewer's own label's box (district → blocks drawn as labels): others must not cover it
   const ownLabelPt = childType !== "school" ? projected.find((p) => p.child.id === ownId) : undefined;
   const ownLabelBox = ownLabelPt ? labelBox(ownLabelPt.child.name, ownLabelPt.xy, 12 / tf.k) : null;
@@ -740,6 +761,19 @@ export function GeoMap(props: GeoMapProps) {
 
 // The callout's height above its point (box + stem), for the flip below.
 const HINT_H = 120;
+// How far below the card's top edge a callout's point must be for the
+// callout to fit above it (its height, the 30 px gap, a small margin).
+const HINT_ROOM = HINT_H + 36;
+
+// The pan/zoom that makes room for a callout above a point `y` px from the
+// top of a w × h map: the map scaled down about its bottom-centre until the
+// point is HINT_ROOM from the top. Null when it already is; never below
+// half size (the callout then hangs under its area, as before).
+export function hintRoomTf(y: number, w: number, h: number): { k: number; x: number; y: number } | null {
+  if (y >= HINT_ROOM || h <= HINT_ROOM || y >= h) return null;
+  const k = Math.max(0.5, (h - HINT_ROOM) / (h - y));
+  return { k, x: (w / 2) * (1 - k), y: h * (1 - k) };
+}
 
 // A dismissible callout with an arrow pointing down at (x, y): used on the
 // map (the viewer's own area) and over the viewer's own teacher card.
