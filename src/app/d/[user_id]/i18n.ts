@@ -131,6 +131,15 @@ const HI: Record<string, string> = {
   // the family toggle + NIPUN sub-toggle (FAMILIES / NIPUN_VIEWS) and the verdict
   "NIPUN proxy": "निपुण प्रॉक्सी",
   NIPUN: "निपुण",
+  // the ASER proxy (2026-11): the toggle, the student graph and its levels
+  "ASER proxy": "असर प्रॉक्सी",
+  ASER: "असर",
+  "ASER level": "असर स्तर",
+  Beginner: "शुरुआती",
+  Letter: "अक्षर",
+  Word: "शब्द",
+  Paragraph: "अनुच्छेद",
+  Story: "कहानी",
   "MPL-B": "एमपीएल-बी",
   Letters: "अक्षर",
   "Grade 1": "कक्षा 1",

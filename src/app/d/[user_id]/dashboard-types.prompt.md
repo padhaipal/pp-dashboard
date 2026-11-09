@@ -46,3 +46,21 @@ AND the trend's x-axis / data range for every metric.
 `shareMessageUrl(id)` → `GET geo-entities/:id/share-message`
 (`ShareMessageResponse` {message, model, generated_at}); `whatsappShareUrl`
 builds the `wa.me/?text=` link. On the proxy's public allowlist (GET).
+
+## 2026-11: ASER proxy replaces the NIPUN proxies on the toggles
+
+`Metric` gains `aser_grade` (pp-sketch literacy/aser/aser.prompt.md): among
+6–7 year olds with an ASER result, the share reading at their grade — a
+six-year-old passes with the paragraph or the story, a seven-year-old only
+with the story; letters / words never pass; eight and over are not counted.
+`FAMILIES` = Time · ASER proxy · MPL-B proxy, each the API metric itself
+(`metricFor(family)`); the NIPUN second toggle (`NIPUN_VIEWS`,
+`MvpNipunToggle`, Grade 1 / 2 / 3 / Pass-Fail) is gone. The NIPUN metrics
+and the verdict are still typed and rendered if a response carries them,
+but nothing offers them. `ASER_LEVELS` (Beginner, Letter, Word, Paragraph,
+Story), `aserLevelName(score)` (student score = level ÷ 4),
+`ASER_PASS_COLOR` / `ASER_FAIL_COLOR` (tiles and bars colour a student by
+`passed`, the age's rule, not by the level). `PASS_MARK_PCT.aser_grade` is
+null (no single mark → no pass line); `METRIC_AGE_BANDS.aser_grade` =
+[6, 8], worded "6–7 year old students" (`ageBandLabel(band, metric)`).
+`LiteracyTestScores.aser_levels` = the student's level after each ASER run.
