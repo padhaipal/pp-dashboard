@@ -184,6 +184,11 @@ export const publicDrillHint = (level: GeoRef["type"], c: Child): string | null 
   const what = PUBLIC_DRILL_WHAT[level];
   return what ? `Double-click ${displayName(c.name, c.type)} ${what}` : null;
 };
+// … and below the map: over the first teacher card of a school and the
+// first student tile of a class — these are real people (masked), and there
+// is one more level to see.
+const PUBLIC_TEACHER_HINT = "This is a real teacher. Double-click to see their class and students.";
+const PUBLIC_STUDENT_HINT = "This is a real student. Click to see how they are doing.";
 
 export function TeacherDashboard({ profile: initialProfile, incompleteStates, variant }: TeacherDashboardProps) {
   const isPublic = variant === "public";
@@ -316,6 +321,8 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates, va
   const geoChildren: Child[] = useMemo(() => (scores ? geoChildrenOf(scores) : []), [scores]);
   const publicHintOn = isPublic && !!entity && !publicHintDismissed.has(entity.id) && !!PUBLIC_DRILL_WHAT[entity.type];
   const publicHintId = publicHintOn && entity?.type === "country" ? (geoChildren.find((c) => c.code === PUBLIC_HINT_STATE_CODE)?.id ?? null) : null;
+  // school and class levels (cards / tiles, no map): same dismissal, per level
+  const publicCardHintOn = isPublic && !!entity && !publicHintDismissed.has(entity.id) && (entity.type === "school" || entity.type === "teacher");
   const dismissPublicHint = useCallback(() => {
     if (entity) setPublicHintDismissed((s) => new Set(s).add(entity.id));
   }, [entity]);
@@ -724,9 +731,9 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates, va
                   </div>
                 )
               ) : entity.type === "school" ? (
-                scores && <TeacherCards teachers={geoChildren} metric={metric} range={range} time={timeMode} timeWindow={timeWindow} timeCaption={timeSuffix} selId={selId} ownId={ownId} onOpen={quietTeachers ? undefined : openChild} drillHint={hintOpen && ownId ? t("This is you. Double-click your card to see your class.") : null} onDismissHint={dismissHint} onSelect={quietTeachers ? () => {} : select} onDrill={drill} onClear={() => setSelId(null)} onUp={up} t={t} />
+                scores && <TeacherCards teachers={geoChildren} metric={metric} range={range} time={timeMode} timeWindow={timeWindow} timeCaption={timeSuffix} selId={selId} ownId={ownId} onOpen={quietTeachers ? undefined : openChild} drillHint={publicCardHintOn ? PUBLIC_TEACHER_HINT : hintOpen && ownId ? t("This is you. Double-click your card to see your class.") : null} hintFirst={publicCardHintOn} onDismissHint={publicCardHintOn ? dismissPublicHint : dismissHint} onSelect={quietTeachers ? () => {} : select} onDrill={drill} onClear={() => setSelId(null)} onUp={up} t={t} />
               ) : entity.type === "teacher" ? (
-                scores && <StudentTiles students={students} metric={metric} time={timeMode} timeWindow={timeWindow} timeCaption={timeSuffix} onOpen={openStudent} onRename={renameStudent} onUp={up} t={t}
+                scores && <StudentTiles students={students} metric={metric} time={timeMode} timeWindow={timeWindow} timeCaption={timeSuffix} onOpen={openStudent} onRename={renameStudent} onUp={up} drillHint={publicCardHintOn ? PUBLIC_STUDENT_HINT : null} onDismissHint={dismissPublicHint} t={t}
                     hoverId={hoverId}
                     setHoverId={setHoverId}
                   />
@@ -958,6 +965,7 @@ function HoverLabel({ child, time = false, verdict = false, t }: { child: Child 
 function TeacherCards({
   onOpen,
   drillHint = null,
+  hintFirst = false,
   onDismissHint,
   teachers,
   metric,
@@ -984,6 +992,9 @@ function TeacherCards({
   // the viewer's own card (a teacher among the school's teachers)
   ownId?: string | null;
   drillHint?: string | null;
+  // the callout goes over the FIRST card instead of the viewer's own (the
+  // donor page, which has no viewer); the list starts lower to make room
+  hintFirst?: boolean;
   onDismissHint?: () => void;
   // a single click also opens the teacher's details pop-up
   onOpen?: (c: Child) => void;
@@ -998,9 +1009,9 @@ function TeacherCards({
   const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   return (
     <div className="absolute inset-0 z-10 overflow-y-auto bg-[#eaf0f6] p-3 sm:p-5" onClick={onClear} onDoubleClick={() => onUp?.()} data-testid="teacher-cards">
-      <div className="mx-auto flex max-w-3xl flex-col gap-3">
+      <div className={"mx-auto flex max-w-3xl flex-col gap-3" + (hintFirst && drillHint && teachers.length ? " pt-28" : "")}>
         {!teachers.length && <p className="py-10 text-center text-sm text-zinc-400">{t("No teachers yet.")}</p>}
-        {teachers.map((c) => {
+        {teachers.map((c, i) => {
           const col = time ? windowColor(c.time_total, timeWindow) : nipColor(c.pass_rate);
           const parts = fmtDurationParts(c.time_sum, t);
           const big = time ? parts.value : fmtPctInt(c.pass_rate);
@@ -1032,7 +1043,7 @@ function TeacherCards({
                   {t("You")}
                 </span>
               )}
-              {own && drillHint && <DrillHint x="50%" y={-6} text={drillHint} onDismiss={onDismissHint} t={t} />}
+              {(hintFirst ? i === 0 : own) && drillHint && <DrillHint x="50%" y={-6} text={drillHint} onDismiss={onDismissHint} t={t} />}
               <AvatarImg seed={c.official?.avatar_seed ?? c.id} size={64} className="h-12 w-12 sm:h-16 sm:w-16" ring={col} />
               <div className="min-w-0 flex-1">
                 <div className="truncate text-[15px] font-bold leading-tight text-zinc-900 sm:text-lg">{c.name}</div>
@@ -1078,8 +1089,14 @@ function StudentTiles({
   onUp,
   hoverId,
   setHoverId,
+  drillHint = null,
+  onDismissHint,
   t,
 }: {
+  // a callout over the first tile (the donor page); the grid starts lower
+  // to make room for it
+  drillHint?: string | null;
+  onDismissHint?: () => void;
   students: StudentChild[];
   metric: Metric;
   timeWindow?: TimeWindow;
@@ -1100,8 +1117,8 @@ function StudentTiles({
   return (
     <div className="absolute inset-0 z-10 overflow-y-auto bg-[#eaf0f6] p-3 sm:p-5" onDoubleClick={() => onUp?.()} data-testid="student-tiles">
       {!students.length && <p className="py-10 text-center text-sm text-zinc-400">{t("No students yet.")}</p>}
-      <div className="mx-auto grid max-w-5xl gap-2.5 sm:gap-3" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))" }}>
-        {students.map((s) => {
+      <div className={"mx-auto grid max-w-5xl gap-2.5 sm:gap-3" + (drillHint && students.length ? " pt-28" : "")} style={{ gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))" }}>
+        {students.map((s, i) => {
           const pct = s.score == null ? null : s.score * 100;
           const col = time ? windowColor(s.time_total, timeWindow) : isUsage ? usageColor(s.score) : pct == null ? UNCOVERED : nipColor(pct);
           const fg = col === "#f59e0b" ? "#1c1917" : "#ffffff";
@@ -1109,7 +1126,7 @@ function StudentTiles({
           return (
             <div
               key={s.student_id}
-              className="flex cursor-pointer flex-col items-center justify-center gap-0.5 rounded-2xl px-2 py-3 text-center shadow-sm transition hover:shadow-md"
+              className="relative flex cursor-pointer flex-col items-center justify-center gap-0.5 rounded-2xl px-2 py-3 text-center shadow-sm transition hover:shadow-md"
               style={{ background: col, color: fg }}
               title="Click for this student's dashboard"
               onClick={() => onOpen(s)}
@@ -1119,6 +1136,7 @@ function StudentTiles({
               data-testid="student-tile"
               data-hot={hoverId === s.student_id ? "1" : undefined}
             >
+              {i === 0 && drillHint && <DrillHint x="50%" y={-6} text={drillHint} onDismiss={onDismissHint} t={t} />}
               <div className="flex w-full justify-center text-[13px] font-bold sm:text-sm">
                 {/* only the student's own teacher (pii full) may rename; everyone else sees the masked name */}
                 {isPiiFull(s.pii) ? (

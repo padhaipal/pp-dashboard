@@ -125,8 +125,9 @@ Not rendered: the sticky header (the donor page has its own), "You" tags /
 the own-area drill hint (`ownId` null) — instead a public drill hint on
 every map level (`publicDrillHint`; J&K at India, else GeoMap `hintNorth`
 picks the northernmost area in use, on school dots the school with the
-most students; ✕ = that level only, see
-donor-page.prompt.md), the share message and share bar, the Spotlight
+most students; then over the first teacher card of a school and the first
+student tile of a class — "This is a real teacher / student …"; ✕ = that
+level only, see donor-page.prompt.md), the share message and share bar, the Spotlight
 section, the CSV link, Your Profile and the footer; the wrapper drops
 `min-h-screen`. In the student pop-up `AudioButton` never requests a
 recording for the public viewer: "▶ audio" opens a dialog

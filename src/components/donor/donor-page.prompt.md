@@ -24,10 +24,13 @@ alternating blue-50 / zinc-50 bands; cards only around interactive parts
 (chart, map, roadmap, sign-up form, interaction table).
 
 ValueStatement (h1): the rotating "$… unlocked / averted" sentence
-(larger), "by 2050 if every child could read." on its own line (no source
-note); "counterfactually"
+(larger), "by 2050 if every child could read." on its own line; "counterfactually"
 shows on hover or tap; drag-to-scrub on the subject; a row of dots (one per
-variation, tappable, the current one wide) under it; then the MPL-B claim:
+variation, tappable, the current one wide) under it, then a small grey
+"Source: What Works Hub for Global Education, 2026" link (`value-source`,
+new tab) to our own copy of the insight note the figures come from
+(public/donor/wwhge-universal-foundational-learning-insight-note.pdf,
+CC BY 4.0, 2026-11 — self-hosted so the link cannot rot); then the MPL-B claim:
 "LIFTeracy is the only Hindi EdTech tool designed to teach a fully
 illiterate child to pass the main internationally recognized reading
 standard (MPL-B) without supplemental teaching input."
@@ -55,12 +58,17 @@ first = default). "Monthly active students" (`monthly`) is `MonthlyBars`:
 one stacked bar per month of students with ≥ 1 five-minute day — brand-ink
 = joined in an earlier month, brand-mute = joined that month, total on top;
 the month in progress adds a dashed overlay to its linear month-end
-projection ("10 → ~31"). Missing `monthly` → "No data yet." "Download CSV" (beside
+projection ("10 → ~31"). "DAU / MAU" (`dau_mau`, 2026-11) is
+`StickinessBars`: one bar per month of pp-sketch's `dau_mau` % (average
+daily ÷ monthly writers among onboarded students — users/traction.prompt.md),
+label on top; the month in progress is brand-mute with a dashed outline up
+(or down) to `projected_dau_mau` ("38% → ~24%"). Missing `monthly` → "No data yet." "Download CSV" (beside
 "updated …", shown when there are daily rows, on mobile too): built in the
 browser from the same response (`tractionCsv`, no pp-sketch call) — one row
 per IST day, a column per daily toggle (header = toggle label), then the
 day's month's "Monthly active students" figures (total, joined earlier,
-joined this month, projected; blank without a month row). UTF-8 with BOM,
+joined this month, projected; blank without a month row) and its MAU,
+average DAU, DAU / MAU % and projected DAU / MAU %. UTF-8 with BOM,
 `lifteracy-traction-<computed_at date>.csv`.
 
 InteractionStream: graded turns only (pp-sketch filters). GET
@@ -91,11 +99,19 @@ level (country / state / district / block): at India on Jammu & Kashmir
 (code 01), below that on the northernmost area in use (GeoMap `hintNorth`;
 on a block's school dots, the school with the most students), worded for the level ("Double-click Lucknow to explore its blocks, schools
 and students."; blocks: "… to see its classes and students."). ✕ dismisses
-it for that level only (session state); near the map's top edge it hangs
-below its area, arrow up.
+it for that level only (session state). The callout always sits ABOVE its
+area: when the area is too near the map's top edge the map is drawn
+smaller, anchored bottom-centre, until it fits (GeoMap `hintRoomTf`; only
+while the visitor has not zoomed or panned; ✕ puts the map back; below
+half size it hangs under its area, arrow up). Below the map levels the
+same callout sits over the first teacher card of a school ("This is a real
+teacher. Double-click to see their class and students.") and the first
+student tile of a class ("This is a real student. Click to see how they
+are doing."), the list pushed down to make room.
 
 Learner photos (`PHOTO_COLUMNS`): eight photos in four columns of two from
-lg (phones: two columns of four, columns 1+2 and 3+4), paired so the
+lg (below lg: half of them — two columns of two, columns 1 and 3; the
+others are `hidden lg:flex`), paired so the
 columns' natural heights nearly match; every column stretches to the
 tallest (photos object-cover, a few % cropped) so the bottoms line up.
 learner-1..3 from www.lifteracy.ai, learner-4..8 extracted from the

@@ -9,7 +9,7 @@ const { CostEffectiveness } = await import("./cost-effectiveness");
 describe("ValueStatement", () => {
   afterEach(cleanup);
 
-  it("one dot per variation picks the headline; no source note; the MPL-B claim follows", () => {
+  it("one dot per variation picks the headline; a quiet source link to our copy of the paper; the MPL-B claim follows", () => {
     render(<ValueStatement />);
     const dots = screen.getAllByTestId("value-dot");
     expect(dots).toHaveLength(7);
@@ -18,6 +18,11 @@ describe("ValueStatement", () => {
     expect(screen.getByRole("heading", { level: 1 }).textContent).toContain("12 million child deaths");
     expect(dots[5].getAttribute("aria-current")).toBe("true");
     expect(document.querySelector("sup")).toBeNull();
+    const source = screen.getByTestId("value-source");
+    expect(source.textContent).toBe("What Works Hub for Global Education, 2026");
+    expect(source.getAttribute("href")).toBe("/donor/wwhge-universal-foundational-learning-insight-note.pdf");
+    expect(source.getAttribute("target")).toBe("_blank");
+    expect(source.parentElement?.className).toContain("text-xs");
     expect(screen.getByTestId("mpl-b-claim").textContent).toMatch(/^LIFTeracy is the only Hindi EdTech tool .*\(MPL-B\) without supplemental teaching input\.$/);
   });
 });

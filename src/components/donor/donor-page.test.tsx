@@ -35,6 +35,13 @@ describe("DonorPage", () => {
     expect(screen.getByRole("link", { name: "Impact" }).getAttribute("href")).toBe("#measure");
     expect(screen.queryByRole("link", { name: "Measuring" })).toBeNull();
     expect(screen.getByTestId("photo-strip").querySelectorAll("img")).toHaveLength(8);
+    // phones and narrow windows show half: the second column of each pair is hidden below lg
+    const always = screen.getAllByTestId("photo-column");
+    const wideOnly = screen.getAllByTestId("photo-column-wide");
+    expect(always.flatMap((c) => [...c.querySelectorAll("img")])).toHaveLength(4);
+    expect(wideOnly.flatMap((c) => [...c.querySelectorAll("img")])).toHaveLength(4);
+    for (const c of wideOnly) expect(c.className).toContain("hidden lg:flex");
+    for (const c of always) expect(c.className).not.toContain("hidden");
     const partners = screen.getAllByTestId("partner");
     expect(partners).toHaveLength(2);
     expect(partners[0].textContent).toBe("LIFTeracy is a 2026 incubatee of Ambitious Impact’s Charity Entrepreneurship Program.");

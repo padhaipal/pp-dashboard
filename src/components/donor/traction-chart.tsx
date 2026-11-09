@@ -4,7 +4,8 @@
 // hours on LIFTeracy, students), then the chart card — one series at a time from 1 April,
 // one point per IST day (no averaging), its units on the y-axis. Above it
 // the /d page's pill toggle picks the series (minutes by default). "Monthly
-// active students" is a bar chart instead (MonthlyBars). Data: GET
+// active students" and "DAU / MAU" are bar charts instead, one bar per
+// month (MonthlyBars, StickinessBars). Data: GET
 // users/dashboard/traction (public proxy) — aggregates only, computed once
 // a day by pp-sketch.
 
@@ -13,6 +14,8 @@ import { MvpMetricToggle } from "@/app/d/[user_id]/mvp-widgets";
 import { niceTicks } from "@/app/dashboard/metrics-charts";
 import { useIsMobile } from "@/app/d/[user_id]/use-is-mobile";
 import {
+  fmtPct,
+  isMonthlyChoice,
   longDate,
   monthLabel,
   monthStartLabels,
@@ -62,7 +65,7 @@ export function TractionChart() {
 
   const daily = useMemo(() => data?.daily ?? [], [data]);
   const cfg = TRACTION_METRICS.find((m) => m.key === metric)!;
-  const values = useMemo(() => (metric === "monthly" ? [] : seriesOf(daily, metric)), [daily, metric]);
+  const values = useMemo(() => (isMonthlyChoice(metric) ? [] : seriesOf(daily, metric)), [daily, metric]);
   const monthly = data?.monthly ?? [];
   const size = mobile ? SIZE.mobile : SIZE.desktop;
 
@@ -81,6 +84,12 @@ export function TractionChart() {
           {data && monthly.length === 0 && <p className="py-16 text-center text-sm text-zinc-400">No data yet.</p>}
           {data && monthly.length > 0 && <MonthlyBars size={size} months={monthly} />}
         </>
+      ) : metric === "dau_mau" ? (
+        <>
+          {/* an older pp-sketch serves months without the DAU / MAU figures */}
+          {data && !monthly.some((m) => m.dau_mau != null) && <p className="py-16 text-center text-sm text-zinc-400">No data yet.</p>}
+          {data && monthly.some((m) => m.dau_mau != null) && <StickinessBars size={size} months={monthly} />}
+        </>
       ) : (
         <>
           {data && daily.length === 0 && <p className="py-16 text-center text-sm text-zinc-400">No data yet.</p>}
@@ -90,7 +99,7 @@ export function TractionChart() {
       {data && (
         <div className="mt-1 flex flex-wrap items-center justify-end gap-x-3 gap-y-1 text-xs text-zinc-500">
           <span>
-            {metric === "monthly" ? "Monthly" : "Daily"}, India time · updated {shortDate(data.computed_at.slice(0, 10))}
+            {isMonthlyChoice(metric) ? "Monthly" : "Daily"}, India time · updated {shortDate(data.computed_at.slice(0, 10))}
           </span>
           {data.daily.length > 0 && (
             <button type="button" onClick={() => downloadCsv(data)} className="rounded-lg border border-zinc-300 bg-white px-3 py-1.5 font-semibold text-zinc-600 shadow-sm hover:bg-zinc-50" data-testid="traction-csv">
@@ -350,6 +359,113 @@ function MonthlyBars({ size: { W, H }, months }: { size: { W: number; H: number 
                   <rect x={bx} y={top0 + PAD.top} width={boxW} height={boxH} rx={4} fill="#18181b" opacity={0.92} />
                   <text x={bx + 8} y={top0 + PAD.top + 13} fontSize={12} fill="#d4d4d8">
                     {monthLabel(hm.month)}
+                  </text>
+                  {lines.map((l, k) => (
+                    <text key={l} x={bx + 8} y={top0 + PAD.top + 30 + k * 15} fontSize={12} fontWeight={600} fill="#fafafa">
+                      {l}
+                    </text>
+                  ))}
+                </>
+              );
+            })()}
+          </g>
+        )}
+      </svg>
+    </div>
+  );
+}
+
+// "DAU / MAU": one bar per IST month — of the onboarded students who sent a
+// message that month (MAU), the share who sent one on an average day (DAU).
+// The month in progress is drawn lighter (its figure so far) with a dashed
+// outline at its month-end estimate: the ratio starts high and settles as
+// the month's audience builds up, so the estimate is usually the lower one.
+function StickinessBars({ size: { W, H }, months }: { size: { W: number; H: number }; months: TractionMonth[] }) {
+  const [hover, setHover] = useState<number | null>(null);
+  const top0 = 6; // room for the figure over the tallest bar
+  const plotW = W - PAD.left - PAD.right;
+  const plotH = H - top0 - PAD.top - PAD.bottom;
+  const y0 = top0 + PAD.top + plotH;
+  const slot = plotW / months.length;
+  const barW = Math.min(64, slot * 0.6);
+  const maxV = Math.max(1, ...months.map((m) => Math.max(m.dau_mau ?? 0, m.projected_dau_mau ?? 0)));
+  const ticks = niceTicks(0, maxV);
+  const step = ticks.length > 1 ? ticks[1] - ticks[0] : 1;
+  while (ticks[ticks.length - 1] < maxV) ticks.push(ticks[ticks.length - 1] + step);
+  const top = ticks[ticks.length - 1] || 1;
+  const h = (v: number) => (v / top) * plotH;
+  const inProgress = (m: TractionMonth) => m.projected_dau_mau != null;
+  const hm = hover !== null ? months[hover] : null;
+
+  return (
+    <div>
+      <div className="mb-1 text-center text-sm font-semibold text-zinc-700">Of the students who sent a message in the month, the share who did on an average day</div>
+      <div className="mb-1 flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-zinc-600">
+        <span className="flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 bg-brand-ink" />
+          Complete month
+        </span>
+        {months.some(inProgress) && (
+          <>
+            <span className="flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 bg-brand-mute" />
+              This month so far
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="h-2.5 w-2.5 border border-dashed border-zinc-600" />
+              Estimated by month end
+            </span>
+          </>
+        )}
+      </div>
+      <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full select-none" data-testid="traction-dau-mau" onMouseLeave={() => setHover(null)}>
+        {ticks.map((tk) => (
+          <g key={tk}>
+            <line x1={PAD.left} y1={y0 - h(tk)} x2={W - PAD.right} y2={y0 - h(tk)} stroke={tk === 0 ? "#a1a1aa" : "#e4e4e7"} strokeWidth={tk === 0 ? 1 : 0.5} />
+            <text x={PAD.left - 6} y={y0 - h(tk) + 3} textAnchor="end" fontSize={12} className="fill-zinc-500">
+              {tk}%
+            </text>
+          </g>
+        ))}
+        <text x={14} y={y0 - plotH / 2} textAnchor="middle" fontSize={12} className="fill-zinc-500" transform={`rotate(-90 14 ${y0 - plotH / 2})`}>
+          DAU / MAU
+        </text>
+        {months.map((m, i) => {
+          const cx = PAD.left + slot * (i + 0.5);
+          const x = cx - barW / 2;
+          const v = m.dau_mau ?? null;
+          const p = m.projected_dau_mau ?? null;
+          const label = v === null ? "—" : p !== null ? `${fmtPct(v)} → ~${fmtPct(p)}` : fmtPct(v);
+          const labelTop = Math.max(v !== null ? h(v) : 0, p !== null ? h(p) : 0);
+          return (
+            <g key={m.month} data-testid="traction-bar">
+              {v !== null && <rect x={x} y={y0 - h(v)} width={barW} height={h(v)} className={p !== null ? "fill-brand-mute" : "fill-brand-ink"} />}
+              {p !== null && <rect x={x} y={y0 - h(p)} width={barW} height={h(p)} fill="none" stroke="#52525b" strokeWidth={1.2} strokeDasharray="4,3" data-testid="traction-projection" />}
+              <text x={cx} y={y0 - labelTop - 5} textAnchor="middle" fontSize={12} fontWeight={700} className="fill-zinc-700">
+                {label}
+              </text>
+              <text x={cx} y={y0 + 14} textAnchor="middle" fontSize={12} className="fill-zinc-500">
+                {monthLabel(m.month).slice(0, 3)}
+              </text>
+              <rect x={cx - slot / 2} y={top0} width={slot} height={y0 - top0} fill="transparent" onMouseEnter={() => setHover(i)} onTouchStart={() => setHover(i)} />
+            </g>
+          );
+        })}
+        {hm && hover !== null && (
+          <g pointerEvents="none">
+            {(() => {
+              const lines = [`${(hm.mau ?? 0).toLocaleString("en-IN")} sent a message in the month`, `${(hm.dau_avg ?? 0).toLocaleString("en-IN")} on an average day`];
+              if (hm.projected_dau_mau != null) lines.push(`~${fmtPct(hm.projected_dau_mau)} estimated by month end`);
+              const boxW = 230;
+              const boxH = 20 + lines.length * 15;
+              const cx = PAD.left + slot * (hover + 0.5);
+              const bx = Math.min(Math.max(cx - boxW / 2, PAD.left), W - PAD.right - boxW);
+              return (
+                <>
+                  <rect x={bx} y={top0 + PAD.top} width={boxW} height={boxH} rx={4} fill="#18181b" opacity={0.92} />
+                  <text x={bx + 8} y={top0 + PAD.top + 13} fontSize={12} fill="#d4d4d8">
+                    {monthLabel(hm.month)}
+                    {hm.dau_mau != null ? ` · ${fmtPct(hm.dau_mau)}` : ""}
                   </text>
                   {lines.map((l, k) => (
                     <text key={l} x={bx + 8} y={top0 + PAD.top + 30 + k * 15} fontSize={12} fontWeight={600} fill="#fafafa">
