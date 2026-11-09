@@ -14,15 +14,12 @@ import {
   CHILD_OFFICER,
   csvUrl,
   DEFAULT_RANGE,
-  DEFAULT_STUDENT_NIPUN_VIEW,
   EXPLAINER_SHARE_URL,
   FAMILIES,
   familyOf,
   isVerdictMetric,
   metricFor,
   MODAL_FAMILIES,
-  NIPUN_VIEWS,
-  STUDENT_NIPUN_VIEWS,
   rangeLabel,
   EXPLAINER_VIDEO_URL,
   mediaUrl,
@@ -32,6 +29,7 @@ import {
   scoresUrl,
   TEST_KEY_OF,
   TEST_QUESTION_COUNT,
+  ASER_LEVELS,
   MEDIA_PAGE,
   MEDIA_MAX_PAGES,
   PASS_MARK_PCT,
@@ -48,7 +46,6 @@ import {
   type Metric,
   type Family,
   type ModalFamily,
-  type NipunView,
   type Range,
   type ScoresResponse,
   type SeriesPoint,
@@ -138,9 +135,9 @@ export function MvpTrend({ delta, suffix = "" }: { delta: number | null; suffix?
 
 // ------------------------------------------------------------------ toggles
 
-// The page's metric toggle: Time · NIPUN proxy · MPL-B proxy (FAMILIES) —
+// The page's metric toggle: Time · ASER proxy · MPL-B proxy (FAMILIES) —
 // the student modal passes MODAL_FAMILIES (letter scores first). On a phone
-// the short labels ("NIPUN", "MPL-B") keep it on one line.
+// the short labels ("ASER", "MPL-B") keep it on one line.
 export function MvpMetricToggle<M extends string = Family>({
   metric,
   setMetric,
@@ -175,7 +172,7 @@ export function MvpMetricToggle<M extends string = Family>({
 }
 
 // The second-row toggle under the metric toggle (dark pill): the Time
-// window, or the NIPUN grade / Pass-Fail. Generic over its options.
+// window. Generic over its options.
 export function MvpSubToggle<K extends string>({
   value,
   setValue,
@@ -240,26 +237,6 @@ export function MvpTimeWindowToggle({
   t?: T;
 }) {
   return <MvpSubToggle value={window} setValue={setWindow} options={TIME_WINDOWS} label={label} testId={testId} t={t} />;
-}
-
-// Shown under the metric toggle while NIPUN is selected: Grade 1 · Grade 2 ·
-// Grade 3 · Pass/Fail (`options` = STUDENT_NIPUN_VIEWS in the student modal).
-export function MvpNipunToggle({
-  view,
-  setView,
-  options = NIPUN_VIEWS,
-  label = "NIPUN view",
-  testId = "nipun-view-toggle",
-  t = same,
-}: {
-  view: NipunView;
-  setView: (v: NipunView) => void;
-  options?: { key: NipunView; label: string; short?: string }[];
-  label?: string;
-  testId?: string;
-  t?: T;
-}) {
-  return <MvpSubToggle value={view} setValue={setView} options={options} label={label} testId={testId} t={t} />;
 }
 
 // 30 days / all time window + "Download CSV" (link built from the CURRENT metric +
@@ -410,22 +387,27 @@ function niceTop(max: number): number {
 // student's own score chart: the test's pass mark (PASS_MARK_PCT).
 // `unit` "min": the y-axis is minutes (fits the data), no pass line, the
 // last point labelled "12 min" — the student pop-up's Time tab.
+// `unit` "aser": the values are ASER levels 0–4, the axis and the last
+// point named (Beginner … Story) — the student pop-up's ASER tab.
 export function MvpStudentTrend({
   series,
   label,
   passMark = 80,
   unit = "pct",
   testId,
+  t = same,
 }: {
   series: SeriesPoint[];
   label?: string;
   passMark?: number | null;
-  unit?: "pct" | "min";
+  unit?: "pct" | "min" | "aser";
   testId?: string;
+  t?: T;
 }) {
+  const aser = unit === "aser";
   const W = 860,
     H = 220,
-    mL = 40,
+    mL = aser ? 76 : 40,
     mR = 12,
     mT = 14,
     mB = 30,
@@ -434,8 +416,9 @@ export function MvpStudentTrend({
   const pts = series.filter((s) => s.pass_rate != null);
   const n = series.length;
   const minutes = unit === "min";
-  const top = minutes ? niceTop(Math.max(0, ...pts.map((p) => p.pass_rate ?? 0))) : 100;
-  const ticks = minutes ? Array.from({ length: 6 }, (_, i) => Math.round((top / 5) * i)) : [0, 20, 40, 60, 80, 100];
+  const top = aser ? ASER_LEVELS.length - 1 : minutes ? niceTop(Math.max(0, ...pts.map((p) => p.pass_rate ?? 0))) : 100;
+  const ticks = aser ? ASER_LEVELS.map((_, i) => i) : minutes ? Array.from({ length: 6 }, (_, i) => Math.round((top / 5) * i)) : [0, 20, 40, 60, 80, 100];
+  const levelName = (v: number) => t(ASER_LEVELS[Math.max(0, Math.min(ASER_LEVELS.length - 1, Math.round(v)))]);
   const x = (i: number) => mL + (n <= 1 ? iw / 2 : (i / (n - 1)) * iw),
     y = (v: number) => mT + ih - (v / top) * ih;
   let d = "";
@@ -456,11 +439,11 @@ export function MvpStudentTrend({
         <g key={g}>
           <line x1={mL} x2={W - mR} y1={y(g)} y2={y(g)} stroke="#f1f5f9" />
           <text x={mL - 5} y={y(g) + 3} textAnchor="end" fontSize="9" fill="#94a3b8">
-            {g}
+            {aser ? levelName(g) : g}
           </text>
         </g>
       ))}
-      {passMark != null && !minutes && <line x1={mL} x2={W - mR} y1={y(passMark)} y2={y(passMark)} stroke="#ef4444" strokeWidth={1.3} strokeDasharray="5 3" data-testid="student-pass-mark" />}
+      {passMark != null && !minutes && !aser && <line x1={mL} x2={W - mR} y1={y(passMark)} y2={y(passMark)} stroke="#ef4444" strokeWidth={1.3} strokeDasharray="5 3" data-testid="student-pass-mark" />}
       {label && (
         <text transform={`translate(12 ${mT + ih / 2}) rotate(-90)`} textAnchor="middle" fontSize="8.5" fill="#64748b">
           {label}
@@ -476,7 +459,7 @@ export function MvpStudentTrend({
           {series.map((s, i) => (s.pass_rate == null ? null : <circle key={i} cx={x(i)} cy={y(s.pass_rate)} r="3" fill="#2563eb" data-testid="trend-point" />))}
           {last && last.pass_rate != null && (
             <text x={x(lastIdx) - 4} y={y(last.pass_rate) - 8} textAnchor="end" fontSize="11" fontWeight="800" fill="#2563eb">
-              {minutes ? `${Math.round(last.pass_rate)} min` : `${last.pass_rate.toFixed(1)}%`}
+              {aser ? levelName(last.pass_rate) : minutes ? `${Math.round(last.pass_rate)} min` : `${last.pass_rate.toFixed(1)}%`}
             </text>
           )}
         </>
@@ -838,6 +821,14 @@ export function historySeries(scores: LiteracyTestScores | null, metric: Metric,
     .map((h) => ({ date: h.at.slice(0, 10), pass_rate: Math.round(h.score * 1000) / 10, n: 1, mean: null }));
 }
 
+// A student's ASER level after each finished ASER run inside the range, as
+// a series for MvpStudentTrend (`unit="aser"`): `pass_rate` holds the level
+// (0 Beginner … 4 Story).
+export function aserLevelSeries(scores: LiteracyTestScores | null, range: Range, now = Date.now()): SeriesPoint[] {
+  const since = range === "all" ? -Infinity : now - range * 86400000;
+  return (scores?.aser_levels ?? []).filter((p) => new Date(p.at).getTime() >= since).map((p) => ({ date: p.at.slice(0, 10), pass_rate: p.level, n: 1, mean: null }));
+}
+
 // The verdict metric in words: an area's schools passing / failing / not
 // enough data, or a school's own verdict with its three age bands —
 // "6 year olds: 9 of 12 pass, 9 needed · Pass".
@@ -905,7 +896,7 @@ export function MvpTeacherModal({
   t = same,
 }: {
   subject: ModalSubject;
-  // the page's metric (family + NIPUN view): what the modal opens on
+  // the page's metric: what the modal opens on
   metric: Metric;
   onClose: () => void;
   // student mode: the name was edited in the header → update the page's copy
@@ -914,12 +905,8 @@ export function MvpTeacherModal({
 }) {
   const isStudent = subject.kind === "student";
   // Students open on the letter chart; geo children have no letter scores.
-  // The same family + NIPUN sub-toggle as the page; a student has no school
-  // verdict, so Pass/Fail is not offered and falls back to a grade.
   const [mFamily, setMFamily] = useState<ModalFamily>(isStudent ? "letters" : familyOf(metric));
-  const pageView: NipunView = familyOf(metric) === "nipun" ? (metric as NipunView) : DEFAULT_STUDENT_NIPUN_VIEW;
-  const [mNipun, setMNipun] = useState<NipunView>(isStudent && isVerdictMetric(pageView) ? DEFAULT_STUDENT_NIPUN_VIEW : pageView);
-  const mMetric: Metric | "letters" = mFamily === "letters" ? "letters" : metricFor(mFamily, mNipun);
+  const mMetric: Metric | "letters" = mFamily === "letters" ? "letters" : metricFor(mFamily);
   const [mRange, setMRange] = useState<Range>(DEFAULT_RANGE);
   // The dashboard metric the trend uses when the letter chart is showing.
   const testMetric: Metric = mMetric === "letters" ? metric : mMetric;
@@ -966,7 +953,7 @@ export function MvpTeacherModal({
       // A test's answers can be older than the newest page: walk older pages
       // (up to MEDIA_MAX_PAGES) until every answer in every test's bin is loaded.
       if (!tests || !media) return;
-      const wanted = new Set(Object.values(tests).flatMap((s) => s?.bin_message_ids ?? []));
+      const wanted = new Set(Object.values(tests).flatMap((s) => (s && !Array.isArray(s) ? (s.bin_message_ids ?? []) : [])));
       let rows = media.media;
       let page = media.media;
       for (let p = 1; p < MEDIA_MAX_PAGES && page.length >= MEDIA_PAGE; p++) {
@@ -1112,10 +1099,6 @@ export function MvpTeacherModal({
                 {mMetric !== "letters" && <MvpRangeBar range={mRange} setRange={setMRange} entityId={childId} metric={testMetric} t={t} />}
               </div>
             </div>
-            {/* NIPUN: the grade / Pass-Fail row, as on the page (kept at its height for the other families) */}
-            <div className="mb-3">
-              <MvpSubSlot testId="modal-sub-toggle-slot">{mFamily === "nipun" && <MvpNipunToggle view={mNipun} setView={setMNipun} options={isStudent ? STUDENT_NIPUN_VIEWS : NIPUN_VIEWS} testId="modal-nipun-view-toggle" t={t} />}</MvpSubSlot>
-            </div>
             {subject.kind === "child" ? (
               <>
                 {error && <p className="text-sm text-red-600">{error}</p>}
@@ -1130,7 +1113,7 @@ export function MvpTeacherModal({
                       <MvpStudentTrend series={scores.series} label={t("Schools passing NIPUN")} passMark={null} />
                     </>
                   ) : (
-                    <MvpStudentTrend series={scores.series} label={`${METRIC_BY[shownMetric].label}`} />
+                    <MvpStudentTrend series={scores.series} label={`${METRIC_BY[shownMetric].label}`} passMark={shownMetric === "aser_grade" ? null : 80} />
                   ))}
               </>
             ) : (
@@ -1159,7 +1142,13 @@ export function MvpTeacherModal({
                   <>
                     {st?.error && <p className="text-sm text-red-600">{st.error}</p>}
                     {!st && <ChartLoading t={t} />}
-                    {st && <MvpStudentTrend series={historySeries(st.tests, mMetric, mRange)} label={METRIC_BY[mMetric].label} passMark={PASS_MARK_PCT[mMetric]} />}
+                    {/* ASER: the student's level after each ASER test, on a Beginner … Story axis */}
+                    {st &&
+                      (mMetric === "aser_grade" ? (
+                        <MvpStudentTrend series={aserLevelSeries(st.tests, mRange)} label={t("ASER level")} unit="aser" passMark={null} testId="aser-chart" t={t} />
+                      ) : (
+                        <MvpStudentTrend series={historySeries(st.tests, mMetric, mRange)} label={METRIC_BY[mMetric].label} passMark={PASS_MARK_PCT[mMetric]} />
+                      ))}
                   </>
                 ) : null}
               </>

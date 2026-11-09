@@ -132,3 +132,12 @@ section, the CSV link, Your Profile and the footer; the wrapper drops
 `min-h-screen`. In the student pop-up `AudioButton` never requests a
 recording for the public viewer: "▶ audio" opens a dialog
 (`example-audio-modal`) that plays `/example-voice-note.wav`, a placeholder.
+
+## 2026-11: ASER proxy
+
+Metric toggle: Time · ASER proxy · MPL-B proxy (one state, top + Performance;
+the second row holds only Time's window). Under ASER the headline reads
+"N% of 6–7 year old students pass the ASER proxy"; class tiles and bars show
+each student's level by name (Story, Paragraph, …), green when they read at
+their grade, red when not, grey when not counted (outside 6–7 or never
+tested). Donor page: "national (ASER) and international (MPL-B)".

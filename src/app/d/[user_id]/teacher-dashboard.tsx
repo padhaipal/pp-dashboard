@@ -24,16 +24,17 @@ import {
   CHILD_NOUN,
   CHILD_OFFICER,
   DEFAULT_METRIC,
-  DEFAULT_NIPUN_VIEW,
   DEFAULT_TIME_WINDOW,
   displayName,
   familyOf,
+  aserLevelName,
+  ASER_PASS_COLOR,
+  ASER_FAIL_COLOR,
   isVerdictMetric,
   metricFor,
   verdictDecided,
   verdictLabel,
   type Family,
-  type NipunView,
   EMPTY_ROOT_TEXT,
   fmtDelta,
   fmtDuration,
@@ -88,7 +89,7 @@ import { ViewerProvider } from "./viewer-context";
 import { BarStrip, type BarItem } from "./bar-strip";
 import { DrillHint, GeoMap } from "./geo-map";
 import { isLang, LANG_STORAGE_KEY, makeT, type Lang, type T } from "./i18n";
-import { AvatarImg, EditableStudentName, MvpLangToggle, MvpMetricToggle, MvpNipunToggle, MvpShareBar, MvpSubSlot, MvpTeacherModal, MvpTimeWindowToggle, MvpTrend, VerdictSummary, type ModalSubject } from "./mvp-widgets";
+import { AvatarImg, EditableStudentName, MvpLangToggle, MvpMetricToggle, MvpShareBar, MvpSubSlot, MvpTeacherModal, MvpTimeWindowToggle, MvpTrend, VerdictSummary, type ModalSubject } from "./mvp-widgets";
 import { ReportCardModal, RepKpis, RepQuote, RepTrend, type ImprovedRow, type ReportData } from "./report-card-modal";
 import { ShareMessageCard } from "./share-message-card";
 
@@ -196,12 +197,10 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates, va
   const [profile, setProfile] = useState<PublicProfile>(initialProfile);
   // What the toggles are on. The page body renders `metric` / `range` /
   // `timeWindow` below — the same, except while a new selection is loading.
-  // The metric is a pair: the family (Time / NIPUN / MPL-B) and, for NIPUN,
-  // the view (Grade 1 / 2 / 3 / Pass-Fail). Both toggles (top of page and
-  // the Performance section) share this state.
+  // The metric: Time / ASER proxy / MPL-B proxy. Both toggles (top of page
+  // and the Performance section) share this state.
   const [pickedFamily, setFamily] = useState<Family>(familyOf(DEFAULT_METRIC));
-  const [pickedNipun, setNipunView] = useState<NipunView>(DEFAULT_NIPUN_VIEW);
-  const pickedMetric: Metric = metricFor(pickedFamily, pickedNipun);
+  const pickedMetric: Metric = metricFor(pickedFamily);
   // ONE window (2026-10): the Time figures' window and the trend's x-axis /
   // data range for every metric (all time → the full history, else 30 days),
   // shown under the Time toggle and as the Performance section's trend window.
@@ -434,8 +433,9 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates, va
               name: s.name ?? UNNAMED,
               sub: studentSub(s, t),
               value: isUsageMetric ? s.score : pct,
-              display: isUsageMetric ? fmtMinutes(s.score) : fmtPctInt(pct),
-              color: isUsageMetric ? usageColor(s.score) : nipColor(pct),
+              // ASER: the level by name, coloured by the age's pass rule
+              display: isUsageMetric ? fmtMinutes(s.score) : metric === "aser_grade" ? t(aserLevelName(s.score) ?? "—") : fmtPctInt(pct),
+              color: isUsageMetric ? usageColor(s.score) : metric === "aser_grade" && pct != null ? (s.passed ? ASER_PASS_COLOR : ASER_FAIL_COLOR) : nipColor(pct),
             };
           })
         : geoChildren.map((c) => ({
@@ -455,7 +455,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates, va
                 : fmtPctInt(c.pass_rate),
             color: binColor(c.bin),
           })),
-    [inClass, students, geoChildren, isUsageMetric, isVerdict, timeMode, timeWindow, t],
+    [inClass, students, geoChildren, isUsageMetric, isVerdict, metric, timeMode, timeWindow, t],
   );
   const barMax = timeMode
     ? Math.max(10, Math.ceil(Math.max(0, ...(inClass ? students.map((s) => s.time_total ?? 0) : geoChildren.map((c) => c.time_sum ?? 0))) / 10) * 10)
@@ -648,10 +648,9 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates, va
             <div className="mx-auto mt-6 max-w-5xl px-6">
               <div className="mb-3 flex flex-col items-center gap-2">
                 <MvpMetricToggle metric={pickedFamily} setMetric={setFamily} t={t} />
-                {/* second row, always at its height: Time → the window; NIPUN → the grade / Pass-Fail; MPL-B → empty */}
+                {/* second row, always at its height: Time → the window; ASER / MPL-B → empty */}
                 <MvpSubSlot testId="top-sub-toggle-slot">
                   {pickedFamily === "usage" && <MvpTimeWindowToggle window={pickedWindow} setWindow={setTimeWindow} t={t} />}
-                  {pickedFamily === "nipun" && <MvpNipunToggle view={pickedNipun} setView={setNipunView} t={t} />}
                 </MvpSubSlot>
               </div>
               {loaded?.error && <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">Could not load results — {loaded.error}</p>}
@@ -673,6 +672,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates, va
                   timeWindow={timeMode ? timeWindow : undefined}
                   // the teacher's own class: "of students pass …" (no age band)
                   ageBand={inClass ? null : ageBandOf(metric, scores.age_band)}
+                  metric={metric}
                   verdict={rootVerdict}
                   isSchool={entity.type === "school"}
                   t={t}
@@ -799,10 +799,10 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates, va
                     <div className={"mb-6 " + H} style={{ color: ACCENT }}>
                       {t(nounS)} {t("Performance")}
                     </div>
-                    {/* the same metric + NIPUN sub-toggle as at the top of the page (one state), then the trend's window — the same window as Time's */}
+                    {/* the same metric toggle as at the top of the page (one state), then the trend's window — the same window as Time's */}
                     <div className="-mt-3 mb-5 flex flex-col items-center gap-2">
                       <MvpMetricToggle metric={pickedFamily} setMetric={setFamily} t={t} />
-                      <MvpSubSlot testId="perf-sub-toggle-slot">{pickedFamily === "nipun" && <MvpNipunToggle view={pickedNipun} setView={setNipunView} testId="perf-nipun-view-toggle" t={t} />}</MvpSubSlot>
+                      <MvpSubSlot testId="perf-sub-toggle-slot"></MvpSubSlot>
                       <MvpTimeWindowToggle window={pickedWindow} setWindow={setTimeWindow} label="Trend window" testId="trend-window-toggle" t={t} />
                     </div>
                     <div className={CARD + " space-y-6"}>
@@ -1120,7 +1120,8 @@ function StudentTiles({
       <div className={"mx-auto grid max-w-5xl gap-2.5 sm:gap-3" + (drillHint && students.length ? " pt-28" : "")} style={{ gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))" }}>
         {students.map((s, i) => {
           const pct = s.score == null ? null : s.score * 100;
-          const col = time ? windowColor(s.time_total, timeWindow) : isUsage ? usageColor(s.score) : pct == null ? UNCOVERED : nipColor(pct);
+          const aser = metric === "aser_grade";
+          const col = time ? windowColor(s.time_total, timeWindow) : isUsage ? usageColor(s.score) : pct == null ? UNCOVERED : aser ? (s.passed ? ASER_PASS_COLOR : ASER_FAIL_COLOR) : nipColor(pct);
           const fg = col === "#f59e0b" ? "#1c1917" : "#ffffff";
           const d = s.delta;
           return (
@@ -1152,7 +1153,7 @@ function StudentTiles({
                   {s.phone}
                 </div>
               )}
-              <div className="text-2xl font-extrabold tabular-nums sm:text-3xl">{time ? fmtDurationParts(s.time_total, t).value : isUsage ? fmtMinutes(s.score) : fmtPctInt(pct)}</div>
+              <div className={"font-extrabold tabular-nums " + (aser && pct != null ? "text-lg sm:text-xl" : "text-2xl sm:text-3xl")}>{time ? fmtDurationParts(s.time_total, t).value : isUsage ? fmtMinutes(s.score) : aser && pct != null ? t(aserLevelName(s.score)!) : fmtPctInt(pct)}</div>
               {time ? (
                 <div className="text-[10px] font-semibold opacity-90">
                   {fmtDurationParts(s.time_total, t).unit} {timeCaption}

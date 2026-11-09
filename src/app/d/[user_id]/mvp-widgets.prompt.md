@@ -29,3 +29,12 @@ Grade 2 when the page is on Pass/Fail); the NIPUN row sits in a
 `MvpSubSlot` under the family toggle (`modal-nipun-view-toggle`). A geo
 child under the verdict shows `VerdictSummary` above its share trend;
 `historySeries` / the test note never run for the verdict.
+
+## 2026-11: ASER proxy
+
+The student pop-up's "ASER proxy" tab draws `aserLevelSeries(tests, range)`
+(GET users/:id/literacy-test-scores `aser_levels`) with
+`MvpStudentTrend unit="aser"`: y-axis Beginner … Story, the last point named,
+no pass line; the interaction list stays unfiltered (no note). The area
+pop-up's ASER trend has no 80 % target line. The NIPUN sub-toggle row
+(`modal-sub-toggle-slot`) is removed from the pop-up.

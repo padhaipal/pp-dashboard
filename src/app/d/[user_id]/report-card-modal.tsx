@@ -71,11 +71,14 @@ export function RepKpis({
   showUsing = true,
   timeWindow,
   ageBand,
+  metric,
   verdict = null,
   isSchool = false,
   t = same,
 }: {
   root: RootStats;
+  // words the age band (ASER: "6–7"); optional for older callers
+  metric?: Metric;
   metricLabel: string;
   nounP: string;
   usingN: number;
@@ -120,7 +123,7 @@ export function RepKpis({
               )
         : card(
             fmtPctInt(root.pass_rate),
-            ageBand ? `${t("of")} ${ageBandLabel(ageBand)} ${t("year old students pass the")} ${metricLabel}` : `${t("of students pass the")} ${metricLabel}`,
+            ageBand ? `${t("of")} ${ageBandLabel(ageBand, metric)} ${t("year old students pass the")} ${metricLabel}` : `${t("of students pass the")} ${metricLabel}`,
             nipColor(root.pass_rate),
             "pass",
           )}
@@ -340,7 +343,10 @@ export function RepLatest({
   onPick,
   label,
   time = false,
+  target = true,
 }: {
+  // the dotted "80% NIPUN target" line (not for ASER, which has no such target)
+  target?: boolean;
   childrenRows: Child[];
   hoverId: string | null;
   setHoverId: (id: string | null) => void;
@@ -405,7 +411,7 @@ export function RepLatest({
           </rect>
         );
       })}
-      {!time && (
+      {!time && target && (
         <>
           <line x1={mL} x2={mL + iw} y1={mT + ih - 0.8 * ih} y2={mT + ih - 0.8 * ih} stroke="#ef4444" strokeWidth="1.3" strokeDasharray="5 3" pointerEvents="none" />
           <text x={mL + iw} y={mT + ih - 0.8 * ih - 4} textAnchor="end" fontSize="9" fontWeight="700" fill="#ef4444" pointerEvents="none">
@@ -739,7 +745,7 @@ export async function exportReportPdf(data: ReportData, root: HTMLElement | null
       ? [fmtDuration(data.root.time_sum), `total time · ${timeWindowSuffix(data.timeWindow!)}`, rgb(windowColor(data.root.time_total, data.timeWindow))]
       : isVerdictMetric(data.metric)
         ? [fmtPctInt(data.root.pass_rate), `${data.root.verdict?.schools_pass ?? 0} of ${verdictDecided(data.root.verdict)} schools pass NIPUN`, rgb(nipColor(data.root.pass_rate))]
-        : [fmtPctInt(data.root.pass_rate), `of ${ageBandLabel(ageBandOf(data.metric, data.ageBand) ?? [0, 1])} year old students pass the ${metricLabel}`, rgb(nipColor(data.root.pass_rate))],
+        : [fmtPctInt(data.root.pass_rate), `of ${ageBandLabel(ageBandOf(data.metric, data.ageBand) ?? [0, 1], data.metric)} year old students pass the ${metricLabel}`, rgb(nipColor(data.root.pass_rate))],
   ];
   if (data.childType !== "student") kpis.push([`${usingN}`, `${nounP} using LIFTeracy`, [24, 24, 27]]);
   const kw = (CW - 10 * (kpis.length - 1)) / kpis.length,
@@ -929,6 +935,7 @@ export function ReportCardModal({ data, onClose }: { data: ReportData; onClose: 
             showUsing={data.childType !== "student"}
             timeWindow={data.timeWindow}
             ageBand={time ? undefined : ageBandOf(data.metric, data.ageBand)}
+            metric={data.metric}
             verdict={isVerdictMetric(data.metric) ? (data.root.verdict ?? null) : null}
             isSchool={data.childType === "teacher"}
           />
@@ -947,6 +954,7 @@ export function ReportCardModal({ data, onClose }: { data: ReportData; onClose: 
               onPick={() => {}}
               label={time ? "Total minutes" : `${metricLabel} pass rate`}
               time={time}
+              target={data.metric !== "aser_grade"}
             />
           </div>
           {/* Time has no change figure: no "most improved" */}

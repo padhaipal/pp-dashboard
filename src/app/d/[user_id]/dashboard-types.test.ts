@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   ageBandLabel,
+  aserLevelName,
   beforeDay,
   istToday,
   ageBandOf,
@@ -9,13 +10,10 @@ import {
   childFill,
   csvUrl,
   DEFAULT_METRIC,
-  DEFAULT_NIPUN_VIEW,
   DEFAULT_TIME_WINDOW,
   FAMILIES,
   familyOf,
   metricFor,
-  NIPUN_VIEWS,
-  STUDENT_NIPUN_VIEWS,
   verdictColor,
   verdictDecided,
   verdictLabel,
@@ -92,7 +90,8 @@ describe("school jitter", () => {
 describe("usage metric", () => {
   it("sits first in the toggle order, has no test history, and formats minutes", () => {
     expect(METRICS[0].key).toBe("usage");
-    expect(METRICS.map((m) => m.key)).toEqual(["usage", "nipun_g1", "nipun_g2", "nipun_g3", "mpl_b", "nipun"]);
+    expect(METRICS.map((m) => m.key)).toEqual(["usage", "nipun_g1", "nipun_g2", "nipun_g3", "mpl_b", "nipun", "aser_grade"]);
+    expect(METRIC_BY.aser_grade.label).toBe("ASER proxy");
     expect(METRIC_BY.nipun_g1.label).toBe("NIPUN grade 1 proxy");
     expect(TEST_KEY_OF.nipun_g1).toBe("nipun_grade_1");
     expect(TEST_KEY_OF.nipun).toBeUndefined();
@@ -130,6 +129,13 @@ describe("pass marks and age bands", () => {
     expect(ageBandLabel([7, 9])).toBe("7");
     expect(ageBandLabel([8, 10])).toBe("8");
     expect(ageBandLabel([8, 9])).toBe("8");
+    // ASER (2026-11): 6–7 year olds, both ages named; no single pass mark
+    // (six-year-olds pass at the paragraph, seven-year-olds at the story)
+    expect(ageBandOf("aser_grade")).toEqual([6, 8]);
+    expect(ageBandLabel([6, 8], "aser_grade")).toBe("6–7");
+    expect(passMarkOf("aser_grade")).toBeNull();
+    expect(aserLevelName(null)).toBeNull();
+    expect([0, 0.25, 0.5, 0.75, 1].map((s) => aserLevelName(s))).toEqual(["Beginner", "Letter", "Word", "Paragraph", "Story"]);
   });
 });
 
@@ -238,24 +244,17 @@ describe("trend window", () => {
   });
 });
 
-describe("metric families (2026-10)", () => {
-  it("the toggle offers Time / NIPUN proxy / MPL-B proxy; NIPUN opens on Pass/Fail with Grade 1 / 2 / 3 beside it; the pair is the API metric", () => {
-    expect(FAMILIES.map((f) => f.key)).toEqual(["usage", "nipun", "mpl_b"]);
-    expect(FAMILIES.map((f) => f.label)).toEqual(["Time", "NIPUN proxy", "MPL-B proxy"]);
+describe("metric families (2026-11)", () => {
+  it("the toggle offers Time / ASER proxy / MPL-B proxy, each the API metric itself; the NIPUN metrics fall under ASER's place", () => {
+    expect(FAMILIES.map((f) => f.key)).toEqual(["usage", "aser_grade", "mpl_b"]);
+    expect(FAMILIES.map((f) => f.label)).toEqual(["Time", "ASER proxy", "MPL-B proxy"]);
     // phone-width labels
-    expect(FAMILIES.map((f) => f.short)).toEqual(["Time", "NIPUN", "MPL-B"]);
-    expect(NIPUN_VIEWS.map((v) => v.key)).toEqual(["nipun_g1", "nipun_g2", "nipun_g3", "nipun"]);
-    expect(NIPUN_VIEWS.map((v) => v.label)).toEqual(["Grade 1", "Grade 2", "Grade 3", "Pass/Fail"]);
-    expect(NIPUN_VIEWS.map((v) => v.short)).toEqual(["G1", "G2", "G3", "Pass/Fail"]);
-    expect(DEFAULT_NIPUN_VIEW).toBe("nipun");
-    // a student has no school verdict
-    expect(STUDENT_NIPUN_VIEWS.map((v) => v.key)).toEqual(["nipun_g1", "nipun_g2", "nipun_g3"]);
-    expect(metricFor("usage", "nipun_g2")).toBe("usage");
-    expect(metricFor("mpl_b", "nipun")).toBe("mpl_b");
-    expect(metricFor("nipun", "nipun_g1")).toBe("nipun_g1");
-    expect(metricFor("nipun", "nipun")).toBe("nipun");
-    expect(familyOf("nipun_g3")).toBe("nipun");
-    expect(familyOf("nipun")).toBe("nipun");
+    expect(FAMILIES.map((f) => f.short)).toEqual(["Time", "ASER", "MPL-B"]);
+    expect(metricFor("usage")).toBe("usage");
+    expect(metricFor("aser_grade")).toBe("aser_grade");
+    expect(metricFor("mpl_b")).toBe("mpl_b");
+    expect(familyOf("aser_grade")).toBe("aser_grade");
+    expect(familyOf("nipun_g3")).toBe("aser_grade");
     expect(familyOf("mpl_b")).toBe("mpl_b");
     expect(familyOf("usage")).toBe("usage");
   });
