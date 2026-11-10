@@ -896,7 +896,10 @@ describe("TeacherDashboard — public variant (the donor page)", () => {
     await drillIntoUp();
     fireEvent.click(screen.getAllByRole("button", { name: "ASER proxy" })[0]);
     await waitFor(() => expect(calls.some((u) => u.includes("/geo-entities/g-09/scores?metric=aser_grade"))).toBe(true));
-    await waitFor(() => expect(screen.getByTestId("root-kpis").textContent).toContain("of students aged 7 and under pass the ASER proxy"));
+    // a COUNT of students, never a percentage: 72% of 41 → 30
+    await waitFor(() => expect(screen.getByTestId("kpi-pass").textContent).toBe("30students aged 7 and under pass the ASER proxy"));
+    // the trend's y-axis is how many students pass
+    expect(document.querySelector('[data-rep-chart="trend"]')!.textContent).toContain("Students passing the ASER proxy");
     // no second toggle row for ASER
     expect(screen.queryByTestId("nipun-view-toggle")).toBeNull();
     expect(screen.getByTestId("top-sub-toggle-slot").getAttribute("data-empty")).toBe("1");
@@ -931,6 +934,23 @@ describe("TeacherDashboard — public variant (the donor page)", () => {
     await screen.findAllByTestId("teacher-card");
     expect(screen.getAllByRole("button", { name: "NIPUN proxy" }).length).toBeGreaterThan(0);
     expect(screen.queryByRole("button", { name: "ASER proxy" })).toBeNull();
+  });
+
+  it("the ASER trend plots how many students pass (whole-student axis, one line, no child lines)", () => {
+    const series = [
+      { date: "2026-09-17", pass_rate: 50, n: 4, mean: 60 },
+      { date: "2026-09-18", pass_rate: 75, n: 4, mean: 70 },
+      { date: "2026-09-19", pass_rate: 75, n: 8, mean: 70 },
+    ];
+    const kids = [{ id: "c1", label: "Child", points: series.map((p) => ({ date: p.date, value: 66.7 })) }];
+    const { container } = render(<RepTrend series={series} metric="aser_grade" students={kids} label="Students passing the ASER proxy" t={(s) => s} />);
+    const texts = Array.from(container.querySelectorAll("text")).map((n) => n.textContent);
+    // 2, 3, 6 students → axis 0…6 in whole students; the line ends on its count
+    expect(texts).toEqual(expect.arrayContaining(["0", "2", "4", "6"]));
+    expect(texts).not.toContain("100");
+    expect(texts).not.toContain("Average");
+    expect(container.querySelectorAll('[data-testid="student-line"]')).toHaveLength(0);
+    expect(container.textContent).not.toContain("%");
   });
 
   it("the page trend says 'Not enough data to compute results' for an empty ASER series", () => {

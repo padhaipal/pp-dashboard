@@ -96,6 +96,11 @@ export function TractionChart() {
           {data && daily.length > 0 && <Plot size={size} dates={daily.map((d) => d.date)} values={values} unit={cfg.unit} format={cfg.format} hover={hover} setHover={setHover} />}
         </>
       )}
+      {cfg.note && (
+        <p className="mt-2 text-center text-xs leading-snug text-zinc-500" data-testid="traction-note">
+          {cfg.note}
+        </p>
+      )}
       {data && (
         <div className="mt-1 flex flex-wrap items-center justify-end gap-x-3 gap-y-1 text-xs text-zinc-500">
           <span>

@@ -23,6 +23,8 @@ import {
   UNCOVERED,
   fmtDuration,
   fmtPct,
+  fmtCount,
+  passCount,
   timeMarkLabels,
   type TimeWindow,
   windowFill,
@@ -77,6 +79,8 @@ export type GeoMapProps = {
   metricLabel: string;
   // the NIPUN proxy verdict: schools coloured Pass / Fail / Not enough data, areas by their share of passing schools
   verdict?: boolean;
+  // ASER proxy: figures are how many students pass, not a percentage.
+  counts?: boolean;
   // Time mode: areas / labels / dots are coloured by minutes per student per
   // day (green past 5, amber for some, red for none) and the tooltip shows
   // the active time, not a pass rate.
@@ -136,7 +140,7 @@ export function areaFill(d: string, child: Child, incomplete: boolean, fill: (c:
 type Tip = { x: number; y: number; title: string; sub: string | null };
 
 export function GeoMap(props: GeoMapProps) {
-  const { entity, childType, childrenRows, incompleteStates, hoverId, setHoverId, selectedId, onSelect, onDrill, onUp, ownId = null, timeWindow = "all", drillHint = null, hintId = null, hintNorth = false, onDismissHint, metricLabel, time = false, verdict = false, t = same } = props;
+  const { entity, childType, childrenRows, incompleteStates, hoverId, setHoverId, selectedId, onSelect, onDrill, onUp, ownId = null, timeWindow = "all", drillHint = null, hintId = null, hintNorth = false, onDismissHint, metricLabel, time = false, verdict = false, counts = false, t = same } = props;
   const fillOf = time ? (c: Child) => windowFill(c, timeWindow) : childFill;
   const wrapRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: 640, h: 420 });
@@ -399,7 +403,9 @@ export function GeoMap(props: GeoMapProps) {
                 ? c.type === "school"
                   ? verdictLabel(c.verdict?.school_passed, t)
                   : `${c.verdict?.schools_pass ?? 0}/${verdictDecided(c.verdict)} ${t("schools pass the NIPUN proxy")}`
-                : `${fmtPct(c.pass_rate)} · n=${c.n}`
+                : counts
+                  ? `${fmtCount(passCount(c.pass_rate, c.n))} ${t("of")} ${c.n} ${t("students pass")}`
+                  : `${fmtPct(c.pass_rate)} · n=${c.n}`
             : t("Not using LIFTeracy")) + (isPrivateSchool(c) ? ` · ${t("private school")}` : ""),
         ];
 

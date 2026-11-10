@@ -66,13 +66,22 @@ export interface TractionMetric {
   short: string;
   unit: string;
   format: (v: number) => string;
+  // Shown under the chart while this toggle is selected.
+  note?: string;
 }
 
 export const TRACTION_METRICS: TractionMetric[] = [
   { key: "minutes", label: "Minutes spent", short: "Minutes", unit: "Minutes", format: fmtInt },
   { key: "users_over_5min", label: "Users over 5 min", short: "Users 5+ min", unit: "Users", format: fmtInt },
   { key: "students_onboarded", label: "Students onboarded", short: "Students", unit: "Students", format: fmtInt },
-  { key: "aser_passed", label: "Passed ASER proxy", short: "ASER proxy", unit: "Students", format: fmtInt },
+  {
+    key: "aser_passed",
+    label: "Passed ASER proxy",
+    short: "ASER proxy",
+    unit: "Students",
+    format: fmtInt,
+    note: "Only students aged 7 and under are counted. Under-7s pass by reading a paragraph; 7-year-olds pass by reading a story. Older students and students whose age we do not know are left out.",
+  },
   { key: "mpl_b_passed", label: "Passed MPL-B proxy", short: "MPL-B proxy", unit: "Students", format: fmtInt },
   { key: "teachers_onboarded", label: "Teachers onboarded", short: "Teachers", unit: "Teachers", format: fmtInt },
   { key: "schools", label: "Schools", short: "Schools", unit: "Schools", format: fmtInt },

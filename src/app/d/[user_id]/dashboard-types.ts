@@ -551,6 +551,12 @@ export const audioUrl = (mediaId: string) => `/api/proxy/media-meta-data/${encod
 export const fmtPct = (v: number | null) => (v == null ? "—" : `${v.toFixed(1)}%`);
 // mvp2 headline figures are whole percentages ("69%").
 export const fmtPctInt = (v: number | null) => (v == null ? "—" : `${Math.round(v)}%`);
+// How many students pass, from a pass rate (%) over n students. The ASER
+// proxy is shown as this count, never as a percentage (2026-11).
+export const passCount = (passRate: number | null | undefined, n: number | null | undefined): number | null => (passRate == null || n == null ? null : Math.round((passRate * n) / 100));
+export const fmtCount = (v: number | null) => (v == null ? "—" : `${v}`);
+// A child / root figure as shown: the ASER proxy as a count, other tests as a %.
+export const fmtPassFigure = (metric: Metric | undefined, passRate: number | null, n: number | null | undefined): string => (metric === "aser_grade" ? fmtCount(passCount(passRate, n)) : fmtPctInt(passRate));
 export const fmtDelta = (v: number | null) => (v == null ? "—" : `${v >= 0 ? "+" : ""}${v.toFixed(1)}`);
 
 // Geo names arrive UPPERCASE from UDISE ("UTTAR PRADESH"); mvp2's location
