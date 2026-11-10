@@ -28,11 +28,9 @@ export interface TractionMonth {
   // onboarded by the end of the month; active on a day = sent a message.
   // mau = wrote at least once that month; dau_avg = how many wrote on an
   // average day of the month; dau_mau = dau_avg ÷ mau, % (null at mau 0);
-  // projected_dau_mau = the month in progress's month-end estimate.
   mau?: number;
   dau_avg?: number;
   dau_mau?: number | null;
-  projected_dau_mau?: number | null;
 }
 
 export interface TractionResponse {
@@ -130,7 +128,6 @@ export function tractionCsv(data: TractionResponse): string {
     "DAU / MAU % (whole month)",
     "DAU / MAU: students who sent a message in the month (MAU)",
     "DAU / MAU: students who sent a message on an average day (DAU)",
-    "DAU / MAU %: estimated by month end",
   ];
   const cell = (v: number | null | undefined) => (v == null ? "" : String(v));
   const rows = data.daily.map((d) => {
@@ -146,7 +143,6 @@ export function tractionCsv(data: TractionResponse): string {
       cell(m?.dau_mau),
       cell(m?.mau),
       cell(m?.dau_avg),
-      cell(m?.projected_dau_mau),
     ];
   });
   const escape = (c: string) => (/[",\n]/.test(c) ? `"${c.replace(/"/g, '""')}"` : c);

@@ -64,3 +64,11 @@ Story), `aserLevelName(score)` (student score = level ÷ 4),
 null (no single mark → no pass line); `METRIC_AGE_BANDS.aser_grade` =
 [6, 8], worded "6–7 year old students" (`ageBandLabel(band, metric)`).
 `LiteracyTestScores.aser_levels` = the student's level after each ASER run.
+
+## 2026-11 (later): ASER on the public map only
+
+David: teachers / officials keep NIPUN; ASER is for the donor page. `FAMILIES`
+(the /d dashboards) = Time · NIPUN proxy · MPL-B proxy with `NIPUN_VIEWS`
+again; `PUBLIC_FAMILIES` = Time · ASER proxy · MPL-B proxy; `familiesFor(isPublic)`
+/ `modalFamiliesFor(isPublic)` pick. `ASER_EMPTY_TEXT` = "Not enough data to
+compute results" — what an empty ASER chart says.

@@ -48,6 +48,12 @@ describe("DonorPage", () => {
     expect(partners[1].textContent).toContain("DEVI Sansthan is our on-the-ground partner");
     expect(screen.getByTestId("report-link").getAttribute("href")).toBe("/donor/lifteracy-report.pdf");
     expect(document.querySelector("video")?.getAttribute("src")).toBe("/donor/lifteracy-demo.mp4");
+    // advisors: the report's four, under the founders in the Team section
+    const advisors = screen.getAllByTestId("advisor");
+    expect(advisors.map((a) => a.querySelector("a")?.textContent)).toEqual(["Ilana Kessler", "Abdulhamid Haidar", "Natasha Ahuja", "Sofia Martinez Galvez"]);
+    expect(advisors[1].textContent).toContain("EdTech");
+    expect(advisors[1].querySelector("a")?.getAttribute("href")).toBe("https://www.linkedin.com/in/abdulhamid-haidar/");
+    expect(screen.getByTestId("advisors").closest("section")?.id).toBe("team");
     // partners sit just above What LIFTeracy Does
     expect(screen.getByTestId("partners").nextElementSibling?.id).toBe("what-does");
   });

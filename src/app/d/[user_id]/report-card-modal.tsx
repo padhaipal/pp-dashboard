@@ -38,6 +38,7 @@ import {
   type StudentChild,
   ageBandLabel,
   ageBandOf,
+  ASER_EMPTY_TEXT,
   passMarkOf,
   isVerdictMetric,
   verdictColor,
@@ -259,7 +260,7 @@ export function RepTrend({
       </text>
       {li < 0 && lines.every((l) => !l.d) ? (
         <text x={W / 2} y={H / 2} textAnchor="middle" fontSize={mobile ? 16 : 13} fill="#94a3b8">
-          {t("No results in this window")}
+          {t(metric === "aser_grade" ? ASER_EMPTY_TEXT : "No results in this window")}
         </text>
       ) : (
         <>
@@ -343,10 +344,7 @@ export function RepLatest({
   onPick,
   label,
   time = false,
-  target = true,
 }: {
-  // the dotted "80% NIPUN target" line (not for ASER, which has no such target)
-  target?: boolean;
   childrenRows: Child[];
   hoverId: string | null;
   setHoverId: (id: string | null) => void;
@@ -411,7 +409,7 @@ export function RepLatest({
           </rect>
         );
       })}
-      {!time && target && (
+      {!time && (
         <>
           <line x1={mL} x2={mL + iw} y1={mT + ih - 0.8 * ih} y2={mT + ih - 0.8 * ih} stroke="#ef4444" strokeWidth="1.3" strokeDasharray="5 3" pointerEvents="none" />
           <text x={mL + iw} y={mT + ih - 0.8 * ih - 4} textAnchor="end" fontSize="9" fontWeight="700" fill="#ef4444" pointerEvents="none">
@@ -745,7 +743,7 @@ export async function exportReportPdf(data: ReportData, root: HTMLElement | null
       ? [fmtDuration(data.root.time_sum), `total time · ${timeWindowSuffix(data.timeWindow!)}`, rgb(windowColor(data.root.time_total, data.timeWindow))]
       : isVerdictMetric(data.metric)
         ? [fmtPctInt(data.root.pass_rate), `${data.root.verdict?.schools_pass ?? 0} of ${verdictDecided(data.root.verdict)} schools pass NIPUN`, rgb(nipColor(data.root.pass_rate))]
-        : [fmtPctInt(data.root.pass_rate), `of ${ageBandLabel(ageBandOf(data.metric, data.ageBand) ?? [0, 1], data.metric)} year old students pass the ${metricLabel}`, rgb(nipColor(data.root.pass_rate))],
+        : [fmtPctInt(data.root.pass_rate), `of ${ageBandLabel(ageBandOf(data.metric, data.ageBand) ?? [0, 1])} year old students pass the ${metricLabel}`, rgb(nipColor(data.root.pass_rate))],
   ];
   if (data.childType !== "student") kpis.push([`${usingN}`, `${nounP} using LIFTeracy`, [24, 24, 27]]);
   const kw = (CW - 10 * (kpis.length - 1)) / kpis.length,
@@ -954,7 +952,6 @@ export function ReportCardModal({ data, onClose }: { data: ReportData; onClose: 
               onPick={() => {}}
               label={time ? "Total minutes" : `${metricLabel} pass rate`}
               time={time}
-              target={data.metric !== "aser_grade"}
             />
           </div>
           {/* Time has no change figure: no "most improved" */}

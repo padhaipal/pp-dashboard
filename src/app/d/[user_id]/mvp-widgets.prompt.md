@@ -38,3 +38,10 @@ The student pop-up's "ASER proxy" tab draws `aserLevelSeries(tests, range)`
 no pass line; the interaction list stays unfiltered (no note). The area
 pop-up's ASER trend has no 80 % target line. The NIPUN sub-toggle row
 (`modal-sub-toggle-slot`) is removed from the pop-up.
+
+## 2026-11 (later): ASER on the public map only
+
+`MvpNipunToggle` is back. `MvpTeacherModal` reads the viewer
+(`isPublicViewer(useViewerId())`): public → `modalFamiliesFor(true)` (ASER
+tab, no NIPUN row); otherwise NIPUN with its grade row. `MvpStudentTrend`
+takes `empty` — ASER charts say "Not enough data to compute results".

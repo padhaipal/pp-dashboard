@@ -52,9 +52,10 @@ export const CHILD_AP: Child = {
 
 export const SCORES: ScoresResponse = {
   as_of: "2026-09-10",
-  metric: "aser_grade",
+  metric: "nipun_g3",
   range: 30,
-  age_band: [6, 8],
+  age_band: [8, 10],
+  pass_mark: 75,
   entity: PROFILE.geo_entity!,
   root: { pass_rate: 72.0, mean: 0.7, sd: 0.1, n: 41, students_active: 160, students_unbanded: 3, delta: 1.5 },
   series: [
@@ -74,7 +75,7 @@ export const SCORES: ScoresResponse = {
 
 export const EMPTY_SCORES: ScoresResponse = {
   as_of: null,
-  metric: "aser_grade",
+  metric: "nipun_g3",
   range: 30,
   entity: PROFILE.geo_entity!,
   root: { pass_rate: null, mean: null, sd: null, n: null, students_active: null, students_unbanded: null, delta: null },
@@ -135,7 +136,7 @@ export const TEACHER: Child = {
 
 export const SCORES_SCHOOL: ScoresResponse = {
   as_of: "2026-09-18",
-  metric: "aser_grade",
+  metric: "nipun_g3",
   range: 30,
   entity: PROFILE_SCHOOL.geo_entity!,
   root: { pass_rate: 75.0, mean: 0.7, sd: 0.1, n: 4, students_active: 3, students_unbanded: 0, delta: 2.0 },
@@ -153,7 +154,7 @@ export const STUDENTS: StudentChild[] = [
 
 export const SCORES_CLASS: ScoresResponse = {
   as_of: "2026-09-18",
-  metric: "aser_grade",
+  metric: "nipun_g3",
   range: 30,
   entity: { id: "t-1", type: "teacher", code: "", name: "Asha", has_boundary: false, lat: null, lng: null },
   root: { pass_rate: 100.0, mean: 0.9, sd: 0, n: 1, students_active: 1, students_unbanded: 0, delta: null },
@@ -186,8 +187,8 @@ export const TEST_SCORES = {
     bin_message_ids: ["m-older", "m-old", "m-3", "m-4"],
   },
   // one answer so far (the tap m-3), 20 needed
-  mpl_b: { status: "insufficient_data", attempts_available: 1, counted_message_ids: ["m-3"], bin_message_ids: ["m-older", "m-3"] },
-  // ASER (2026-11): Word after the first run, Paragraph after the second
+  mpl_b: { status: "insufficient_data", attempts_available: 1, counted_message_ids: ["m-3"] },
+  // ASER (2026-11, the public map's student graph): Word after the first run, Paragraph after the second
   aser_levels: [
     { run: 1, at: "2026-09-10T10:00:00Z", level: 2 },
     { run: 2, at: "2026-09-17T10:00:00Z", level: 3 },

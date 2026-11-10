@@ -113,6 +113,38 @@ const TEAM: { name: string; role: string; linkedin: string; points: ReactNode[] 
   },
 ];
 
+// the advisory panel (the report's page 3, 2026-11): photos are the report's own
+const ADVISORS: { name: string; area: string; photo: string; linkedin: string; bio: string }[] = [
+  {
+    name: "Ilana Kessler",
+    area: "Pedagogy",
+    photo: "/donor/advisor-ilana-kessler.jpg",
+    linkedin: "https://www.linkedin.com/in/ilanakessler/",
+    bio: "is Co-Founder and Executive Director of Learning Alliance, a foundational learning NGO scaling structured pedagogy in Uganda. A former teacher, she spent 15+ years leading programmes at One Acre Fund, Precision Development and Evidence Action.",
+  },
+  {
+    name: "Abdulhamid Haidar",
+    area: "EdTech",
+    photo: "/donor/advisor-abdulhamid-haidar.jpg",
+    linkedin: "https://www.linkedin.com/in/abdulhamid-haidar/",
+    bio: "is Founder and CEO of Darsel, a global EdTech non-profit improving math learning with government school systems. Its AI-powered personalised learning chatbot has reached over 500,000 students, mainly in Jordan, India and Nigeria.",
+  },
+  {
+    name: "Natasha Ahuja",
+    area: "Indian education",
+    photo: "/donor/advisor-natasha-ahuja.jpg",
+    linkedin: "https://www.linkedin.com/in/natashahuja/",
+    bio: "is Strategy and Innovation Manager at Suvita. She has previously worked with field-leading organisations including the What Works Hub for Global Education, Youth Impact, and Our World in Data.",
+  },
+  {
+    name: "Sofia Martinez Galvez",
+    area: "Scaling expert",
+    photo: "/donor/advisor-sofia-martinez-galvez.jpg",
+    linkedin: "https://www.linkedin.com/in/smartinezgalvez/",
+    bio: "is cofounder of Learning Alliance, and now designs models to scale effective education solutions at Tanza Partners. She was a Fulbright Scholar at MIT (master's in Data, Economics and Development Policy).",
+  },
+];
+
 export function DonorPage({ country, incompleteStates }: { country: GeoRef | null; incompleteStates: string[] }) {
   return (
     <div className="flex-1 scroll-smooth overflow-x-clip bg-zinc-50 text-zinc-900">
@@ -274,6 +306,24 @@ export function DonorPage({ country, incompleteStates }: { country: GeoRef | nul
                 </div>
               ))}
             </div>
+          </div>
+          {/* advisors: under the founders, two to a row */}
+          <h3 className="mb-5 mt-12 text-2xl font-extrabold tracking-tight text-brand-ink">Advisors</h3>
+          <div className="grid gap-x-10 gap-y-7 md:grid-cols-2" data-testid="advisors">
+            {ADVISORS.map((a) => (
+              <div key={a.name} className="flex items-start gap-4" data-testid="advisor">
+                <Image src={a.photo} alt={a.name} width={160} height={160} className="h-20 w-20 shrink-0 rounded-full object-cover shadow-sm" />
+                <div>
+                  <div className="text-sm font-semibold uppercase tracking-wide text-brand-ink">{a.area}</div>
+                  <p className="mt-1 leading-relaxed text-zinc-700">
+                    <a href={a.linkedin} target="_blank" rel="noreferrer" className="font-bold text-zinc-900 underline decoration-zinc-300 underline-offset-2 transition-colors hover:text-brand-ink">
+                      {a.name}
+                    </a>{" "}
+                    {a.bio}
+                  </p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
