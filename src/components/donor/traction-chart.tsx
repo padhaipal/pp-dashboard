@@ -97,7 +97,7 @@ export function TractionChart() {
         </>
       )}
       {cfg.note && (
-        <p className="mt-2 text-center text-xs leading-snug text-zinc-500" data-testid="traction-note">
+        <p className="mt-1 text-center text-[11px] leading-snug text-zinc-400" data-testid="traction-note">
           {cfg.note}
         </p>
       )}

@@ -80,7 +80,7 @@ export const TRACTION_METRICS: TractionMetric[] = [
     short: "ASER proxy",
     unit: "Students",
     format: fmtInt,
-    note: "Only students aged 7 and under are counted. Under-7s pass by reading a paragraph; 7-year-olds pass by reading a story. Older students and students whose age we do not know are left out.",
+    note: "Counts students aged 7 and under only.",
   },
   { key: "mpl_b_passed", label: "Passed MPL-B proxy", short: "MPL-B proxy", unit: "Students", format: fmtInt },
   { key: "teachers_onboarded", label: "Teachers onboarded", short: "Teachers", unit: "Teachers", format: fmtInt },
