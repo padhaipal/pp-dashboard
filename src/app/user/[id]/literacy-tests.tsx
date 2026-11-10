@@ -131,23 +131,23 @@ export function LiteracyTests({ userId }: { userId: string }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {d.nipun_grade_1 && (
           <SnapshotCard
-            title="NIPUN grade 1"
+            title="NIPUN grade 1 proxy"
             sub="4 most recent level-8 lessons, read right first try · pass ≥ 75%"
             score={d.nipun_grade_1}
           />
         )}
         <SnapshotCard
-          title="NIPUN grade 2"
+          title="NIPUN grade 2 proxy"
           sub="4 most recent level-10 R1.x first attempts · pass > 50%"
           score={d.nipun_grade_2}
         />
         <SnapshotCard
-          title="NIPUN grade 3"
+          title="NIPUN grade 3 proxy"
           sub="4 most recent level-11/12 R1.x first attempts · pass > 50%"
           score={d.nipun_grade_3}
         />
         <SnapshotCard
-          title="MPL-B"
+          title="MPL-B proxy"
           sub="20 level-11/12 first attempts (type-balanced selection) · pass > 50%"
           score={d.mpl_b}
         />

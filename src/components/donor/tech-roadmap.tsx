@@ -23,7 +23,7 @@ const TECH_DONE = [
   { date: "2026-09-16", title: "Mapped every school in India", detail: "1.7 million schools mapped, ready for teacher dashboards." },
   { date: "2026-10-02", title: "Fourth speech engine", detail: "A fourth transcription service checks every voice note." },
   { date: "2026-10-08", title: "Dashboards for officials", detail: "Teachers and education officials see their own schools' progress every day." },
-  { date: "2026-10-12", title: "Daily NIPUN verdicts", detail: "Every school gets a NIPUN pass or fail estimate, updated daily." },
+  { date: "2026-10-12", title: "Daily NIPUN proxy verdicts", detail: "Every school gets a NIPUN proxy pass or fail estimate, updated daily." },
   { date: "2026-10-13", title: "Reading-speed gate", detail: "From level 9, a child reads at 40 words a minute before moving on." },
 ];
 

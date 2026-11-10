@@ -836,7 +836,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates, va
                         </div>
                         <RepTrend
                           series={lastDays(trendSeries, WINDOW_DAYS[pickedWindow])}
-                          label={isUsageMetric ? t("Total minutes") : isVerdict ? t("Schools passing NIPUN") : t(METRIC_BY[metric].short)}
+                          label={isUsageMetric ? t("Total minutes") : isVerdict ? t("Schools passing the NIPUN proxy") : t(METRIC_BY[metric].short)}
                           metric={metric}
                           passMark={scores.pass_mark}
                           students={

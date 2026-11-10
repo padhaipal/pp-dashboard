@@ -252,7 +252,7 @@ export function MvpNipunToggle({
   view,
   setView,
   options = NIPUN_VIEWS,
-  label = "NIPUN view",
+  label = "NIPUN proxy view",
   testId = "nipun-view-toggle",
   t = same,
 }: {
@@ -869,7 +869,7 @@ export function VerdictSummary({ verdict, school, t = same }: { verdict: Verdict
       {school ? (
         <>
           <div className="font-semibold" style={{ color: verdictColor(verdict.school_passed) }} data-testid="verdict-school">
-            {t("NIPUN")}: {verdictLabel(verdict.school_passed, t)}
+            {t("NIPUN proxy")}: {verdictLabel(verdict.school_passed, t)}
           </div>
           {bands && (
             <ul className="mt-1 space-y-0.5 text-xs" data-testid="verdict-bands">
@@ -1150,7 +1150,7 @@ export function MvpTeacherModal({
                   ) : isVerdictMetric(shownMetric) ? (
                     <>
                       {scores.root.verdict && <VerdictSummary verdict={scores.root.verdict} school={subject.child.type === "school"} t={t} />}
-                      <MvpStudentTrend series={scores.series} label={t("Schools passing NIPUN")} passMark={null} />
+                      <MvpStudentTrend series={scores.series} label={t("Schools passing the NIPUN proxy")} passMark={null} />
                     </>
                   ) : (
                     <MvpStudentTrend series={scores.series} label={`${METRIC_BY[shownMetric].label}`} passMark={shownMetric === "aser_grade" ? null : 80} empty={shownMetric === "aser_grade" ? t(ASER_EMPTY_TEXT) : undefined} />
@@ -1185,7 +1185,7 @@ export function MvpTeacherModal({
                     {/* ASER: the student's level after each ASER test, on a Beginner … Story axis */}
                     {st &&
                       (mMetric === "aser_grade" ? (
-                        <MvpStudentTrend series={aserLevelSeries(st.tests, mRange)} label={t("ASER level")} unit="aser" passMark={null} testId="aser-chart" empty={t(ASER_EMPTY_TEXT)} t={t} />
+                        <MvpStudentTrend series={aserLevelSeries(st.tests, mRange)} label={t("ASER proxy level")} unit="aser" passMark={null} testId="aser-chart" empty={t(ASER_EMPTY_TEXT)} t={t} />
                       ) : (
                         <MvpStudentTrend series={historySeries(st.tests, mMetric, mRange)} label={METRIC_BY[mMetric].label} passMark={PASS_MARK_PCT[mMetric]} />
                       ))}

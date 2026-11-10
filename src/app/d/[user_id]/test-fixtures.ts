@@ -313,7 +313,7 @@ export const USAGE_HISTORY: UsageHistory = {
   ],
 };
 
-// ---- NIPUN verdict (metric=nipun) ----
+// ---- NIPUN proxy verdict (metric=nipun) ----
 // UP (state) under the verdict: Lucknow district decided (1 of 2 schools
 // pass), a second district with no decided school (grey), a week-old row.
 export const CHILD_LKO_VERDICT: Child = {
