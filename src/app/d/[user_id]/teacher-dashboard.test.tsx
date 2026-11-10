@@ -596,7 +596,7 @@ describe("TeacherDashboard", () => {
       { date: "2026-09-18", pass_rate: 50, n: 4, mean: 41 },
     ];
     const { container, rerender } = render(<RepTrend series={pts} metric="usage" label="Minutes per student" />);
-    expect(container.textContent).not.toContain("80% NIPUN target");
+    expect(container.textContent).not.toContain("80% NIPUN proxy target");
     expect(container.textContent).toContain("Minutes per student");
     // axis grows to the next multiple of 10 above the data (41 → 50)
     expect(container.textContent).toContain("50");
@@ -1187,7 +1187,7 @@ describe("TeacherDashboard — Time metric", () => {
     await waitFor(() => expect(calls).toContain("/api/proxy/geo-entities/g-09/scores?metric=nipun&range=30&viewer=u1"));
     // headline: 1 of 2 decided schools pass (3 with not enough data)
     await waitFor(() => expect(screen.getByTestId("kpi-pass").textContent).toContain("50%"));
-    expect(screen.getByTestId("kpi-pass").textContent).toContain("1 of 2 schools pass NIPUN · 3 not enough data");
+    expect(screen.getByTestId("kpi-pass").textContent).toContain("1 of 2 schools pass the NIPUN proxy · 3 not enough data");
     // bars: a decided district reads its share, an undecided one "Not enough data" in grey
     const lko = document.querySelector('[data-testid="bar"][data-id="g-0901"]')!;
     expect(lko).not.toBeNull();
@@ -1202,7 +1202,7 @@ describe("TeacherDashboard — Time metric", () => {
     expect(calls.some((u) => u.includes("/rankings?"))).toBe(false);
     // the trend is the share of schools passing, no pass mark
     expect(document.querySelector('[data-testid="pass-mark"]')).toBeNull();
-    expect(screen.getByText("Schools passing NIPUN")).toBeDefined();
+    expect(screen.getByText("Schools passing the NIPUN proxy")).toBeDefined();
     // picking Grade 3 in the PERFORMANCE sub-toggle switches the top one too, and the metric sent
     fireEvent.click(within(screen.getByTestId("perf-nipun-view-toggle")).getByRole("button", { name: "Grade 3" }));
     expect(within(screen.getByTestId("nipun-view-toggle")).getByRole("button", { name: "Grade 3" }).getAttribute("aria-pressed")).toBe("true");
@@ -1219,7 +1219,7 @@ describe("TeacherDashboard — Time metric", () => {
     fireEvent.click(screen.getAllByRole("button", { name: "NIPUN proxy" })[0]);
     const panel = await screen.findByTestId("verdict-panel");
     expect(screen.queryByTestId("teacher-card")).toBeNull();
-    expect(within(panel).getByTestId("verdict-school").textContent).toBe("NIPUN: Pass");
+    expect(within(panel).getByTestId("verdict-school").textContent).toBe("NIPUN proxy: Pass");
     const bands = within(panel).getByTestId("verdict-bands");
     expect(bands.textContent).toContain("6 year olds:9 of 10 pass, 9 needed· Pass");
     expect(bands.textContent).toContain("7 year olds:9 of 12 pass, 9 needed· Pass");

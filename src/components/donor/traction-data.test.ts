@@ -45,7 +45,7 @@ describe("tractionCsv", () => {
   it("one row per day with every toggle: daily series, then the day's month", () => {
     const [header, ...rows] = tractionCsv(DATA).trimEnd().split("\n");
     expect(header).toBe(
-      "Date,Minutes spent,Users over 5 min,Students onboarded,Passed ASER proxy,Passed MPL-B,Teachers onboarded,Schools,Blocks,Districts,States," +
+      "Date,Minutes spent,Users over 5 min,Students onboarded,Passed ASER proxy,Passed MPL-B proxy,Teachers onboarded,Schools,Blocks,Districts,States," +
         "Monthly active students (whole month),Monthly active students: joined in an earlier month,Monthly active students: joined this month,Monthly active students: projected by month end," +
         "DAU / MAU % (whole month),DAU / MAU: students who sent a message in the month (MAU),DAU / MAU: students who sent a message on an average day (DAU)",
     );

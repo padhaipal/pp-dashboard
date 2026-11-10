@@ -255,7 +255,7 @@ describe("ASER proxy (2026-11, the donor page's public map)", () => {
 
   it("the public toggle offers Time / ASER proxy / MPL-B proxy — ASER in NIPUN's place; the /d dashboards keep NIPUN", () => {
     expect(PUBLIC_FAMILIES.map((f) => f.label)).toEqual(["Time", "ASER proxy", "MPL-B proxy"]);
-    expect(PUBLIC_FAMILIES.map((f) => f.short)).toEqual(["Time", "ASER", "MPL-B"]);
+    expect(PUBLIC_FAMILIES.map((f) => f.short)).toEqual(["Time", "ASER proxy", "MPL-B proxy"]);
     expect(familiesFor(true)).toBe(PUBLIC_FAMILIES);
     expect(familiesFor(false)).toBe(FAMILIES);
     expect(modalFamiliesFor(true).map((f) => f.key)).toEqual(["letters", "usage", "aser_grade", "mpl_b"]);
@@ -270,7 +270,7 @@ describe("metric families (2026-10)", () => {
     expect(FAMILIES.map((f) => f.key)).toEqual(["usage", "nipun", "mpl_b"]);
     expect(FAMILIES.map((f) => f.label)).toEqual(["Time", "NIPUN proxy", "MPL-B proxy"]);
     // phone-width labels
-    expect(FAMILIES.map((f) => f.short)).toEqual(["Time", "NIPUN", "MPL-B"]);
+    expect(FAMILIES.map((f) => f.short)).toEqual(["Time", "NIPUN proxy", "MPL-B proxy"]);
     expect(NIPUN_VIEWS.map((v) => v.key)).toEqual(["nipun_g1", "nipun_g2", "nipun_g3", "nipun"]);
     expect(NIPUN_VIEWS.map((v) => v.label)).toEqual(["Grade 1", "Grade 2", "Grade 3", "Pass/Fail"]);
     expect(NIPUN_VIEWS.map((v) => v.short)).toEqual(["G1", "G2", "G3", "Pass/Fail"]);

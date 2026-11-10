@@ -55,10 +55,10 @@ describe("TractionChart", () => {
     expect(screen.getByTestId("traction-line")).toBeTruthy();
   });
 
-  it("Passed ASER proxy: a daily line of children passing, offered beside Passed MPL-B", async () => {
+  it("Passed ASER proxy: a daily line of children passing, offered beside Passed MPL-B proxy", async () => {
     await mount({ ...DATA, daily: [{ ...day("2026-05-09", 30), aser_passed: 4 }, { ...day("2026-05-10", 45), aser_passed: 6 }] });
     const names = screen.getAllByRole("button").map((b) => b.textContent);
-    expect(names.indexOf("Passed ASER proxy")).toBe(names.indexOf("Passed MPL-B") - 1);
+    expect(names.indexOf("Passed ASER proxy")).toBe(names.indexOf("Passed MPL-B proxy") - 1);
     fireEvent.click(screen.getByRole("button", { name: "Passed ASER proxy" }));
     expect(screen.getByRole("button", { name: "Passed ASER proxy" }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByTestId("traction-line")).toBeTruthy();

@@ -255,7 +255,7 @@ export function DonorPage({ country, incompleteStates }: { country: GeoRef | nul
         <div className="mx-auto max-w-6xl px-6">
           <h2 className={"mb-4 " + H}>Measuring Every Child</h2>
           <p className="max-w-3xl text-lg leading-relaxed text-zinc-700" data-testid="measure-text">
-            LIFTeracy estimates student performance on national (<span className="font-semibold text-zinc-900">ASER</span>) and international (<span className="font-semibold text-zinc-900">MPL-B</span>) tests on a daily basis with full transparency, allowing a much larger &amp; richer sample than current once-a-year tests with a random sample of students.
+            LIFTeracy estimates student performance using proxies for national (<span className="font-semibold text-zinc-900">ASER</span>) and international (<span className="font-semibold text-zinc-900">MPL-B</span>) tests on a daily basis with full transparency, allowing a much larger &amp; richer sample than current once-a-year tests with a random sample of students.
           </p>
           <p className="mt-2 max-w-3xl text-sm text-zinc-500">Real data. Double-click an area to drill from India down to a school, a class and a student. Names and phone numbers are masked.</p>
         </div>

@@ -92,7 +92,7 @@ export function RepKpis({
   // (total + minutes per day, coloured by the per-day average), not a pass rate.
   timeWindow?: TimeWindow;
   // Verdict metric: a school's own Pass / Fail / Not enough data, or an
-  // area's share of decided schools passing ("3 of 5 schools pass NIPUN").
+  // area's share of decided schools passing ("3 of 5 schools pass the NIPUN proxy").
   verdict?: VerdictStats | null;
   isSchool?: boolean;
   t?: T;
@@ -116,10 +116,10 @@ export function RepKpis({
         ? card(fmtDurationParts(root.time_sum, t).value, `${fmtDurationParts(root.time_sum, t).unit} ${timeWindowSuffix(timeWindow, t)}`, windowColor(root.time_total, timeWindow), "pass")
         : verdict
           ? isSchool
-            ? card(verdictLabel(verdict.school_passed, t), t("NIPUN verdict"), verdictColor(verdict.school_passed), "pass")
+            ? card(verdictLabel(verdict.school_passed, t), t("NIPUN proxy verdict"), verdictColor(verdict.school_passed), "pass")
             : card(
                 fmtPctInt(root.pass_rate),
-                `${verdict.schools_pass} ${t("of")} ${verdictDecided(verdict)} ${t("schools pass NIPUN")}${verdict.schools_insufficient ? ` · ${verdict.schools_insufficient} ${t("not enough data")}` : ""}`,
+                `${verdict.schools_pass} ${t("of")} ${verdictDecided(verdict)} ${t("schools pass the NIPUN proxy")}${verdict.schools_insufficient ? ` · ${verdict.schools_insufficient} ${t("not enough data")}` : ""}`,
                 nipColor(root.pass_rate),
                 "pass",
               )
@@ -419,7 +419,7 @@ export function RepLatest({
         <>
           <line x1={mL} x2={mL + iw} y1={mT + ih - 0.8 * ih} y2={mT + ih - 0.8 * ih} stroke="#ef4444" strokeWidth="1.3" strokeDasharray="5 3" pointerEvents="none" />
           <text x={mL + iw} y={mT + ih - 0.8 * ih - 4} textAnchor="end" fontSize="9" fontWeight="700" fill="#ef4444" pointerEvents="none">
-            80% NIPUN target
+            80% NIPUN proxy target
           </text>
         </>
       )}
@@ -748,7 +748,7 @@ export async function exportReportPdf(data: ReportData, root: HTMLElement | null
     time
       ? [fmtDuration(data.root.time_sum), `total time · ${timeWindowSuffix(data.timeWindow!)}`, rgb(windowColor(data.root.time_total, data.timeWindow))]
       : isVerdictMetric(data.metric)
-        ? [fmtPctInt(data.root.pass_rate), `${data.root.verdict?.schools_pass ?? 0} of ${verdictDecided(data.root.verdict)} schools pass NIPUN`, rgb(nipColor(data.root.pass_rate))]
+        ? [fmtPctInt(data.root.pass_rate), `${data.root.verdict?.schools_pass ?? 0} of ${verdictDecided(data.root.verdict)} schools pass the NIPUN proxy`, rgb(nipColor(data.root.pass_rate))]
         : [fmtPctInt(data.root.pass_rate), `of ${ageBandLabel(ageBandOf(data.metric, data.ageBand) ?? [0, 1])} year old students pass the ${metricLabel}`, rgb(nipColor(data.root.pass_rate))],
   ];
   if (data.childType !== "student") kpis.push([`${usingN}`, `${nounP} using LIFTeracy`, [24, 24, 27]]);

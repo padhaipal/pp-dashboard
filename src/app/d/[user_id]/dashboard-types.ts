@@ -269,7 +269,7 @@ export const METRICS: { key: Metric; label: string; short: string }[] = [
   { key: "nipun_g2", label: "NIPUN grade 2 proxy", short: "NIPUN g2 proxy" },
   { key: "nipun_g3", label: "NIPUN grade 3 proxy", short: "NIPUN g3 proxy" },
   { key: "mpl_b", label: "MPL-B proxy", short: "MPL-B proxy" },
-  { key: "nipun", label: "NIPUN proxy pass/fail", short: "NIPUN pass/fail" },
+  { key: "nipun", label: "NIPUN proxy pass/fail", short: "NIPUN proxy pass/fail" },
   { key: "aser_grade", label: "ASER proxy", short: "ASER proxy" },
 ];
 export const METRIC_BY: Record<Metric, { key: Metric; label: string; short: string }> = {
@@ -288,15 +288,15 @@ export const METRIC_BY: Record<Metric, { key: Metric; label: string; short: stri
 export type Family = "usage" | "nipun" | "mpl_b" | "aser_grade";
 export const FAMILIES: { key: Family; label: string; short: string }[] = [
   { key: "usage", label: "Time", short: "Time" },
-  { key: "nipun", label: "NIPUN proxy", short: "NIPUN" },
-  { key: "mpl_b", label: "MPL-B proxy", short: "MPL-B" },
+  { key: "nipun", label: "NIPUN proxy", short: "NIPUN proxy" },
+  { key: "mpl_b", label: "MPL-B proxy", short: "MPL-B proxy" },
 ];
 // The donor page's public map only (2026-11): ASER in NIPUN's place, no
 // second toggle.
 export const PUBLIC_FAMILIES: { key: Family; label: string; short: string }[] = [
   { key: "usage", label: "Time", short: "Time" },
-  { key: "aser_grade", label: "ASER proxy", short: "ASER" },
-  { key: "mpl_b", label: "MPL-B proxy", short: "MPL-B" },
+  { key: "aser_grade", label: "ASER proxy", short: "ASER proxy" },
+  { key: "mpl_b", label: "MPL-B proxy", short: "MPL-B proxy" },
 ];
 export const familiesFor = (isPublic: boolean) => (isPublic ? PUBLIC_FAMILIES : FAMILIES);
 export type NipunView = "nipun_g1" | "nipun_g2" | "nipun_g3" | "nipun";

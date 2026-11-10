@@ -103,7 +103,7 @@ const HI: Record<string, string> = {
   "Loading scores...": "स्कोर लोड हो रहे हैं...",
   pts: "अंक",
   "Oral Literacy NIPUN Proxy percentage pass rate": "मौखिक साक्षरता निपुण प्रॉक्सी प्रतिशत उत्तीर्ण दर",
-  "80% NIPUN target": "80% निपुण लक्ष्य",
+  "80% NIPUN proxy target": "80% निपुण प्रॉक्सी लक्ष्य",
   // metric toggle / tiles (METRICS in dashboard-types.ts)
   // Time metric + its window toggle (TIME_WINDOWS in dashboard-types.ts)
   Time: "समय",
@@ -134,7 +134,7 @@ const HI: Record<string, string> = {
   // the ASER proxy (2026-11): the toggle, the student graph and its levels
   "ASER proxy": "असर प्रॉक्सी",
   ASER: "असर",
-  "ASER level": "असर स्तर",
+  "ASER proxy level": "असर प्रॉक्सी स्तर",
   "Not enough data to compute results": "परिणाम निकालने के लिए पर्याप्त डेटा नहीं",
   Beginner: "शुरुआती",
   Letter: "अक्षर",
@@ -157,11 +157,11 @@ const HI: Record<string, string> = {
   pass: "उत्तीर्ण",
   "Not enough data": "पर्याप्त डेटा नहीं",
   "not enough data": "पर्याप्त डेटा नहीं",
-  "NIPUN verdict": "निपुण परिणाम",
-  "schools pass NIPUN": "विद्यालय निपुण उत्तीर्ण",
+  "NIPUN proxy verdict": "निपुण प्रॉक्सी परिणाम",
+  "schools pass the NIPUN proxy": "विद्यालय निपुण प्रॉक्सी उत्तीर्ण",
   "schools pass": "विद्यालय उत्तीर्ण",
   "schools fail": "विद्यालय अनुत्तीर्ण",
-  "Schools passing NIPUN": "निपुण उत्तीर्ण विद्यालय",
+  "Schools passing the NIPUN proxy": "निपुण प्रॉक्सी उत्तीर्ण विद्यालय",
   "year olds": "वर्ष के बच्चे",
   needed: "चाहिए",
   min: "मिनट",

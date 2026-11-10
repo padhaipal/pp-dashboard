@@ -75,7 +75,7 @@ export type GeoMapProps = {
   hintNorth?: boolean;
   onDismissHint?: () => void;
   metricLabel: string;
-  // the NIPUN verdict: schools coloured Pass / Fail / Not enough data, areas by their share of passing schools
+  // the NIPUN proxy verdict: schools coloured Pass / Fail / Not enough data, areas by their share of passing schools
   verdict?: boolean;
   // Time mode: areas / labels / dots are coloured by minutes per student per
   // day (green past 5, amber for some, red for none) and the tooltip shows
@@ -398,7 +398,7 @@ export function GeoMap(props: GeoMapProps) {
               : verdict
                 ? c.type === "school"
                   ? verdictLabel(c.verdict?.school_passed, t)
-                  : `${c.verdict?.schools_pass ?? 0}/${verdictDecided(c.verdict)} ${t("schools pass NIPUN")}`
+                  : `${c.verdict?.schools_pass ?? 0}/${verdictDecided(c.verdict)} ${t("schools pass the NIPUN proxy")}`
                 : `${fmtPct(c.pass_rate)} · n=${c.n}`
             : t("Not using LIFTeracy")) + (isPrivateSchool(c) ? ` · ${t("private school")}` : ""),
         ];
