@@ -200,14 +200,14 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates, va
   const [profile, setProfile] = useState<PublicProfile>(initialProfile);
   // What the toggles are on. The page body renders `metric` / `range` /
   // `timeWindow` below — the same, except while a new selection is loading.
-  // The metric is a pair: the family (Time / NIPUN / MPL-B; the public map:
-  // Time / ASER / MPL-B — `families`) and, for NIPUN, the view (Grade 1 / 2
-  // / 3 / Pass-Fail). Both toggles (top of page and the Performance
-  // section) share this state.
-  const families = familiesFor(isPublic);
+  // The metric is a pair: the family (Time / NIPUN / MPL-B) and, for NIPUN,
+  // the view (Grade 1 / 2 / 3 / Pass-Fail). Both toggles (top of page and
+  // the Performance section) share this state.
   const [pickedFamily, setFamily] = useState<Family>(familyOf(DEFAULT_METRIC));
   const [pickedNipun, setNipunView] = useState<NipunView>(DEFAULT_NIPUN_VIEW);
   const pickedMetric: Metric = metricFor(pickedFamily, pickedNipun);
+  // the donor page's public map: ASER in NIPUN's place (undefined → FAMILIES)
+  const families = isPublic ? familiesFor(true) : undefined;
   // ONE window (2026-10): the Time figures' window and the trend's x-axis /
   // data range for every metric (all time → the full history, else 30 days),
   // shown under the Time toggle and as the Performance section's trend window.
@@ -655,7 +655,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates, va
             <div className="mx-auto mt-6 max-w-5xl px-6">
               <div className="mb-3 flex flex-col items-center gap-2">
                 <MvpMetricToggle metric={pickedFamily} setMetric={setFamily} options={families} t={t} />
-                {/* second row, always at its height: Time → the window; NIPUN → the grade / Pass-Fail; ASER / MPL-B → empty */}
+                {/* second row, always at its height: Time → the window; NIPUN → the grade / Pass-Fail; MPL-B → empty */}
                 <MvpSubSlot testId="top-sub-toggle-slot">
                   {pickedFamily === "usage" && <MvpTimeWindowToggle window={pickedWindow} setWindow={setTimeWindow} t={t} />}
                   {pickedFamily === "nipun" && <MvpNipunToggle view={pickedNipun} setView={setNipunView} t={t} />}

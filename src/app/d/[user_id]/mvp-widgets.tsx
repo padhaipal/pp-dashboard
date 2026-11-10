@@ -14,14 +14,15 @@ import {
   CHILD_OFFICER,
   csvUrl,
   DEFAULT_RANGE,
+  DEFAULT_STUDENT_NIPUN_VIEW,
   EXPLAINER_SHARE_URL,
   FAMILIES,
   familyOf,
   isVerdictMetric,
   metricFor,
+  MODAL_FAMILIES,
   modalFamiliesFor,
   familiesFor,
-  DEFAULT_STUDENT_NIPUN_VIEW,
   NIPUN_VIEWS,
   STUDENT_NIPUN_VIEWS,
   rangeLabel,
@@ -141,10 +142,9 @@ export function MvpTrend({ delta, suffix = "" }: { delta: number | null; suffix?
 
 // ------------------------------------------------------------------ toggles
 
-// The page's metric toggle: Time · NIPUN proxy · MPL-B proxy (FAMILIES; the
-// donor page's public map passes PUBLIC_FAMILIES — ASER in NIPUN's place) —
-// the student modal passes modalFamiliesFor (letter scores first). On a
-// phone the short labels ("NIPUN", "MPL-B") keep it on one line.
+// The page's metric toggle: Time · NIPUN proxy · MPL-B proxy (FAMILIES) —
+// the student modal passes MODAL_FAMILIES (letter scores first). On a phone
+// the short labels ("NIPUN", "MPL-B") keep it on one line.
 export function MvpMetricToggle<M extends string = Family>({
   metric,
   setMetric,
@@ -926,7 +926,7 @@ export function MvpTeacherModal({
   t = same,
 }: {
   subject: ModalSubject;
-  // the page's metric: what the modal opens on
+  // the page's metric (family + NIPUN view): what the modal opens on
   metric: Metric;
   onClose: () => void;
   // student mode: the name was edited in the header → update the page's copy
@@ -936,13 +936,13 @@ export function MvpTeacherModal({
   const isStudent = subject.kind === "student";
   // Students open on the letter chart; geo children have no letter scores.
   // The same family + NIPUN sub-toggle as the page; a student has no school
-  // verdict, so Pass/Fail is not offered and falls back to a grade. The
-  // donor page's public map offers ASER in NIPUN's place.
-  const isPublic = isPublicViewer(useViewerId());
+  // verdict, so Pass/Fail is not offered and falls back to a grade.
   const [mFamily, setMFamily] = useState<ModalFamily>(isStudent ? "letters" : familyOf(metric));
   const pageView: NipunView = familyOf(metric) === "nipun" ? (metric as NipunView) : DEFAULT_STUDENT_NIPUN_VIEW;
   const [mNipun, setMNipun] = useState<NipunView>(isStudent && isVerdictMetric(pageView) ? DEFAULT_STUDENT_NIPUN_VIEW : pageView);
   const mMetric: Metric | "letters" = mFamily === "letters" ? "letters" : metricFor(mFamily, mNipun);
+  // the donor page's public map offers ASER in NIPUN's place
+  const isPublic = isPublicViewer(useViewerId());
   const [mRange, setMRange] = useState<Range>(DEFAULT_RANGE);
   // The dashboard metric the trend uses when the letter chart is showing.
   const testMetric: Metric = mMetric === "letters" ? metric : mMetric;
@@ -1130,17 +1130,15 @@ export function MvpTeacherModal({
           <div className="border-b border-zinc-100 px-3 py-5 sm:px-6">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <div className="flex flex-wrap items-center gap-2">
-                {isStudent ? <MvpMetricToggle<ModalFamily> metric={mFamily} setMetric={setMFamily} options={modalFamiliesFor(isPublic)} t={t} /> : <MvpMetricToggle metric={mFamily as Family} setMetric={setMFamily} options={familiesFor(isPublic)} t={t} />}
+                {isStudent ? <MvpMetricToggle<ModalFamily> metric={mFamily} setMetric={setMFamily} options={isPublic ? modalFamiliesFor(true) : MODAL_FAMILIES} t={t} /> : <MvpMetricToggle metric={mFamily as Family} setMetric={setMFamily} options={isPublic ? familiesFor(true) : undefined} t={t} />}
                 {/* the letter chart is per interaction, not per day — no range */}
                 {mMetric !== "letters" && <MvpRangeBar range={mRange} setRange={setMRange} entityId={childId} metric={testMetric} t={t} />}
               </div>
             </div>
-            {/* NIPUN: the grade / Pass-Fail row, as on the page (kept at its height for the other families; none on the public map) */}
-            {!isPublic && (
-              <div className="mb-3">
-                <MvpSubSlot testId="modal-sub-toggle-slot">{mFamily === "nipun" && <MvpNipunToggle view={mNipun} setView={setMNipun} options={isStudent ? STUDENT_NIPUN_VIEWS : NIPUN_VIEWS} testId="modal-nipun-view-toggle" t={t} />}</MvpSubSlot>
-              </div>
-            )}
+            {/* NIPUN: the grade / Pass-Fail row, as on the page (kept at its height for the other families) */}
+            <div className="mb-3">
+              <MvpSubSlot testId="modal-sub-toggle-slot">{mFamily === "nipun" && <MvpNipunToggle view={mNipun} setView={setMNipun} options={isStudent ? STUDENT_NIPUN_VIEWS : NIPUN_VIEWS} testId="modal-nipun-view-toggle" t={t} />}</MvpSubSlot>
+            </div>
             {subject.kind === "child" ? (
               <>
                 {error && <p className="text-sm text-red-600">{error}</p>}

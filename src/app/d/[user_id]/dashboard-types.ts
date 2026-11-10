@@ -280,25 +280,24 @@ export const METRIC_BY: Record<Metric, { key: Metric; label: string; short: stri
   nipun: METRICS[5],
   aser_grade: METRICS[6],
 };
-// What the page's metric toggle offers. The /d dashboards (FAMILIES): Time,
-// NIPUN proxy, MPL-B proxy — NIPUN opens a second toggle, Grade 1 / 2 / 3 /
-// Pass/Fail, the way Time opens its window toggle. The donor page's public
-// map (PUBLIC_FAMILIES, 2026-11): Time, ASER proxy, MPL-B proxy — no NIPUN.
-// The metric sent to pp-sketch is `metricFor`. `short` is the phone-width
-// label.
-export type Family = "usage" | "nipun" | "aser_grade" | "mpl_b";
-type FamilyOption = { key: Family; label: string; short: string };
-export const FAMILIES: FamilyOption[] = [
+// What the page's metric toggle offers (2026-10): Time, NIPUN proxy, MPL-B
+// proxy. NIPUN opens a second toggle — Grade 1 / 2 / 3 / Pass/Fail — the way
+// Time opens its window toggle; the metric sent to pp-sketch is the pair
+// (`metricFor`). `short` is the phone-width label.
+export type Family = "usage" | "nipun" | "mpl_b" | "aser_grade";
+export const FAMILIES: { key: Family; label: string; short: string }[] = [
   { key: "usage", label: "Time", short: "Time" },
   { key: "nipun", label: "NIPUN proxy", short: "NIPUN" },
   { key: "mpl_b", label: "MPL-B proxy", short: "MPL-B" },
 ];
-export const PUBLIC_FAMILIES: FamilyOption[] = [
+// The donor page's public map only (2026-11): ASER in NIPUN's place, no
+// second toggle.
+export const PUBLIC_FAMILIES: { key: Family; label: string; short: string }[] = [
   { key: "usage", label: "Time", short: "Time" },
   { key: "aser_grade", label: "ASER proxy", short: "ASER" },
   { key: "mpl_b", label: "MPL-B proxy", short: "MPL-B" },
 ];
-export const familiesFor = (isPublic: boolean): FamilyOption[] => (isPublic ? PUBLIC_FAMILIES : FAMILIES);
+export const familiesFor = (isPublic: boolean) => (isPublic ? PUBLIC_FAMILIES : FAMILIES);
 export type NipunView = "nipun_g1" | "nipun_g2" | "nipun_g3" | "nipun";
 export const NIPUN_VIEWS: { key: NipunView; label: string; short: string }[] = [
   { key: "nipun_g1", label: "Grade 1", short: "G1" },
@@ -311,7 +310,7 @@ export const DEFAULT_NIPUN_VIEW: NipunView = "nipun";
 // A student has no school verdict: the student modal offers the grades only.
 export const STUDENT_NIPUN_VIEWS = NIPUN_VIEWS.filter((v) => v.key !== "nipun");
 export const DEFAULT_STUDENT_NIPUN_VIEW: NipunView = "nipun_g2";
-export const familyOf = (m: Metric): Family => (m === "usage" || m === "mpl_b" || m === "aser_grade" ? m : "nipun");
+export const familyOf = (m: Metric): Family => (m === "usage" ? "usage" : m === "mpl_b" ? "mpl_b" : m === "aser_grade" ? "aser_grade" : "nipun");
 export const metricFor = (family: Family, nipun: NipunView): Metric => (family === "nipun" ? nipun : family);
 // "Pass" / "Fail" / "Not enough data" for a school verdict, and its colour.
 export const verdictLabel = (v: boolean | null | undefined, t: (s: string) => string = (s) => s): string => (v === true ? t("Pass") : v === false ? t("Fail") : t("Not enough data"));
@@ -340,7 +339,9 @@ export const rangeSuffix = (r: Range, t: (s: string) => string = (s) => s) => (r
 // page's families (with the same NIPUN sub-toggle, grades only).
 export type ModalFamily = Family | "letters";
 export const LETTERS_LABEL = "Letter scores";
-export const modalFamiliesFor = (isPublic: boolean): { key: ModalFamily; label: string; short: string }[] => [{ key: "letters", label: LETTERS_LABEL, short: "Letters" }, ...familiesFor(isPublic)];
+export const MODAL_FAMILIES: { key: ModalFamily; label: string; short: string }[] = [{ key: "letters", label: LETTERS_LABEL, short: "Letters" }, ...FAMILIES];
+export const PUBLIC_MODAL_FAMILIES: { key: ModalFamily; label: string; short: string }[] = [{ key: "letters", label: LETTERS_LABEL, short: "Letters" }, ...PUBLIC_FAMILIES];
+export const modalFamiliesFor = (isPublic: boolean) => (isPublic ? PUBLIC_MODAL_FAMILIES : MODAL_FAMILIES);
 // Shown wherever a student has no name yet (the API's "Student N" label is
 // never displayed): tiles, modal title, most-improved rows, trend lines.
 export const UNNAMED = "~";
