@@ -63,7 +63,7 @@ describe("TractionChart", () => {
     expect(screen.getByRole("button", { name: "Passed ASER proxy" }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByTestId("traction-line")).toBeTruthy();
     // who counts, explained under the chart — for this toggle only
-    expect(screen.getByTestId("traction-note").textContent).toContain("Only students aged 7 and under are counted");
+    expect(screen.getByTestId("traction-note").textContent).toBe("Counts students aged 7 and under only.");
     fireEvent.click(screen.getByRole("button", { name: "Passed MPL-B proxy" }));
     expect(screen.queryByTestId("traction-note")).toBeNull();
   });
