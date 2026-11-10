@@ -887,8 +887,8 @@ describe("TeacherDashboard — public variant (the donor page)", () => {
     }
   });
 
-  it("donor page: ASER proxy in NIPUN's place — 6–7 year olds in the headline, levels on the tiles, the student's level graph; the /d dashboards keep NIPUN", async () => {
-    const { fn, calls } = makeFetch({ scoresById: { "g-09": { ...SCORES, metric: "aser_grade", age_band: [6, 8], pass_mark: undefined }, "g-sch": SCORES_SCHOOL, "t-1": SCORES_CLASS_MASKED }, media: MEDIA_MASKED });
+  it("donor page: ASER proxy in NIPUN's place — children aged 7 and under in the headline, levels on the tiles, the student's level graph; the /d dashboards keep NIPUN", async () => {
+    const { fn, calls } = makeFetch({ scoresById: { "g-09": { ...SCORES, metric: "aser_grade", age_band: [0, 8], pass_mark: undefined }, "g-sch": SCORES_SCHOOL, "t-1": SCORES_CLASS_MASKED }, media: MEDIA_MASKED });
     vi.stubGlobal("fetch", vi.fn(fn));
     const first = render(<TeacherDashboard profile={publicProfile(PROFILE.geo_entity!)} incompleteStates={[]} variant="public" />);
     await screen.findByTestId("map-card");
@@ -896,7 +896,7 @@ describe("TeacherDashboard — public variant (the donor page)", () => {
     await drillIntoUp();
     fireEvent.click(screen.getAllByRole("button", { name: "ASER proxy" })[0]);
     await waitFor(() => expect(calls.some((u) => u.includes("/geo-entities/g-09/scores?metric=aser_grade"))).toBe(true));
-    await waitFor(() => expect(screen.getByTestId("root-kpis").textContent).toContain("of 6–7 year old students pass the ASER proxy"));
+    await waitFor(() => expect(screen.getByTestId("root-kpis").textContent).toContain("of students aged 7 and under pass the ASER proxy"));
     // no second toggle row for ASER
     expect(screen.queryByTestId("nipun-view-toggle")).toBeNull();
     expect(screen.getByTestId("top-sub-toggle-slot").getAttribute("data-empty")).toBe("1");

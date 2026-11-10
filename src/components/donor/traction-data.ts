@@ -7,6 +7,9 @@ export interface TractionDay {
   users_over_5min: number;
   minutes: number;
   students_onboarded: number;
+  // children aged 7 and under reading at grade level on the ASER proxy
+  // (2026-11; absent from an older pp-sketch)
+  aser_passed?: number;
   mpl_b_passed: number;
   teachers_onboarded: number;
   schools: number;
@@ -69,6 +72,7 @@ export const TRACTION_METRICS: TractionMetric[] = [
   { key: "minutes", label: "Minutes spent", short: "Minutes", unit: "Minutes", format: fmtInt },
   { key: "users_over_5min", label: "Users over 5 min", short: "Users 5+ min", unit: "Users", format: fmtInt },
   { key: "students_onboarded", label: "Students onboarded", short: "Students", unit: "Students", format: fmtInt },
+  { key: "aser_passed", label: "Passed ASER proxy", short: "ASER", unit: "Students", format: fmtInt },
   { key: "mpl_b_passed", label: "Passed MPL-B", short: "MPL-B", unit: "Students", format: fmtInt },
   { key: "teachers_onboarded", label: "Teachers onboarded", short: "Teachers", unit: "Teachers", format: fmtInt },
   { key: "schools", label: "Schools", short: "Schools", unit: "Schools", format: fmtInt },
@@ -79,7 +83,7 @@ export const TRACTION_METRICS: TractionMetric[] = [
   { key: "dau_mau", label: "DAU / MAU", short: "DAU/MAU", unit: "DAU / MAU", format: fmtPct },
 ];
 
-export const seriesOf = (daily: TractionDay[], key: TractionKey): (number | null)[] => daily.map((d) => d[key]);
+export const seriesOf = (daily: TractionDay[], key: TractionKey): (number | null)[] => daily.map((d) => d[key] ?? null);
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 

@@ -147,3 +147,8 @@ Use / Child Protection Policy at /privacy, /terms,
 LIFTeracy versions, Oct 2026); Development Consortium
 registration.
 The team photo's caption names Tom Delaney (left) and David Nelson (right).
+
+2026-11: Traction gains "Passed ASER proxy" (`aser_passed`, before "Passed
+MPL-B"): a daily line of children aged 7 and under reading at grade level —
+pp-sketch's country-level figure, so it matches the map's headline. Absent
+on an older pp-sketch (drawn as no data).
