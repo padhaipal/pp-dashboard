@@ -914,8 +914,8 @@ describe("TeacherDashboard — public variant (the donor page)", () => {
     fireEvent.click(tiles[0]);
     const dialog = await screen.findByRole("dialog");
     expect(dialogButton(dialog, "NIPUN proxy")).toBeUndefined();
-    expect(within(dialog).queryByTestId("modal-sub-toggle-slot")).toBeNull();
     fireEvent.click(dialogButton(dialog, "ASER proxy"));
+    expect(within(dialog).getByTestId("modal-sub-toggle-slot").getAttribute("data-empty")).toBe("1");
     fireEvent.click(dialogButton(dialog, "All time"));
     const chart = await within(dialog).findByTestId("aser-chart");
     for (const level of ["Beginner", "Letter", "Word", "Paragraph", "Story"]) expect(chart.textContent).toContain(level);
