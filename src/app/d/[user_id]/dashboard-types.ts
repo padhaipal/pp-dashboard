@@ -8,9 +8,9 @@
 // "nipun" (2026-10) is the NIPUN school verdict (pp-sketch
 // dashboard-scores VERDICT_METRIC): school level and above, pass / fail /
 // not enough data per school, the share of decided schools passing above.
-// "aser_grade" (2026-11) is the ASER proxy as one figure: among 6–7 year
-// olds with an ASER result, the share reading at their grade — six-year-olds
-// who pass the paragraph or the story, seven-year-olds who pass the story
+// "aser_grade" (2026-11) is the ASER proxy as one figure: among children
+// aged 7 and under with an ASER result, the share reading at their grade —
+// six and under pass with the paragraph or the story, seven with the story
 // (pp-sketch aser.ts aserGradePassed). Offered on the donor page's public
 // map only; the /d dashboards (teachers, officials) keep the NIPUN proxies.
 export type Metric = "usage" | "nipun_g1" | "nipun_g2" | "nipun_g3" | "mpl_b" | "aser_grade" | "nipun";
@@ -32,7 +32,7 @@ export const PASS_MARK_PCT: Record<TestMetric, number | null> = { nipun_g1: 75, 
 // attempts — grade 1: the last 4 level-8 lessons; MPL-B: 20 — plus a spread
 // of question types, so "at least").
 export const TEST_QUESTION_COUNT: Record<TestMetric, number> = { nipun_g1: 4, nipun_g2: 4, nipun_g3: 4, mpl_b: 20, aser_grade: 1 };
-export const METRIC_AGE_BANDS: Record<TestMetric, [number, number]> = { nipun_g1: [6, 7], nipun_g2: [7, 8], nipun_g3: [8, 9], mpl_b: [10, 11], aser_grade: [6, 8] };
+export const METRIC_AGE_BANDS: Record<TestMetric, [number, number]> = { nipun_g1: [6, 7], nipun_g2: [7, 8], nipun_g3: [8, 9], mpl_b: [10, 11], aser_grade: [0, 8] };
 // A student's ASER level (pp-sketch aserTestLevel): the highest test passed.
 export const ASER_LEVELS = ["Beginner", "Letter", "Word", "Paragraph", "Story"] as const;
 // A student's `score` under aser_grade is level ÷ 4.
@@ -46,9 +46,10 @@ export const ASER_FAIL_COLOR = "#dc2626";
 export const passMarkOf = (metric: Metric, fromResponse?: number | null): number | null => (isTestMetric(metric) ? (fromResponse ?? PASS_MARK_PCT[metric]) : null);
 export const ageBandOf = (metric: Metric, fromResponse?: [number, number] | null): [number, number] | null => (isTestMetric(metric) ? (fromResponse ?? METRIC_AGE_BANDS[metric]) : null);
 // The age the test is described by: the band's lower bound ("8 year old
-// students" for [8, 10)) — one number, as the headline is worded. ASER
-// names both of its years: "6–7 year old students".
-export const ageBandLabel = ([min, max]: [number, number], metric?: Metric): string => (metric === "aser_grade" ? `${min}–${max - 1}` : `${min}`);
+// students" for [8, 10)) — one number, as the headline is worded.
+export const ageBandLabel = ([min]: [number, number]): string => `${min}`;
+// ASER's band is everyone up to an age: "students aged 7 and under".
+export const aserBandOldest = ([, max]: [number, number]): number => max - 1;
 // 30 = last 30 days; "all" = all time (no lower bound; deltas are vs the
 // student's / entity's oldest row).
 export type Range = 30 | "all";

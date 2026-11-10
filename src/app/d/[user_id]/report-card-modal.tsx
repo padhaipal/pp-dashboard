@@ -37,6 +37,7 @@ import {
   type SpotlightResponse,
   type StudentChild,
   ageBandLabel,
+  aserBandOldest,
   ageBandOf,
   ASER_EMPTY_TEXT,
   passMarkOf,
@@ -78,7 +79,7 @@ export function RepKpis({
   t = same,
 }: {
   root: RootStats;
-  // words the age band (ASER: "6–7"); optional for older callers
+  // ASER words its age band differently ("aged 7 and under")
   metric?: Metric;
   metricLabel: string;
   nounP: string;
@@ -124,7 +125,12 @@ export function RepKpis({
               )
         : card(
             fmtPctInt(root.pass_rate),
-            ageBand ? `${t("of")} ${ageBandLabel(ageBand, metric)} ${t("year old students pass the")} ${metricLabel}` : `${t("of students pass the")} ${metricLabel}`,
+            // ASER: "of students aged 7 and under pass the ASER proxy"
+            ageBand && metric === "aser_grade"
+              ? `${t("of students aged")} ${aserBandOldest(ageBand)} ${t("and under pass the")} ${metricLabel}`
+              : ageBand
+                ? `${t("of")} ${ageBandLabel(ageBand)} ${t("year old students pass the")} ${metricLabel}`
+                : `${t("of students pass the")} ${metricLabel}`,
             nipColor(root.pass_rate),
             "pass",
           )}

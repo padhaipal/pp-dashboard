@@ -72,3 +72,9 @@ David: teachers / officials keep NIPUN; ASER is for the donor page. `FAMILIES`
 again; `PUBLIC_FAMILIES` = Time · ASER proxy · MPL-B proxy; `familiesFor(isPublic)`
 / `modalFamiliesFor(isPublic)` pick. `ASER_EMPTY_TEXT` = "Not enough data to
 compute results" — what an empty ASER chart says.
+
+## 2026-11 (later still): ASER band is "7 and under"
+
+Under-sixes count (six-year-old rule), so `aser_grade` band = [0, 8] and the
+headline reads "N% of students aged 7 and under pass the ASER proxy"
+(`aserBandOldest`; `ageBandLabel` is back to its one-argument form).

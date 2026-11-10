@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   ageBandLabel,
   aserLevelName,
+  aserBandOldest,
   familiesFor,
   modalFamiliesFor,
   PUBLIC_FAMILIES,
@@ -244,9 +245,9 @@ describe("trend window", () => {
 });
 
 describe("ASER proxy (2026-11, the donor page's public map)", () => {
-  it("6–7 year olds, both ages named; no single pass mark; a level by name", () => {
-    expect(ageBandOf("aser_grade")).toEqual([6, 8]);
-    expect(ageBandLabel([6, 8], "aser_grade")).toBe("6–7");
+  it("children aged 7 and under; no single pass mark; a level by name", () => {
+    expect(ageBandOf("aser_grade")).toEqual([0, 8]);
+    expect(aserBandOldest([0, 8])).toBe(7);
     expect(passMarkOf("aser_grade")).toBeNull();
     expect(aserLevelName(null)).toBeNull();
     expect([0, 0.25, 0.5, 0.75, 1].map((s) => aserLevelName(s))).toEqual(["Beginner", "Letter", "Word", "Paragraph", "Story"]);
