@@ -19,8 +19,9 @@ export interface TractionDay {
 }
 
 // Per IST month: students with at least one day > 5 min active that month,
-// split by onboarding month; projected_* = the month in progress scaled
-// linearly to month end (null for complete months).
+// split by onboarding month; projected_* = the month-end estimate for the
+// month in progress (null for complete months), computed by pp-sketch as
+// returning × (30 ÷ d)^0.35 and new × 30 ÷ d, d = days so far (max 30).
 export interface TractionMonth {
   month: string; // YYYY-MM
   joined_earlier: number;
@@ -70,10 +71,13 @@ export interface TractionMetric {
   note?: string;
 }
 
+// Who counts as a student (the toggle and the headline figure).
+export const STUDENTS_NOTE = "Students who have finished onboarding and spent at least 5 active minutes on tests or lessons.";
+
 export const TRACTION_METRICS: TractionMetric[] = [
   { key: "minutes", label: "Minutes spent", short: "Minutes", unit: "Minutes", format: fmtInt },
   { key: "users_over_5min", label: "Users over 5 min", short: "Users 5+ min", unit: "Users", format: fmtInt },
-  { key: "students_onboarded", label: "Students onboarded", short: "Students", unit: "Students", format: fmtInt },
+  { key: "students_onboarded", label: "Students onboarded", short: "Students", unit: "Students", format: fmtInt, note: STUDENTS_NOTE },
   {
     key: "aser_passed",
     label: "Passed ASER proxy",
