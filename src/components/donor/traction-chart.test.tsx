@@ -23,8 +23,8 @@ const DATA: TractionResponse = {
   daily: [day("2026-05-09", 30), day("2026-05-10", 45)],
   totals: { hours: 12345, students: 678 },
   monthly: [
-    { month: "2026-04", joined_earlier: 0, joined_this_month: 11, projected_joined_earlier: null, projected_joined_this_month: null, mau: 40, dau_avg: 9.2, dau_mau: 23, projected_dau_mau: null },
-    { month: "2026-05", joined_earlier: 4, joined_this_month: 6, projected_joined_earlier: 12, projected_joined_this_month: 19, mau: 20, dau_avg: 7.5, dau_mau: 37.5, projected_dau_mau: 24.2 },
+    { month: "2026-04", joined_earlier: 0, joined_this_month: 11, projected_joined_earlier: null, projected_joined_this_month: null, mau: 40, dau_avg: 9.2, dau_mau: 23 },
+    { month: "2026-05", joined_earlier: 4, joined_this_month: 6, projected_joined_earlier: 12, projected_joined_this_month: 19, mau: 20, dau_avg: 7.5, dau_mau: 37.5 },
   ],
 };
 
@@ -71,15 +71,19 @@ describe("TractionChart", () => {
     expect(screen.getByText("No data yet.")).toBeTruthy();
   });
 
-  it("DAU / MAU: one bar per month, the month in progress with a dashed month-end estimate", async () => {
+  it("DAU / MAU: one bar per month, the month in progress lighter and without an estimate", async () => {
     await mount(DATA);
     fireEvent.click(screen.getByRole("button", { name: "DAU / MAU" }));
     expect(screen.getByTestId("traction-dau-mau")).toBeTruthy();
     expect(screen.getAllByTestId("traction-bar")).toHaveLength(2);
-    expect(screen.getAllByTestId("traction-projection")).toHaveLength(1);
+    // no month-end estimate: the month in progress is its figure so far, lighter
+    expect(screen.queryByTestId("traction-projection")).toBeNull();
+    expect(screen.queryByText("Estimated by month end")).toBeNull();
     expect(screen.getByText("23%")).toBeTruthy();
-    expect(screen.getByText("38% → ~24%")).toBeTruthy();
-    expect(screen.getByText("Estimated by month end")).toBeTruthy();
+    expect(screen.getByText("38%")).toBeTruthy();
+    expect(screen.getByText("This month so far")).toBeTruthy();
+    const bars = screen.getAllByTestId("traction-bar").map((b) => b.querySelector("rect")!.getAttribute("class"));
+    expect(bars).toEqual(["fill-brand-ink", "fill-brand-mute"]);
     expect(screen.getByText(/Monthly, India time/)).toBeTruthy();
   });
 

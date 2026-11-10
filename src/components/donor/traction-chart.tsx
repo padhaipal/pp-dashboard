@@ -88,7 +88,7 @@ export function TractionChart() {
         <>
           {/* an older pp-sketch serves months without the DAU / MAU figures */}
           {data && !monthly.some((m) => m.dau_mau != null) && <p className="py-16 text-center text-sm text-zinc-400">No data yet.</p>}
-          {data && monthly.some((m) => m.dau_mau != null) && <StickinessBars size={size} months={monthly} />}
+          {data && monthly.some((m) => m.dau_mau != null) && <StickinessBars size={size} months={monthly} to={data.to} />}
         </>
       ) : (
         <>
@@ -377,10 +377,9 @@ function MonthlyBars({ size: { W, H }, months }: { size: { W: number; H: number 
 
 // "DAU / MAU": one bar per IST month — of the onboarded students who sent a
 // message that month (MAU), the share who sent one on an average day (DAU).
-// The month in progress is drawn lighter (its figure so far) with a dashed
-// outline at its month-end estimate: the ratio starts high and settles as
-// the month's audience builds up, so the estimate is usually the lower one.
-function StickinessBars({ size: { W, H }, months }: { size: { W: number; H: number }; months: TractionMonth[] }) {
+// The month in progress (the month of `to`) is drawn lighter: its figure so
+// far, no month-end estimate (2026-11: the dashed estimate was removed).
+function StickinessBars({ size: { W, H }, months, to }: { size: { W: number; H: number }; months: TractionMonth[]; to: string }) {
   const [hover, setHover] = useState<number | null>(null);
   const top0 = 6; // room for the figure over the tallest bar
   const plotW = W - PAD.left - PAD.right;
@@ -388,13 +387,13 @@ function StickinessBars({ size: { W, H }, months }: { size: { W: number; H: numb
   const y0 = top0 + PAD.top + plotH;
   const slot = plotW / months.length;
   const barW = Math.min(64, slot * 0.6);
-  const maxV = Math.max(1, ...months.map((m) => Math.max(m.dau_mau ?? 0, m.projected_dau_mau ?? 0)));
+  const maxV = Math.max(1, ...months.map((m) => m.dau_mau ?? 0));
   const ticks = niceTicks(0, maxV);
   const step = ticks.length > 1 ? ticks[1] - ticks[0] : 1;
   while (ticks[ticks.length - 1] < maxV) ticks.push(ticks[ticks.length - 1] + step);
   const top = ticks[ticks.length - 1] || 1;
   const h = (v: number) => (v / top) * plotH;
-  const inProgress = (m: TractionMonth) => m.projected_dau_mau != null;
+  const inProgress = (m: TractionMonth) => m.month === to.slice(0, 7);
   const hm = hover !== null ? months[hover] : null;
 
   return (
@@ -406,16 +405,10 @@ function StickinessBars({ size: { W, H }, months }: { size: { W: number; H: numb
           Complete month
         </span>
         {months.some(inProgress) && (
-          <>
-            <span className="flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 bg-brand-mute" />
-              This month so far
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 border border-dashed border-zinc-600" />
-              Estimated by month end
-            </span>
-          </>
+          <span className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 bg-brand-mute" />
+            This month so far
+          </span>
         )}
       </div>
       <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full select-none" data-testid="traction-dau-mau" onMouseLeave={() => setHover(null)}>
@@ -434,13 +427,11 @@ function StickinessBars({ size: { W, H }, months }: { size: { W: number; H: numb
           const cx = PAD.left + slot * (i + 0.5);
           const x = cx - barW / 2;
           const v = m.dau_mau ?? null;
-          const p = m.projected_dau_mau ?? null;
-          const label = v === null ? "—" : p !== null ? `${fmtPct(v)} → ~${fmtPct(p)}` : fmtPct(v);
-          const labelTop = Math.max(v !== null ? h(v) : 0, p !== null ? h(p) : 0);
+          const label = v === null ? "—" : fmtPct(v);
+          const labelTop = v !== null ? h(v) : 0;
           return (
             <g key={m.month} data-testid="traction-bar">
-              {v !== null && <rect x={x} y={y0 - h(v)} width={barW} height={h(v)} className={p !== null ? "fill-brand-mute" : "fill-brand-ink"} />}
-              {p !== null && <rect x={x} y={y0 - h(p)} width={barW} height={h(p)} fill="none" stroke="#52525b" strokeWidth={1.2} strokeDasharray="4,3" data-testid="traction-projection" />}
+              {v !== null && <rect x={x} y={y0 - h(v)} width={barW} height={h(v)} className={inProgress(m) ? "fill-brand-mute" : "fill-brand-ink"} />}
               <text x={cx} y={y0 - labelTop - 5} textAnchor="middle" fontSize={12} fontWeight={700} className="fill-zinc-700">
                 {label}
               </text>
@@ -455,7 +446,6 @@ function StickinessBars({ size: { W, H }, months }: { size: { W: number; H: numb
           <g pointerEvents="none">
             {(() => {
               const lines = [`${(hm.mau ?? 0).toLocaleString("en-IN")} sent a message in the month`, `${(hm.dau_avg ?? 0).toLocaleString("en-IN")} on an average day`];
-              if (hm.projected_dau_mau != null) lines.push(`~${fmtPct(hm.projected_dau_mau)} estimated by month end`);
               const boxW = 230;
               const boxH = 20 + lines.length * 15;
               const cx = PAD.left + slot * (hover + 0.5);

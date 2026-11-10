@@ -5,19 +5,26 @@ import { TeacherDashboard, publicProfile } from "./teacher-dashboard";
 import { RepTrend } from "./report-card-modal";
 import { MvpMinutesChart } from "./mvp-widgets";
 import { EMPTY_ROOT_TEXT, INCOMPLETE_TOOLTIP, type Child, type ScoresResponse } from "./dashboard-types";
-import { CHILD_AP, CHILD_UP, EMPTY_SCORES, MEDIA_MASKED, PROFILE, PROFILE_BLOCK, PROFILE_SCHOOL, SCORES, SCORES_CLASS, SCORES_CLASS_MASKED, SCORES_SCHOOL, SCORES_UP, SHARE_MESSAGE, makeFetch } from "./test-fixtures";
+import { CHILD_AP, CHILD_UP, EMPTY_SCORES, MEDIA_MASKED, PROFILE, PROFILE_BLOCK, PROFILE_SCHOOL, SCORES, SCORES_CLASS, SCORES_CLASS_MASKED, SCORES_SCHOOL, SCORES_SCHOOL_VERDICT, SCORES_UP, SCORES_VERDICT, SHARE_MESSAGE, makeFetch } from "./test-fixtures";
 
 const pressed = (name: string) => screen.getAllByRole("button", { name }).map((b) => b.getAttribute("aria-pressed"));
 // a button of the headline Time window toggle (the trend has its own copy of the same toggle)
 const winBtn = (name: string) => within(screen.getByTestId("time-window-toggle")).getByRole("button", { name });
 const winPressed = (name: string) => [winBtn(name).getAttribute("aria-pressed")];
-// The page opens on Time; tests about the test-score metrics pick ASER first.
-const pickAser = async () => {
-  fireEvent.click((await screen.findAllByRole("button", { name: "ASER proxy" }))[0]);
-  await waitFor(() => expect(pressed("ASER proxy")[0]).toBe("true"));
+// The page opens on Time; tests about the test-score metrics pick one first:
+// "NIPUN proxy" opens on Pass/Fail, so the grade is picked in the sub-toggle.
+const pickNipunG3 = async () => {
+  fireEvent.click((await screen.findAllByRole("button", { name: "NIPUN proxy" }))[0]);
+  await waitFor(() => expect(pressed("NIPUN proxy")[0]).toBe("true"));
+  fireEvent.click(within(screen.getByTestId("nipun-view-toggle")).getByRole("button", { name: "Grade 3" }));
+  await waitFor(() => expect(pressed("Grade 3")[0]).toBe("true"));
 };
-// a button of the dialog's metric toggle
+// a button of the dialog's family / NIPUN toggles
 const dialogButton = (dialog: HTMLElement, name: string) => Array.from(dialog.querySelectorAll("button")).find((b) => b.textContent === name)!;
+const pickDialogGrade = (dialog: HTMLElement, grade: "Grade 1" | "Grade 2" | "Grade 3") => {
+  fireEvent.click(dialogButton(dialog, "NIPUN proxy"));
+  fireEvent.click(dialogButton(dialog, grade));
+};
 
 // The home level is for ranking against peers: no headline figures until a
 // drill. Tests that check the figures drill into UP first (answered with the
@@ -72,7 +79,7 @@ describe("TeacherDashboard", () => {
     const { fn } = makeFetch({ scoresById: { "g-09": SCORES } });
     vi.stubGlobal("fetch", vi.fn(fn));
     render(<TeacherDashboard profile={PROFILE} incompleteStates={[]} />);
-    await pickAser();
+    await pickNipunG3();
     // no headline figures at the home level
     await screen.findByTestId("map-card");
     expect(screen.queryByTestId("root-kpis")).toBeNull();
@@ -82,7 +89,7 @@ describe("TeacherDashboard", () => {
     expect(kpis.textContent).toContain("72%");
     // the figure is the share of scored students (in the test's age band) who passed, and says so
     expect(kpis.textContent).toContain("72%");
-    expect(kpis.textContent).toContain("of 6–7 year old students pass the ASER proxy");
+    expect(kpis.textContent).toContain("of 8 year old students pass the NIPUN grade 3 proxy");
     expect(kpis.textContent).not.toContain("average NIPUN");
     expect(kpis.textContent).toContain("states using LIFTeracy");
     // a plain count ("2", not "2 of 2"), in black
@@ -292,7 +299,7 @@ describe("TeacherDashboard", () => {
       }),
     );
     render(<TeacherDashboard profile={PROFILE} incompleteStates={[]} />);
-    await pickAser();
+    await pickNipunG3();
     await screen.findByTestId("most-improved");
     expect(screen.queryByTestId("rank-level-toggle")).toBeNull();
     await drillIntoUp();
@@ -301,7 +308,7 @@ describe("TeacherDashboard", () => {
     expect(within(toggle).getByRole("button", { name: "District" }).getAttribute("aria-pressed")).toBe("true");
     expect(rankCalls).toHaveLength(0);
     fireEvent.click(within(toggle).getByRole("button", { name: "Teacher" }));
-    await waitFor(() => expect(rankCalls[0]).toContain("/api/proxy/geo-entities/g-09/rankings?level=teacher&metric=aser_grade"));
+    await waitFor(() => expect(rankCalls[0]).toContain("/api/proxy/geo-entities/g-09/rankings?level=teacher&metric=nipun_g3"));
     // teachers listed with their number
     await waitFor(() => expect(screen.getByTestId("top-performing").textContent).toContain("Meera · 919800000009"));
     // double-click: straight to the teacher's class, via district → block → school
@@ -394,7 +401,7 @@ describe("TeacherDashboard", () => {
     // the bin's m-older is not on the first page → page 2 (offset 100) is fetched, then it stops
     await waitFor(() => expect(mediaCalls.some((u) => u.includes("offset=100"))).toBe(true));
     expect(mediaCalls.some((u) => u.includes("offset=200"))).toBe(false);
-    fireEvent.click(dialogButton(dialog, "MPL-B proxy"));
+    pickDialogGrade(dialog, "Grade 3");
     await waitFor(() => expect(within(screen.getByTestId("student-sentences")).getAllByTestId("tap-sentence")).toHaveLength(1));
     expect(screen.getByTestId("student-sentences").textContent).toContain("पुराना?");
   });
@@ -403,7 +410,7 @@ describe("TeacherDashboard", () => {
     const { fn, calls } = makeFetch({ scoresById: { "g-sch": SCORES_SCHOOL, "t-1": SCORES_CLASS } });
     vi.stubGlobal("fetch", vi.fn(fn));
     render(<TeacherDashboard profile={PROFILE_SCHOOL} incompleteStates={[]} />);
-    await pickAser();
+    await pickNipunG3();
 
     // school level: one card per teacher, mvp2 nouns
     const cards = await screen.findAllByTestId("teacher-card");
@@ -452,9 +459,7 @@ describe("TeacherDashboard", () => {
     expect(tiles[0].querySelector('[data-testid="tile-phone"]')?.textContent).toBe("919999990011");
     expect(tiles[1].querySelector('[data-testid="tile-phone"]')?.textContent).toBe("919999990022");
     expect(tiles[0].textContent).not.toContain("Student 1");
-    // ASER: the tile names the level (score 0.9 → Story) instead of a percentage
-    expect(tiles[0].textContent).toContain("Story");
-    expect(tiles[0].textContent).not.toContain("90%");
+    expect(tiles[0].textContent).toContain("90%");
     expect(tiles[0].textContent).toContain("▲ +5.0%");
     // an unnamed student shows "~" (never the API's "Student N"), with a visible Rename pill
     expect(tiles[1].textContent).not.toContain("Student 2");
@@ -519,29 +524,41 @@ describe("TeacherDashboard", () => {
     expect(calls.some((u) => u.includes("/scores/letter-bins?users=s-1"))).toBe(true);
     await waitFor(() => expect(dialog.textContent).toContain("No scores recorded"));
     expect(dialog.querySelectorAll('[aria-label="Range"]').length).toBe(0);
-    // picking ASER brings the range toggle (30 days / All time) and the
-    // student's ASER level after each test, on a Beginner … Story axis; no
-    // second toggle row, the interaction list unfiltered, no note
-    fireEvent.click(modalButton("ASER proxy"));
+    // picking a test metric brings the range toggle (30 days / All time); the
+    // NIPUN sub-toggle offers the grades only (a student has no Pass/Fail) and
+    // follows the page (Grade 3)
+    fireEvent.click(modalButton("NIPUN proxy"));
+    expect(within(dialog).getByTestId("modal-nipun-view-toggle").textContent).toBe("Grade 1Grade 2Grade 3");
+    expect(modalButton("Grade 3").getAttribute("aria-pressed")).toBe("true");
     expect(dialog.querySelectorAll('[aria-label="Range"]').length).toBe(1);
     expect(modalButton("All time")).toBeDefined();
-    expect(within(dialog).queryByTestId("modal-sub-toggle-slot")).toBeNull();
-    fireEvent.click(modalButton("All time"));
-    const aserChart = within(dialog).getByTestId("aser-chart");
-    for (const level of ["Beginner", "Letter", "Word", "Paragraph", "Story"]) expect(aserChart.textContent).toContain(level);
-    expect(aserChart.querySelectorAll('[data-testid="trend-point"]')).toHaveLength(2);
-    expect(aserChart.querySelector('[data-testid="student-pass-mark"]')).toBeNull();
-    expect(screen.queryByTestId("test-interactions-note")).toBeNull();
+    // …and narrows the interaction list to the answers that counted toward
+    // that test (counted_message_ids): the tap m-3 only, with a note
     const sentencesOf = () => screen.getByTestId("student-sentences");
-    expect(sentencesOf().children.length).toBe(3);
-    // MPL-B: one answer so far, twenty needed → listed with the explanation;
-    // the student's pass line sits at the MPL-B mark (50)
+    expect(screen.getByTestId("test-interactions-note").textContent).toBe("4 answers count toward NIPUN grade 3 proxy; the ones marked are behind this student's current and previous score.");
+    // the answer behind the score is tagged
+    expect(within(sentencesOf()).getAllByTestId("counted-tag")).toHaveLength(1);
+    expect(sentencesOf().querySelectorAll('[data-testid="tap-sentence"]').length).toBe(1);
+    expect(sentencesOf().querySelectorAll('[data-testid="audio-button"]').length).toBe(0);
+    expect(sentencesOf().textContent).not.toContain("the student said");
+    // the student's pass line sits at the NIPUN mark (75), not the area target (80)
+    const passLine = dialog.querySelector('[data-testid="student-pass-mark"]')!;
+    expect(Number(passLine.getAttribute("y1"))).toBeCloseTo(14 + 176 - 0.75 * 176, 1);
+    // MPL-B: one answer so far, twenty needed → listed with the explanation
     fireEvent.click(modalButton("MPL-B proxy"));
     expect(screen.getByTestId("test-interactions-note").textContent).toBe("These answers count toward MPL-B proxy, but at least 20 are needed before a score can be calculated.");
     expect(sentencesOf().querySelectorAll('[data-testid="tap-sentence"]').length).toBe(1);
-    expect(sentencesOf().textContent).not.toContain("the student said");
-    const passLine = dialog.querySelector('[data-testid="student-pass-mark"]')!;
-    expect(Number(passLine.getAttribute("y1"))).toBeCloseTo(14 + 176 - 0.5 * 176, 1);
+    // NIPUN grade 2: nothing answered → blank list with the explanation
+    pickDialogGrade(dialog, "Grade 2");
+    expect(screen.getByTestId("test-interactions-note").textContent).toBe("No questions counting toward NIPUN grade 2 proxy answered yet.");
+    expect(sentencesOf().children.length).toBe(1);
+    expect(sentencesOf().textContent).not.toContain("No voice notes yet.");
+    // NIPUN grade 1 (level-8 lessons): three so far, four needed
+    fireEvent.click(modalButton("Grade 1"));
+    expect(screen.getByTestId("test-interactions-note").textContent).toBe("These answers count toward NIPUN grade 1 proxy, but 4 are needed before a score can be calculated.");
+    // the sub-toggle row keeps its place for the other families (no jump)
+    fireEvent.click(modalButton("MPL-B proxy"));
+    expect(within(dialog).getByTestId("modal-sub-toggle-slot").getAttribute("data-empty")).toBe("1");
     // Time and the letter chart list everything again, without a note
     fireEvent.click(modalButton("Time"));
     expect(screen.queryByTestId("test-interactions-note")).toBeNull();
@@ -629,7 +646,7 @@ describe("TeacherDashboard", () => {
     expect(screen.getByRole("link", { name: "आपकी प्रोफ़ाइल" })).toBeDefined();
     expect(screen.getByTestId("location-title").textContent).toBe("भारत");
     // the metric toggle follows the language too
-    expect(screen.getAllByRole("button", { name: "असर प्रॉक्सी" }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("button", { name: "निपुण प्रॉक्सी" }).length).toBeGreaterThan(0);
     expect(window.localStorage.getItem("lifteracy-dashboard-lang")).toBe("hi");
     window.localStorage.removeItem("lifteracy-dashboard-lang");
   });
@@ -870,6 +887,59 @@ describe("TeacherDashboard — public variant (the donor page)", () => {
     }
   });
 
+  it("donor page: ASER proxy in NIPUN's place — 6–7 year olds in the headline, levels on the tiles, the student's level graph; the /d dashboards keep NIPUN", async () => {
+    const { fn, calls } = makeFetch({ scoresById: { "g-09": { ...SCORES, metric: "aser_grade", age_band: [6, 8], pass_mark: undefined }, "g-sch": SCORES_SCHOOL, "t-1": SCORES_CLASS_MASKED }, media: MEDIA_MASKED });
+    vi.stubGlobal("fetch", vi.fn(fn));
+    const first = render(<TeacherDashboard profile={publicProfile(PROFILE.geo_entity!)} incompleteStates={[]} variant="public" />);
+    await screen.findByTestId("map-card");
+    expect(screen.queryByRole("button", { name: "NIPUN proxy" })).toBeNull();
+    await drillIntoUp();
+    fireEvent.click(screen.getAllByRole("button", { name: "ASER proxy" })[0]);
+    await waitFor(() => expect(calls.some((u) => u.includes("/geo-entities/g-09/scores?metric=aser_grade"))).toBe(true));
+    await waitFor(() => expect(screen.getByTestId("root-kpis").textContent).toContain("of 6–7 year old students pass the ASER proxy"));
+    // no second toggle row for ASER
+    expect(screen.queryByTestId("nipun-view-toggle")).toBeNull();
+    expect(screen.getByTestId("top-sub-toggle-slot").getAttribute("data-empty")).toBe("1");
+    first.unmount();
+
+    // a class: each tile names the student's level, green / red by the pass rule
+    render(<TeacherDashboard profile={publicProfile(PROFILE_SCHOOL.geo_entity!)} incompleteStates={[]} variant="public" />);
+    fireEvent.click((await screen.findAllByRole("button", { name: "ASER proxy" }))[0]);
+    await waitFor(() => expect(pressed("ASER proxy")[0]).toBe("true"));
+    fireEvent.dblClick((await screen.findAllByTestId("teacher-card"))[0]);
+    const tiles = await screen.findAllByTestId("student-tile");
+    expect(tiles[0].textContent).toContain("Story");
+    expect(tiles[0].textContent).not.toContain("90%");
+    // the student pop-up: ASER offered (never NIPUN), the level after each test on a Beginner … Story axis
+    fireEvent.click(tiles[0]);
+    const dialog = await screen.findByRole("dialog");
+    expect(dialogButton(dialog, "NIPUN proxy")).toBeUndefined();
+    expect(within(dialog).queryByTestId("modal-sub-toggle-slot")).toBeNull();
+    fireEvent.click(dialogButton(dialog, "ASER proxy"));
+    fireEvent.click(dialogButton(dialog, "All time"));
+    const chart = await within(dialog).findByTestId("aser-chart");
+    for (const level of ["Beginner", "Letter", "Word", "Paragraph", "Story"]) expect(chart.textContent).toContain(level);
+    expect(chart.querySelectorAll('[data-testid="trend-point"]')).toHaveLength(2);
+    expect(chart.querySelector('[data-testid="student-pass-mark"]')).toBeNull();
+    // nothing in the last 30 days → the ASER wording, not "No results in this window"
+    fireEvent.click(dialogButton(dialog, "30 days"));
+    await waitFor(() => expect(within(dialog).getByTestId("aser-chart").textContent).toContain("Not enough data to compute results"));
+    cleanup();
+
+    // a teacher's own dashboard: NIPUN, never ASER
+    render(<TeacherDashboard profile={PROFILE_SCHOOL} incompleteStates={[]} />);
+    await screen.findAllByTestId("teacher-card");
+    expect(screen.getAllByRole("button", { name: "NIPUN proxy" }).length).toBeGreaterThan(0);
+    expect(screen.queryByRole("button", { name: "ASER proxy" })).toBeNull();
+  });
+
+  it("the page trend says 'Not enough data to compute results' for an empty ASER series", () => {
+    const { container, rerender } = render(<RepTrend series={[{ date: "2026-09-18", pass_rate: null, n: 0, mean: null }]} metric="aser_grade" t={(s) => s} />);
+    expect(container.textContent).toContain("Not enough data to compute results");
+    rerender(<RepTrend series={[{ date: "2026-09-18", pass_rate: null, n: 0, mean: null }]} metric="nipun_g3" t={(s) => s} />);
+    expect(container.textContent).toContain("No results in this window");
+  });
+
   it("calls the usage metric 'Usage time' for the public (the /d dashboards keep 'Time')", async () => {
     const { fn } = makeFetch({ scoresById: { "g-sch": SCORES_SCHOOL } });
     vi.stubGlobal("fetch", vi.fn(fn));
@@ -1012,10 +1082,10 @@ describe("TeacherDashboard — Time metric", () => {
     expect(screen.queryByRole("button", { name: "Daily usage (5+ min)" })).toBeNull();
     expect(pressed("Time")).toEqual(["true", "true"]);
     expect(screen.getAllByTestId("time-window-toggle")).toHaveLength(1);
-    // its window toggle is hidden for other metrics — the row stays, empty (no jump)
-    await pickAser();
+    // its window toggle is hidden for other metrics — the row stays (the NIPUN grades sit in it)
+    await pickNipunG3();
     await waitFor(() => expect(screen.queryByTestId("time-window-toggle")).toBeNull());
-    expect(screen.getByTestId("top-sub-toggle-slot").getAttribute("data-empty")).toBe("1");
+    expect(screen.getByTestId("top-sub-toggle-slot").getAttribute("data-empty")).toBeNull();
     await waitFor(() => expect(screen.getByTestId("most-improved")).toBeDefined());
 
     fireEvent.click(screen.getAllByRole("button", { name: "Time" })[0]);
@@ -1089,7 +1159,7 @@ describe("TeacherDashboard — Time metric", () => {
     expect(screen.getByTestId("root-kpis").textContent).not.toContain("per day");
 
     // leaving Time hides the window toggle and brings the pass-rate view back
-    await pickAser();
+    await pickNipunG3();
     await waitFor(() => expect(screen.queryByTestId("time-window-toggle")).toBeNull());
     await waitFor(() => expect(screen.getByTestId("root-kpis").textContent).toContain("72%"));
     expect(screen.getByTestId("most-improved")).toBeDefined();
@@ -1100,6 +1170,68 @@ describe("TeacherDashboard — Time metric", () => {
     expect(screen.getByTestId("top-sub-toggle-slot").getAttribute("data-empty")).toBe("1");
     expect(screen.getByTestId("perf-sub-toggle-slot").getAttribute("data-empty")).toBe("1");
     expect(screen.queryByTestId("nipun-view-toggle")).toBeNull();
+  });
+
+  it("'NIPUN proxy' opens on Pass/Fail: the verdict from pp-sketch — share of decided schools, grey for not enough data, no rankings or spotlight; the grade sub-toggle is linked top ↔ Performance", async () => {
+    const { fn, calls } = makeFetch({ scoresById: { "g-09": SCORES }, verdictById: { "g-09": SCORES_VERDICT } });
+    vi.stubGlobal("fetch", vi.fn(fn));
+    render(<TeacherDashboard profile={PROFILE} incompleteStates={[]} />);
+    await screen.findByTestId("map-card");
+    await drillIntoUp();
+    fireEvent.click(screen.getAllByRole("button", { name: "NIPUN proxy" })[0]);
+    // both NIPUN sub-toggles appear (top and Performance), on Pass/Fail
+    await waitFor(() => expect(screen.getByTestId("nipun-view-toggle")).toBeDefined());
+    expect(within(screen.getByTestId("nipun-view-toggle")).getByRole("button", { name: "Pass/Fail" }).getAttribute("aria-pressed")).toBe("true");
+    expect(within(screen.getByTestId("perf-nipun-view-toggle")).getByRole("button", { name: "Pass/Fail" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.queryByTestId("time-window-toggle")).toBeNull();
+    await waitFor(() => expect(calls).toContain("/api/proxy/geo-entities/g-09/scores?metric=nipun&range=30&viewer=u1"));
+    // headline: 1 of 2 decided schools pass (3 with not enough data)
+    await waitFor(() => expect(screen.getByTestId("kpi-pass").textContent).toContain("50%"));
+    expect(screen.getByTestId("kpi-pass").textContent).toContain("1 of 2 schools pass NIPUN · 3 not enough data");
+    // bars: a decided district reads its share, an undecided one "Not enough data" in grey
+    const lko = document.querySelector('[data-testid="bar"][data-id="g-0901"]')!;
+    expect(lko).not.toBeNull();
+    fireEvent.mouseEnter(lko);
+    expect(screen.getByTestId("bar-card").textContent).toContain("1/2 · 50%");
+    fireEvent.mouseLeave(lko);
+    // no rankings, no spotlight (section or nav link) under the verdict
+    expect(screen.queryByTestId("most-improved")).toBeNull();
+    expect(screen.queryByTestId("top-performing")).toBeNull();
+    expect(screen.queryByText(/Spotlight/, { selector: "div" })).toBeNull();
+    expect(screen.queryByRole("link", { name: /Spotlight/ })).toBeNull();
+    expect(calls.some((u) => u.includes("/rankings?"))).toBe(false);
+    // the trend is the share of schools passing, no pass mark
+    expect(document.querySelector('[data-testid="pass-mark"]')).toBeNull();
+    expect(screen.getByText("Schools passing NIPUN")).toBeDefined();
+    // picking Grade 3 in the PERFORMANCE sub-toggle switches the top one too, and the metric sent
+    fireEvent.click(within(screen.getByTestId("perf-nipun-view-toggle")).getByRole("button", { name: "Grade 3" }));
+    expect(within(screen.getByTestId("nipun-view-toggle")).getByRole("button", { name: "Grade 3" }).getAttribute("aria-pressed")).toBe("true");
+    await waitFor(() => expect(calls).toContain("/api/proxy/geo-entities/g-09/scores?metric=nipun_g3&range=30&viewer=u1"));
+    await waitFor(() => expect(screen.getByTestId("root-kpis").textContent).toContain("of 8 year old students pass the NIPUN grade 3 proxy"));
+    expect(screen.getByTestId("most-improved")).toBeDefined();
+  });
+
+  it("a school under Pass/Fail shows its own verdict and the three age bands instead of teacher cards; the student modal never offers Pass/Fail", async () => {
+    const { fn } = makeFetch({ scoresById: { "g-sch": SCORES_SCHOOL, "t-1": SCORES_CLASS }, verdictById: { "g-sch": SCORES_SCHOOL_VERDICT } });
+    vi.stubGlobal("fetch", vi.fn(fn));
+    render(<TeacherDashboard profile={PROFILE_SCHOOL} incompleteStates={[]} />);
+    await screen.findByTestId("teacher-card");
+    fireEvent.click(screen.getAllByRole("button", { name: "NIPUN proxy" })[0]);
+    const panel = await screen.findByTestId("verdict-panel");
+    expect(screen.queryByTestId("teacher-card")).toBeNull();
+    expect(within(panel).getByTestId("verdict-school").textContent).toBe("NIPUN: Pass");
+    const bands = within(panel).getByTestId("verdict-bands");
+    expect(bands.textContent).toContain("6 year olds:9 of 10 pass, 9 needed· Pass");
+    expect(bands.textContent).toContain("7 year olds:9 of 12 pass, 9 needed· Pass");
+    expect(bands.textContent).toContain("8 year olds:9 of 9 pass, 9 needed· Pass");
+    // the student modal (from the class view) opens its NIPUN toggle on a grade, never Pass/Fail
+    fireEvent.click(within(screen.getByTestId("nipun-view-toggle")).getByRole("button", { name: "Grade 2" }));
+    fireEvent.dblClick(await screen.findByTestId("teacher-card"));
+    fireEvent.click((await screen.findAllByTestId("student-tile"))[0]);
+    const dialog = await screen.findByRole("dialog");
+    fireEvent.click(dialogButton(dialog, "NIPUN proxy"));
+    expect(within(dialog).getByTestId("modal-nipun-view-toggle").textContent).toBe("Grade 1Grade 2Grade 3");
+    expect(dialogButton(dialog, "Grade 2").getAttribute("aria-pressed")).toBe("true");
   });
 
   it("class view: each student's total (no minutes per day), no ▲/▼; the student pop-up's Time chart plots active minutes per day", async () => {

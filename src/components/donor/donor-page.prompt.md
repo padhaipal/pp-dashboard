@@ -61,8 +61,8 @@ the month in progress adds a dashed overlay to its linear month-end
 projection ("10 → ~31"). "DAU / MAU" (`dau_mau`, 2026-11) is
 `StickinessBars`: one bar per month of pp-sketch's `dau_mau` % (average
 daily ÷ monthly writers among onboarded students — users/traction.prompt.md),
-label on top; the month in progress is brand-mute with a dashed outline up
-(or down) to `projected_dau_mau` ("38% → ~24%"). Missing `monthly` → "No data yet." "Download CSV" (beside
+label on top; the month in progress (the month of `to`) is brand-mute, its
+figure so far — no month-end estimate (removed 2026-11). Missing `monthly` → "No data yet." "Download CSV" (beside
 "updated …", shown when there are daily rows, on mobile too): built in the
 browser from the same response (`tractionCsv`, no pp-sketch call) — one row
 per IST day, a column per daily toggle (header = toggle label), then the

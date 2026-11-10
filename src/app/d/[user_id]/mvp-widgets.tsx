@@ -19,7 +19,11 @@ import {
   familyOf,
   isVerdictMetric,
   metricFor,
-  MODAL_FAMILIES,
+  modalFamiliesFor,
+  familiesFor,
+  DEFAULT_STUDENT_NIPUN_VIEW,
+  NIPUN_VIEWS,
+  STUDENT_NIPUN_VIEWS,
   rangeLabel,
   EXPLAINER_VIDEO_URL,
   mediaUrl,
@@ -30,6 +34,7 @@ import {
   TEST_KEY_OF,
   TEST_QUESTION_COUNT,
   ASER_LEVELS,
+  ASER_EMPTY_TEXT,
   MEDIA_PAGE,
   MEDIA_MAX_PAGES,
   PASS_MARK_PCT,
@@ -46,6 +51,7 @@ import {
   type Metric,
   type Family,
   type ModalFamily,
+  type NipunView,
   type Range,
   type ScoresResponse,
   type SeriesPoint,
@@ -135,9 +141,10 @@ export function MvpTrend({ delta, suffix = "" }: { delta: number | null; suffix?
 
 // ------------------------------------------------------------------ toggles
 
-// The page's metric toggle: Time · ASER proxy · MPL-B proxy (FAMILIES) —
-// the student modal passes MODAL_FAMILIES (letter scores first). On a phone
-// the short labels ("ASER", "MPL-B") keep it on one line.
+// The page's metric toggle: Time · NIPUN proxy · MPL-B proxy (FAMILIES; the
+// donor page's public map passes PUBLIC_FAMILIES — ASER in NIPUN's place) —
+// the student modal passes modalFamiliesFor (letter scores first). On a
+// phone the short labels ("NIPUN", "MPL-B") keep it on one line.
 export function MvpMetricToggle<M extends string = Family>({
   metric,
   setMetric,
@@ -172,7 +179,7 @@ export function MvpMetricToggle<M extends string = Family>({
 }
 
 // The second-row toggle under the metric toggle (dark pill): the Time
-// window. Generic over its options.
+// window, or the NIPUN grade / Pass-Fail. Generic over its options.
 export function MvpSubToggle<K extends string>({
   value,
   setValue,
@@ -237,6 +244,26 @@ export function MvpTimeWindowToggle({
   t?: T;
 }) {
   return <MvpSubToggle value={window} setValue={setWindow} options={TIME_WINDOWS} label={label} testId={testId} t={t} />;
+}
+
+// Shown under the metric toggle while NIPUN is selected: Grade 1 · Grade 2 ·
+// Grade 3 · Pass/Fail (`options` = STUDENT_NIPUN_VIEWS in the student modal).
+export function MvpNipunToggle({
+  view,
+  setView,
+  options = NIPUN_VIEWS,
+  label = "NIPUN view",
+  testId = "nipun-view-toggle",
+  t = same,
+}: {
+  view: NipunView;
+  setView: (v: NipunView) => void;
+  options?: { key: NipunView; label: string; short?: string }[];
+  label?: string;
+  testId?: string;
+  t?: T;
+}) {
+  return <MvpSubToggle value={view} setValue={setView} options={options} label={label} testId={testId} t={t} />;
 }
 
 // 30 days / all time window + "Download CSV" (link built from the CURRENT metric +
@@ -395,8 +422,11 @@ export function MvpStudentTrend({
   passMark = 80,
   unit = "pct",
   testId,
+  empty = "No results in this window",
   t = same,
 }: {
+  // what an empty chart says (ASER: "Not enough data to compute results")
+  empty?: string;
   series: SeriesPoint[];
   label?: string;
   passMark?: number | null;
@@ -451,7 +481,7 @@ export function MvpStudentTrend({
       )}
       {pts.length === 0 ? (
         <text x={W / 2} y={H / 2} textAnchor="middle" fontSize="14" fill="#94a3b8">
-          No results in this window
+          {empty}
         </text>
       ) : (
         <>
@@ -905,8 +935,14 @@ export function MvpTeacherModal({
 }) {
   const isStudent = subject.kind === "student";
   // Students open on the letter chart; geo children have no letter scores.
+  // The same family + NIPUN sub-toggle as the page; a student has no school
+  // verdict, so Pass/Fail is not offered and falls back to a grade. The
+  // donor page's public map offers ASER in NIPUN's place.
+  const isPublic = isPublicViewer(useViewerId());
   const [mFamily, setMFamily] = useState<ModalFamily>(isStudent ? "letters" : familyOf(metric));
-  const mMetric: Metric | "letters" = mFamily === "letters" ? "letters" : metricFor(mFamily);
+  const pageView: NipunView = familyOf(metric) === "nipun" ? (metric as NipunView) : DEFAULT_STUDENT_NIPUN_VIEW;
+  const [mNipun, setMNipun] = useState<NipunView>(isStudent && isVerdictMetric(pageView) ? DEFAULT_STUDENT_NIPUN_VIEW : pageView);
+  const mMetric: Metric | "letters" = mFamily === "letters" ? "letters" : metricFor(mFamily, mNipun);
   const [mRange, setMRange] = useState<Range>(DEFAULT_RANGE);
   // The dashboard metric the trend uses when the letter chart is showing.
   const testMetric: Metric = mMetric === "letters" ? metric : mMetric;
@@ -1094,11 +1130,17 @@ export function MvpTeacherModal({
           <div className="border-b border-zinc-100 px-3 py-5 sm:px-6">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <div className="flex flex-wrap items-center gap-2">
-                {isStudent ? <MvpMetricToggle<ModalFamily> metric={mFamily} setMetric={setMFamily} options={MODAL_FAMILIES} t={t} /> : <MvpMetricToggle metric={mFamily as Family} setMetric={setMFamily} t={t} />}
+                {isStudent ? <MvpMetricToggle<ModalFamily> metric={mFamily} setMetric={setMFamily} options={modalFamiliesFor(isPublic)} t={t} /> : <MvpMetricToggle metric={mFamily as Family} setMetric={setMFamily} options={familiesFor(isPublic)} t={t} />}
                 {/* the letter chart is per interaction, not per day — no range */}
                 {mMetric !== "letters" && <MvpRangeBar range={mRange} setRange={setMRange} entityId={childId} metric={testMetric} t={t} />}
               </div>
             </div>
+            {/* NIPUN: the grade / Pass-Fail row, as on the page (kept at its height for the other families; none on the public map) */}
+            {!isPublic && (
+              <div className="mb-3">
+                <MvpSubSlot testId="modal-sub-toggle-slot">{mFamily === "nipun" && <MvpNipunToggle view={mNipun} setView={setMNipun} options={isStudent ? STUDENT_NIPUN_VIEWS : NIPUN_VIEWS} testId="modal-nipun-view-toggle" t={t} />}</MvpSubSlot>
+              </div>
+            )}
             {subject.kind === "child" ? (
               <>
                 {error && <p className="text-sm text-red-600">{error}</p>}
@@ -1113,7 +1155,7 @@ export function MvpTeacherModal({
                       <MvpStudentTrend series={scores.series} label={t("Schools passing NIPUN")} passMark={null} />
                     </>
                   ) : (
-                    <MvpStudentTrend series={scores.series} label={`${METRIC_BY[shownMetric].label}`} passMark={shownMetric === "aser_grade" ? null : 80} />
+                    <MvpStudentTrend series={scores.series} label={`${METRIC_BY[shownMetric].label}`} passMark={shownMetric === "aser_grade" ? null : 80} empty={shownMetric === "aser_grade" ? t(ASER_EMPTY_TEXT) : undefined} />
                   ))}
               </>
             ) : (
@@ -1145,7 +1187,7 @@ export function MvpTeacherModal({
                     {/* ASER: the student's level after each ASER test, on a Beginner … Story axis */}
                     {st &&
                       (mMetric === "aser_grade" ? (
-                        <MvpStudentTrend series={aserLevelSeries(st.tests, mRange)} label={t("ASER level")} unit="aser" passMark={null} testId="aser-chart" t={t} />
+                        <MvpStudentTrend series={aserLevelSeries(st.tests, mRange)} label={t("ASER level")} unit="aser" passMark={null} testId="aser-chart" empty={t(ASER_EMPTY_TEXT)} t={t} />
                       ) : (
                         <MvpStudentTrend series={historySeries(st.tests, mMetric, mRange)} label={METRIC_BY[mMetric].label} passMark={PASS_MARK_PCT[mMetric]} />
                       ))}

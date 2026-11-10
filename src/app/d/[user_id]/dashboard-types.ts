@@ -11,8 +11,8 @@
 // "aser_grade" (2026-11) is the ASER proxy as one figure: among 6–7 year
 // olds with an ASER result, the share reading at their grade — six-year-olds
 // who pass the paragraph or the story, seven-year-olds who pass the story
-// (pp-sketch aser.ts aserGradePassed). It replaced the NIPUN proxies on the
-// toggles; the NIPUN metrics are still understood, just not offered.
+// (pp-sketch aser.ts aserGradePassed). Offered on the donor page's public
+// map only; the /d dashboards (teachers, officials) keep the NIPUN proxies.
 export type Metric = "usage" | "nipun_g1" | "nipun_g2" | "nipun_g3" | "mpl_b" | "aser_grade" | "nipun";
 // The per-student tests (a score, an age band and — but for ASER — a pass mark).
 export type TestMetric = Exclude<Metric, "usage" | "nipun">;
@@ -39,6 +39,8 @@ export const ASER_LEVELS = ["Beginner", "Letter", "Word", "Paragraph", "Story"] 
 export const aserLevelName = (score: number | null | undefined): string | null => (score == null ? null : ASER_LEVELS[Math.max(0, Math.min(ASER_LEVELS.length - 1, Math.round(score * (ASER_LEVELS.length - 1))))]);
 // … and their colour is the verdict for their age (reads at grade level or
 // not), not the level itself: a seven-year-old at Paragraph has not passed.
+// An ASER chart with nothing to draw (the other metrics: "No results in this window").
+export const ASER_EMPTY_TEXT = "Not enough data to compute results";
 export const ASER_PASS_COLOR = "#16a34a";
 export const ASER_FAIL_COLOR = "#dc2626";
 export const passMarkOf = (metric: Metric, fromResponse?: number | null): number | null => (isTestMetric(metric) ? (fromResponse ?? PASS_MARK_PCT[metric]) : null);
@@ -278,18 +280,39 @@ export const METRIC_BY: Record<Metric, { key: Metric; label: string; short: stri
   nipun: METRICS[5],
   aser_grade: METRICS[6],
 };
-// What the page's metric toggle offers: Time, ASER proxy, MPL-B proxy
-// (2026-11: ASER replaced "NIPUN proxy" and its Grade 1 / 2 / 3 / Pass-Fail
-// second toggle). Each is the metric sent to pp-sketch. `short` is the
-// phone-width label.
-export type Family = "usage" | "aser_grade" | "mpl_b";
-export const FAMILIES: { key: Family; label: string; short: string }[] = [
+// What the page's metric toggle offers. The /d dashboards (FAMILIES): Time,
+// NIPUN proxy, MPL-B proxy — NIPUN opens a second toggle, Grade 1 / 2 / 3 /
+// Pass/Fail, the way Time opens its window toggle. The donor page's public
+// map (PUBLIC_FAMILIES, 2026-11): Time, ASER proxy, MPL-B proxy — no NIPUN.
+// The metric sent to pp-sketch is `metricFor`. `short` is the phone-width
+// label.
+export type Family = "usage" | "nipun" | "aser_grade" | "mpl_b";
+type FamilyOption = { key: Family; label: string; short: string };
+export const FAMILIES: FamilyOption[] = [
+  { key: "usage", label: "Time", short: "Time" },
+  { key: "nipun", label: "NIPUN proxy", short: "NIPUN" },
+  { key: "mpl_b", label: "MPL-B proxy", short: "MPL-B" },
+];
+export const PUBLIC_FAMILIES: FamilyOption[] = [
   { key: "usage", label: "Time", short: "Time" },
   { key: "aser_grade", label: "ASER proxy", short: "ASER" },
   { key: "mpl_b", label: "MPL-B proxy", short: "MPL-B" },
 ];
-export const familyOf = (m: Metric): Family => (m === "usage" ? "usage" : m === "mpl_b" ? "mpl_b" : "aser_grade");
-export const metricFor = (family: Family): Metric => family;
+export const familiesFor = (isPublic: boolean): FamilyOption[] => (isPublic ? PUBLIC_FAMILIES : FAMILIES);
+export type NipunView = "nipun_g1" | "nipun_g2" | "nipun_g3" | "nipun";
+export const NIPUN_VIEWS: { key: NipunView; label: string; short: string }[] = [
+  { key: "nipun_g1", label: "Grade 1", short: "G1" },
+  { key: "nipun_g2", label: "Grade 2", short: "G2" },
+  { key: "nipun_g3", label: "Grade 3", short: "G3" },
+  { key: "nipun", label: "Pass/Fail", short: "Pass/Fail" },
+];
+// The verdict is what NIPUN opens on.
+export const DEFAULT_NIPUN_VIEW: NipunView = "nipun";
+// A student has no school verdict: the student modal offers the grades only.
+export const STUDENT_NIPUN_VIEWS = NIPUN_VIEWS.filter((v) => v.key !== "nipun");
+export const DEFAULT_STUDENT_NIPUN_VIEW: NipunView = "nipun_g2";
+export const familyOf = (m: Metric): Family => (m === "usage" || m === "mpl_b" || m === "aser_grade" ? m : "nipun");
+export const metricFor = (family: Family, nipun: NipunView): Metric => (family === "nipun" ? nipun : family);
 // "Pass" / "Fail" / "Not enough data" for a school verdict, and its colour.
 export const verdictLabel = (v: boolean | null | undefined, t: (s: string) => string = (s) => s): string => (v === true ? t("Pass") : v === false ? t("Fail") : t("Not enough data"));
 export const verdictColor = (v: boolean | null | undefined): string => (v === true ? "#16a34a" : v === false ? "#dc2626" : UNCOVERED);
@@ -314,10 +337,10 @@ export const RANGES: Range[] = [30, "all"];
 export const rangeLabel = (r: Range, t: (s: string) => string = (s) => s) => (r === "all" ? t("All time") : `${r} ${t("days")}`);
 export const rangeSuffix = (r: Range, t: (s: string) => string = (s) => s) => (r === "all" ? t("all time") : `${t("last")} ${r} ${t("days")}`);
 // The student modal's chart picker: the letter-score chart (default) plus the
-// page's families.
+// page's families (with the same NIPUN sub-toggle, grades only).
 export type ModalFamily = Family | "letters";
 export const LETTERS_LABEL = "Letter scores";
-export const MODAL_FAMILIES: { key: ModalFamily; label: string; short: string }[] = [{ key: "letters", label: LETTERS_LABEL, short: "Letters" }, ...FAMILIES];
+export const modalFamiliesFor = (isPublic: boolean): { key: ModalFamily; label: string; short: string }[] => [{ key: "letters", label: LETTERS_LABEL, short: "Letters" }, ...familiesFor(isPublic)];
 // Shown wherever a student has no name yet (the API's "Student N" label is
 // never displayed): tiles, modal title, most-improved rows, trend lines.
 export const UNNAMED = "~";

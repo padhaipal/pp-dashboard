@@ -141,3 +141,10 @@ the second row holds only Time's window). Under ASER the headline reads
 each student's level by name (Story, Paragraph, …), green when they read at
 their grade, red when not, grey when not counted (outside 6–7 or never
 tested). Donor page: "national (ASER) and international (MPL-B)".
+
+## 2026-11 (later): ASER on the public map only
+
+`variant="public"` passes `PUBLIC_FAMILIES` to both metric toggles (ASER, no
+NIPUN sub-toggle); every other caller is back on NIPUN (family + view pair).
+Class tiles under ASER show every tested student's level, any age (pp-sketch
+`aserStudentPassed`), as NIPUN tiles do.

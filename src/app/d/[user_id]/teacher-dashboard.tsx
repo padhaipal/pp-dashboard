@@ -24,6 +24,8 @@ import {
   CHILD_NOUN,
   CHILD_OFFICER,
   DEFAULT_METRIC,
+  DEFAULT_NIPUN_VIEW,
+  familiesFor,
   DEFAULT_TIME_WINDOW,
   displayName,
   familyOf,
@@ -35,6 +37,7 @@ import {
   verdictDecided,
   verdictLabel,
   type Family,
+  type NipunView,
   EMPTY_ROOT_TEXT,
   fmtDelta,
   fmtDuration,
@@ -89,7 +92,7 @@ import { ViewerProvider } from "./viewer-context";
 import { BarStrip, type BarItem } from "./bar-strip";
 import { DrillHint, GeoMap } from "./geo-map";
 import { isLang, LANG_STORAGE_KEY, makeT, type Lang, type T } from "./i18n";
-import { AvatarImg, EditableStudentName, MvpLangToggle, MvpMetricToggle, MvpShareBar, MvpSubSlot, MvpTeacherModal, MvpTimeWindowToggle, MvpTrend, VerdictSummary, type ModalSubject } from "./mvp-widgets";
+import { AvatarImg, EditableStudentName, MvpLangToggle, MvpMetricToggle, MvpNipunToggle, MvpShareBar, MvpSubSlot, MvpTeacherModal, MvpTimeWindowToggle, MvpTrend, VerdictSummary, type ModalSubject } from "./mvp-widgets";
 import { ReportCardModal, RepKpis, RepQuote, RepTrend, type ImprovedRow, type ReportData } from "./report-card-modal";
 import { ShareMessageCard } from "./share-message-card";
 
@@ -197,10 +200,14 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates, va
   const [profile, setProfile] = useState<PublicProfile>(initialProfile);
   // What the toggles are on. The page body renders `metric` / `range` /
   // `timeWindow` below — the same, except while a new selection is loading.
-  // The metric: Time / ASER proxy / MPL-B proxy. Both toggles (top of page
-  // and the Performance section) share this state.
+  // The metric is a pair: the family (Time / NIPUN / MPL-B; the public map:
+  // Time / ASER / MPL-B — `families`) and, for NIPUN, the view (Grade 1 / 2
+  // / 3 / Pass-Fail). Both toggles (top of page and the Performance
+  // section) share this state.
+  const families = familiesFor(isPublic);
   const [pickedFamily, setFamily] = useState<Family>(familyOf(DEFAULT_METRIC));
-  const pickedMetric: Metric = metricFor(pickedFamily);
+  const [pickedNipun, setNipunView] = useState<NipunView>(DEFAULT_NIPUN_VIEW);
+  const pickedMetric: Metric = metricFor(pickedFamily, pickedNipun);
   // ONE window (2026-10): the Time figures' window and the trend's x-axis /
   // data range for every metric (all time → the full history, else 30 days),
   // shown under the Time toggle and as the Performance section's trend window.
@@ -647,10 +654,11 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates, va
             {/* headline stats — narrower, with the shared metric tab */}
             <div className="mx-auto mt-6 max-w-5xl px-6">
               <div className="mb-3 flex flex-col items-center gap-2">
-                <MvpMetricToggle metric={pickedFamily} setMetric={setFamily} t={t} />
-                {/* second row, always at its height: Time → the window; ASER / MPL-B → empty */}
+                <MvpMetricToggle metric={pickedFamily} setMetric={setFamily} options={families} t={t} />
+                {/* second row, always at its height: Time → the window; NIPUN → the grade / Pass-Fail; ASER / MPL-B → empty */}
                 <MvpSubSlot testId="top-sub-toggle-slot">
                   {pickedFamily === "usage" && <MvpTimeWindowToggle window={pickedWindow} setWindow={setTimeWindow} t={t} />}
+                  {pickedFamily === "nipun" && <MvpNipunToggle view={pickedNipun} setView={setNipunView} t={t} />}
                 </MvpSubSlot>
               </div>
               {loaded?.error && <p className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">Could not load results — {loaded.error}</p>}
@@ -799,10 +807,10 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates, va
                     <div className={"mb-6 " + H} style={{ color: ACCENT }}>
                       {t(nounS)} {t("Performance")}
                     </div>
-                    {/* the same metric toggle as at the top of the page (one state), then the trend's window — the same window as Time's */}
+                    {/* the same metric + NIPUN sub-toggle as at the top of the page (one state), then the trend's window — the same window as Time's */}
                     <div className="-mt-3 mb-5 flex flex-col items-center gap-2">
-                      <MvpMetricToggle metric={pickedFamily} setMetric={setFamily} t={t} />
-                      <MvpSubSlot testId="perf-sub-toggle-slot"></MvpSubSlot>
+                      <MvpMetricToggle metric={pickedFamily} setMetric={setFamily} options={families} t={t} />
+                      <MvpSubSlot testId="perf-sub-toggle-slot">{pickedFamily === "nipun" && <MvpNipunToggle view={pickedNipun} setView={setNipunView} testId="perf-nipun-view-toggle" t={t} />}</MvpSubSlot>
                       <MvpTimeWindowToggle window={pickedWindow} setWindow={setTimeWindow} label="Trend window" testId="trend-window-toggle" t={t} />
                     </div>
                     <div className={CARD + " space-y-6"}>

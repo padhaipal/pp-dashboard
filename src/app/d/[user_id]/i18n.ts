@@ -135,6 +135,7 @@ const HI: Record<string, string> = {
   "ASER proxy": "असर प्रॉक्सी",
   ASER: "असर",
   "ASER level": "असर स्तर",
+  "Not enough data to compute results": "परिणाम निकालने के लिए पर्याप्त डेटा नहीं",
   Beginner: "शुरुआती",
   Letter: "अक्षर",
   Word: "शब्द",
