@@ -44,6 +44,8 @@ import {
   fmtMinutes,
   fmtPct,
   fmtPctInt,
+  fmtPassFigure,
+  passCount,
   geoChildrenOf,
   isTimeMode,
   ageBandOf,
@@ -459,7 +461,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates, va
                   : c.pass_rate == null
                     ? t("Not enough data")
                     : `${c.verdict?.schools_pass ?? 0}/${verdictDecided(c.verdict)} · ${fmtPctInt(c.pass_rate)}`
-                : fmtPctInt(c.pass_rate),
+                : fmtPassFigure(metric, c.pass_rate, c.n),
             color: binColor(c.bin),
           })),
     [inClass, students, geoChildren, isUsageMetric, isVerdict, metric, timeMode, timeWindow, t],
@@ -772,6 +774,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates, va
                   metricLabel={metricLabel}
                   time={timeMode}
                   verdict={isVerdict}
+                  counts={metric === "aser_grade"}
                   t={t}
                 />
               )}
@@ -818,7 +821,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates, va
                         <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
                           <div className="text-base font-semibold text-zinc-800">
                             {t("Trend")}
-                            <HoverLabel child={hoverId ? geoChildren.find((c) => c.id === hoverId) ?? null : null} time={timeMode} verdict={isVerdict} t={t} />
+                            <HoverLabel child={hoverId ? geoChildren.find((c) => c.id === hoverId) ?? null : null} time={timeMode} verdict={isVerdict} counts={metric === "aser_grade"} t={t} />
                           </div>
                           <div className="flex flex-wrap items-center gap-2">
                             {!isPublic && (
@@ -836,7 +839,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates, va
                         </div>
                         <RepTrend
                           series={lastDays(trendSeries, WINDOW_DAYS[pickedWindow])}
-                          label={isUsageMetric ? t("Total minutes") : isVerdict ? t("Schools passing the NIPUN proxy") : t(METRIC_BY[metric].short)}
+                          label={isUsageMetric ? t("Total minutes") : isVerdict ? t("Schools passing the NIPUN proxy") : metric === "aser_grade" ? t("Students passing the ASER proxy") : t(METRIC_BY[metric].short)}
                           metric={metric}
                           passMark={scores.pass_mark}
                           students={
@@ -951,7 +954,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates, va
 
 // ------------------------------------------------------------------ pieces
 
-function HoverLabel({ child, time = false, verdict = false, t }: { child: Child | null; time?: boolean; verdict?: boolean; t: T }) {
+function HoverLabel({ child, time = false, verdict = false, counts = false, t }: { child: Child | null; time?: boolean; verdict?: boolean; counts?: boolean; t: T }) {
   if (!child) return null;
   return (
     <span className="ml-2 text-[11px] font-normal text-zinc-500">
@@ -961,7 +964,9 @@ function HoverLabel({ child, time = false, verdict = false, t }: { child: Child 
           ? ` — ${fmtDuration(child.time_sum, t)}`
           : verdict && child.type === "school"
             ? ` — ${verdictLabel(child.verdict?.school_passed, t)}`
-            : ` — ${fmtPct(child.pass_rate)} (${fmtDelta(child.delta)})`
+            : counts
+              ? ` — ${passCount(child.pass_rate, child.n) ?? "—"} ${t("of")} ${child.n} ${t("students pass")}`
+              : ` — ${fmtPct(child.pass_rate)} (${fmtDelta(child.delta)})`
         : ` — ${t("not using LIFTeracy")}`}
     </span>
   );
@@ -1022,7 +1027,7 @@ function TeacherCards({
         {teachers.map((c, i) => {
           const col = time ? windowColor(c.time_total, timeWindow) : nipColor(c.pass_rate);
           const parts = fmtDurationParts(c.time_sum, t);
-          const big = time ? parts.value : fmtPctInt(c.pass_rate);
+          const big = time ? parts.value : fmtPassFigure(metric, c.pass_rate, c.n);
           const own = ownId === c.id;
           const caption = time ? `${parts.unit} ${timeCaption ?? ""}` : metric === "usage" ? t("5+ min yesterday") : short;
           const on = selId === c.id;

@@ -48,6 +48,9 @@ const HI: Record<string, string> = {
   // kpis
   average: "औसत",
   "of students pass the": "छात्र उत्तीर्ण हैं —",
+  "students pass the": "छात्र उत्तीर्ण हैं —",
+  "students pass": "छात्र उत्तीर्ण",
+  "Students passing the ASER proxy": "असर प्रॉक्सी उत्तीर्ण छात्र",
   "year old students pass the": "वर्ष के छात्र उत्तीर्ण हैं —",
   "pass mark": "उत्तीर्ण सीमा",
   "using LIFTeracy": "लिफ्टरेसी उपयोग कर रहे",

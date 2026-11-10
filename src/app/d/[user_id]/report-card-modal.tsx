@@ -41,6 +41,8 @@ import {
   ageBandOf,
   ASER_EMPTY_TEXT,
   passMarkOf,
+  passCount,
+  fmtPassFigure,
   isVerdictMetric,
   verdictColor,
   verdictDecided,
@@ -124,10 +126,12 @@ export function RepKpis({
                 "pass",
               )
         : card(
-            fmtPctInt(root.pass_rate),
-            // ASER: "of students aged 7 and under pass the ASER proxy"
-            ageBand && metric === "aser_grade"
-              ? `${t("of students aged")} ${aserBandOldest(ageBand)} ${t("and under pass the")} ${metricLabel}`
+            fmtPassFigure(metric, root.pass_rate, root.n),
+            // ASER, a count: "students aged 7 and under pass the ASER proxy"
+            metric === "aser_grade"
+              ? ageBand
+                ? `${t("students aged")} ${aserBandOldest(ageBand)} ${t("and under pass the")} ${metricLabel}`
+                : `${t("students pass the")} ${metricLabel}`
               : ageBand
                 ? `${t("of")} ${ageBandLabel(ageBand)} ${t("year old students pass the")} ${metricLabel}`
                 : `${t("of students pass the")} ${metricLabel}`,
@@ -183,6 +187,10 @@ export function RepTrend({
 }) {
   const mobile = useIsMobile();
   const isUsage = metric === "usage";
+  // ASER proxy: the y-axis is HOW MANY students pass (never a percentage),
+  // one line for the area — there are no per-child counts to draw.
+  const isCount = metric === "aser_grade";
+  if (isCount) students = [];
   // One dotted line per test: NIPUN at 75 (three of four right), MPL-B at 50.
   const mark = passMarkOf(metric, passMark);
   const yLabel = label ?? t("Oral Literacy NIPUN Proxy percentage pass rate");
@@ -197,7 +205,7 @@ export function RepTrend({
   // Root value per point: for usage the day's TOTAL minutes; for the tests the
   // mean score × 100. When child lines are drawn the navy line is instead the
   // average of those lines (below).
-  const rootVal = (p: SeriesPoint) => (isUsage ? (p.total ?? p.mean) : p.mean);
+  const rootVal = (p: SeriesPoint) => (isCount ? passCount(p.pass_rate, p.n) : isUsage ? (p.total ?? p.mean) : p.mean);
   // A usage row dated D holds the previous IST day's minutes: label it by
   // that day so the axis ends at yesterday, the last complete day.
   const dayLabel = (iso: string) => fmtDay(isUsage ? shiftDay(iso, -1) : iso);
@@ -205,9 +213,10 @@ export function RepTrend({
   const byDate = new Map(series.map((p, i) => [p.date, i]));
   // Minutes axis fits the data: a "nice" step (1, 2, 5 × 10ⁿ) so the top
   // tick sits just above the highest line; the tests keep 0–100.
-  const dataMax = isUsage ? Math.max(0, ...series.map((p) => rootVal(p) ?? 0), ...students.flatMap((s) => s.points.map((q) => q.value ?? 0))) : 100;
-  const step = isUsage ? niceStep(dataMax / 5) : 20;
-  const yMax = isUsage ? Math.max(step, Math.ceil(dataMax / step) * step) : 100;
+  const dataMax = isCount ? Math.max(0, ...series.map((p) => rootVal(p) ?? 0)) : isUsage ? Math.max(0, ...series.map((p) => rootVal(p) ?? 0), ...students.flatMap((s) => s.points.map((q) => q.value ?? 0))) : 100;
+  // counts: whole-student ticks only
+  const step = isCount ? Math.max(1, Math.ceil(niceStep(dataMax / 5))) : isUsage ? niceStep(dataMax / 5) : 20;
+  const yMax = isCount || isUsage ? Math.max(step, Math.ceil(dataMax / step) * step) : 100;
   const ticks = Array.from({ length: Math.round(yMax / step) + 1 }, (_, i) => i * step);
   const x = (i: number) => mL + (n <= 1 ? iw / 2 : (i / (n - 1)) * iw),
     y = (v: number) => mT + ih - (v / yMax) * ih;
@@ -307,7 +316,7 @@ export function RepTrend({
             <>
               <path d={d} fill="none" stroke="#1e3a5f" strokeWidth={mobile ? 3.8 : 2.8} pointerEvents="none" opacity={hot != null ? 0.55 : 1} />
               <text x={x(li) - 4} y={y(rootPts[li].v!) - 7} textAnchor="end" fontSize={mobile ? 15 : 11} fontWeight="800" fill="#1e3a5f" pointerEvents="none">
-                {t("Average")}
+                {isCount ? rootPts[li].v : t("Average")}
               </text>
             </>
           )}
@@ -945,7 +954,7 @@ export function ReportCardModal({ data, onClose }: { data: ReportData; onClose: 
           />
           <div>
             <div className="mb-1 text-sm font-semibold text-zinc-800">Trend</div>
-            {time ? <RepTrend series={data.series} metric="usage" label="Minutes per student" /> : <RepTrend series={data.series} metric={data.metric} passMark={data.passMark} label={`${metricLabel} pass rate`} />}
+            {time ? <RepTrend series={data.series} metric="usage" label="Minutes per student" /> : <RepTrend series={data.series} metric={data.metric} passMark={data.passMark} label={data.metric === "aser_grade" ? `Students passing the ${metricLabel}` : `${metricLabel} pass rate`} />}
           </div>
           <div>
             <div className="mb-1 text-sm font-semibold text-zinc-800">Latest — all {nounP}</div>

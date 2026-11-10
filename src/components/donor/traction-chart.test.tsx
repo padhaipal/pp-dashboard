@@ -62,6 +62,10 @@ describe("TractionChart", () => {
     fireEvent.click(screen.getByRole("button", { name: "Passed ASER proxy" }));
     expect(screen.getByRole("button", { name: "Passed ASER proxy" }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByTestId("traction-line")).toBeTruthy();
+    // who counts, explained under the chart — for this toggle only
+    expect(screen.getByTestId("traction-note").textContent).toContain("Only students aged 7 and under are counted");
+    fireEvent.click(screen.getByRole("button", { name: "Passed MPL-B proxy" }));
+    expect(screen.queryByTestId("traction-note")).toBeNull();
   });
 
   it("monthly: stacked bars with totals, the month in progress with a dashed projection", async () => {
