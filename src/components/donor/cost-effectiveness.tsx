@@ -34,13 +34,16 @@ export function CostEffectiveness() {
         <a href={CEM_LINK} target="_blank" rel="noreferrer" className={linkCls}>
           $31 per income doubling at scale
         </a>
-        , beating{" "}
+        <sup className="text-xs text-zinc-400">*</sup>, beating{" "}
         <a href={AIM_BAR_LINK} target="_blank" rel="noreferrer" className={linkCls}>
           Ambitious Impact’s funding bar of $60
         </a>
         .
       </p>
       <p className="mt-1 text-sm text-zinc-500">This estimate needs to be tested with a randomized control trial.</p>
+      <p className="mt-2 text-xs leading-snug text-zinc-400" data-testid="income-doubling-note">
+        * An income doubling means one person enjoying two times as much income for one year - eg $2000 instead of $1000.
+      </p>
     </div>
   );
 }

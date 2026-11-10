@@ -66,6 +66,10 @@ describe("TractionChart", () => {
     expect(screen.getByTestId("traction-note").textContent).toBe("Counts students aged 7 and under only.");
     fireEvent.click(screen.getByRole("button", { name: "Passed MPL-B proxy" }));
     expect(screen.queryByTestId("traction-note")).toBeNull();
+    // students: who counts, under the toggle and under the headline figure
+    fireEvent.click(screen.getByRole("button", { name: "Students onboarded" }));
+    expect(screen.getByTestId("traction-note").textContent).toContain("at least 5 active minutes");
+    expect(screen.getByTestId("traction-students-note").textContent).toContain("at least 5 active minutes");
   });
 
   it("monthly: stacked bars with totals, the month in progress with a dashed projection", async () => {

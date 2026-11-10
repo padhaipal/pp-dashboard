@@ -22,6 +22,7 @@ import {
   seriesOf,
   shortDate,
   TRACTION_METRICS,
+  STUDENTS_NOTE,
   TRACTION_URL,
   tractionCsv,
   tractionCsvFilename,
@@ -143,6 +144,11 @@ function Headline({ hours, students }: { hours: number; students: number }) {
             {v.toLocaleString("en-IN")}
           </div>
           <div className="mt-1 text-sm font-semibold text-zinc-600 sm:text-base">{label}</div>
+          {id === "traction-students" && (
+            <div className="mt-0.5 text-[11px] leading-snug text-zinc-400" data-testid="traction-students-note">
+              {STUDENTS_NOTE}
+            </div>
+          )}
         </div>
       ))}
     </div>
