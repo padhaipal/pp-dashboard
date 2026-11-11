@@ -49,10 +49,14 @@ describe("TractionChart", () => {
     expect(screen.queryByTestId("traction-headline")).toBeNull();
   });
 
-  it("opens on minutes spent as a daily line", async () => {
+  it("opens on usage (hours) as a daily line", async () => {
     await mount(DATA);
-    expect(screen.getByRole("button", { name: "Minutes spent" }).getAttribute("aria-pressed")).toBe("true");
+    expect(screen.getByRole("button", { name: "Usage" }).getAttribute("aria-pressed")).toBe("true");
     expect(screen.getByTestId("traction-line")).toBeTruthy();
+    // minutes are served; the axis is in hours
+    const svg = screen.getByTestId("traction-line").closest("svg")!;
+    expect(svg.textContent).toContain("Hours");
+    expect(svg.textContent).not.toContain("Minutes");
   });
 
   it("Passed ASER proxy: a daily line of children passing, offered beside Passed MPL-B proxy", async () => {
@@ -121,7 +125,7 @@ describe("TractionChart", () => {
     expect(click).toHaveBeenCalledTimes(1);
     const blob = createObjectURL.mock.calls[0][0] as Blob;
     const text = await blob.text();
-    expect(text).toContain("Date,Minutes spent,");
+    expect(text).toContain("Date,Usage (minutes),");
     expect(text).toContain("2026-05-10,45,");
     expect((click.mock.instances[0] as unknown as HTMLAnchorElement).download).toBe("lifteracy-traction-2026-05-11.csv");
     click.mockRestore();

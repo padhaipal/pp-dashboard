@@ -148,3 +148,5 @@ tested). Donor page: "national (ASER) and international (MPL-B)".
 NIPUN sub-toggle); every other caller is back on NIPUN (family + view pair).
 Class tiles under ASER show every tested student's level, any age (pp-sketch
 `aserStudentPassed`), as NIPUN tiles do.
+
+ - 2026-11: the Performance section's "Trend" graph (`RepTrend`) is removed at every level, on /d and the donor page; the section keeps its toggles, the CSV link (signed-in only) and the Most improved / Top performing rankings. `RepTrend` still serves the report card modal. Earlier notes about the page trend are historical.

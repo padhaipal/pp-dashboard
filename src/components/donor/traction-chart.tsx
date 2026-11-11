@@ -3,7 +3,7 @@
 // The donor page's Traction section body: two headline figures (all-time
 // hours on LIFTeracy, students), then the chart card — one series at a time from 1 April,
 // one point per IST day (no averaging), its units on the y-axis. Above it
-// the /d page's pill toggle picks the series (minutes by default). "Monthly
+// the /d page's pill toggle picks the series (usage in hours by default). "Monthly
 // active students" and "DAU / MAU" are bar charts instead, one bar per
 // month (MonthlyBars, StickinessBars). Data: GET
 // users/dashboard/traction (public proxy) — aggregates only, computed once
@@ -66,7 +66,7 @@ export function TractionChart() {
 
   const daily = useMemo(() => data?.daily ?? [], [data]);
   const cfg = TRACTION_METRICS.find((m) => m.key === metric)!;
-  const values = useMemo(() => (isMonthlyChoice(metric) ? [] : seriesOf(daily, metric)), [daily, metric]);
+  const values = useMemo(() => (isMonthlyChoice(metric) ? [] : seriesOf(daily, metric, cfg.scale)), [daily, metric, cfg.scale]);
   const monthly = data?.monthly ?? [];
   const size = mobile ? SIZE.mobile : SIZE.desktop;
 
