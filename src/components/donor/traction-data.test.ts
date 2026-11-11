@@ -45,21 +45,21 @@ describe("tractionCsv", () => {
   it("one row per day with every toggle: daily series, then the day's month", () => {
     const [header, ...rows] = tractionCsv(DATA).trimEnd().split("\n");
     expect(header).toBe(
-      "Date,Usage (minutes),Users over 5 min,Students onboarded,Passed ASER proxy,Passed MPL-B proxy,Teachers onboarded,Schools,Blocks,Districts,States," +
+      "Date,Usage (hours),Users over 5 min,Students onboarded,Passed ASER proxy,Passed MPL-B proxy,Teachers onboarded,Schools,Blocks,Districts,States," +
         "Monthly active students (whole month),Monthly active students: joined in an earlier month,Monthly active students: joined this month,Monthly active students: projected by month end," +
         "DAU / MAU % (whole month),DAU / MAU: students who sent a message in the month (MAU),DAU / MAU: students who sent a message on an average day (DAU)",
     );
     expect(rows).toEqual([
       "2026-03-31,0,2,3,9,1,4,5,6,7,8,,,,,,,",
       // April comes from a pp-sketch row without the DAU / MAU figures: blank
-      "2026-04-30,12.5,2,3,9,1,4,5,6,7,8,11,0,11,,,,",
-      "2026-05-01,30,2,3,9,1,4,5,6,7,8,10,4,6,31,37.5,20,7.5",
+      "2026-04-30,0.21,2,3,9,1,4,5,6,7,8,11,0,11,,,,",
+      "2026-05-01,0.5,2,3,9,1,4,5,6,7,8,10,4,6,31,37.5,20,7.5",
     ]);
   });
 
   it("no monthly series (older pp-sketch): monthly columns blank", () => {
     const rows = tractionCsv({ ...DATA, monthly: undefined }).trimEnd().split("\n");
-    expect(rows[3]).toBe("2026-05-01,30,2,3,9,1,4,5,6,7,8,,,,,,,");
+    expect(rows[3]).toBe("2026-05-01,0.5,2,3,9,1,4,5,6,7,8,,,,,,,");
   });
 
   it("is named after the day pp-sketch computed it", () => {

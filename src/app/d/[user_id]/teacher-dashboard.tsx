@@ -39,10 +39,13 @@ import {
   type Family,
   type NipunView,
   EMPTY_ROOT_TEXT,
+  fmtDelta,
   fmtDuration,
   fmtMinutes,
+  fmtPct,
   fmtPctInt,
   fmtPassFigure,
+  passCount,
   geoChildrenOf,
   isTimeMode,
   ageBandOf,
@@ -72,6 +75,10 @@ import {
   UNNAMED,
   isPiiFull,
   rangeForWindow,
+  beforeDay,
+  istToday,
+  lastDays,
+  WINDOW_DAYS,
   csvUrl,
   fmtDurationParts,
   fmtRatio,
@@ -88,7 +95,7 @@ import { BarStrip, type BarItem } from "./bar-strip";
 import { DrillHint, GeoMap } from "./geo-map";
 import { isLang, LANG_STORAGE_KEY, makeT, type Lang, type T } from "./i18n";
 import { AvatarImg, EditableStudentName, MvpLangToggle, MvpMetricToggle, MvpNipunToggle, MvpShareBar, MvpSubSlot, MvpTeacherModal, MvpTimeWindowToggle, MvpTrend, VerdictSummary, type ModalSubject } from "./mvp-widgets";
-import { ReportCardModal, RepKpis, RepQuote, type ImprovedRow, type ReportData } from "./report-card-modal";
+import { ReportCardModal, RepKpis, RepQuote, RepTrend, type ImprovedRow, type ReportData } from "./report-card-modal";
 import { ShareMessageCard } from "./share-message-card";
 
 export type TeacherDashboardProps = {
@@ -212,6 +219,8 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates, va
   const [stack, setStack] = useState<GeoRef[]>(() => homeStack(initialProfile));
   const [data, setData] = useState<Loaded | null>(null);
   const [hoverId, setHoverId] = useState<string | null>(null);
+  // Class view: a student line pinned on the trend chart (click to toggle).
+  const [pinId, setPinId] = useState<string | null>(null);
   // Officials open among their peers with their own entity selected.
   const [selId, setSelId] = useState<string | null>(() => (startsAtParent(initialProfile) ? initialProfile.geo_entity!.id : null));
   const [modal, setModal] = useState<ModalSubject | null>(null);
@@ -584,6 +593,13 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates, va
             : "officials"
           : null
       : null;
+  // The donor page's Usage time trend leaves out today (India time): the day
+  // is still in progress, so its point would dip. NIPUN / MPL-B points dated
+  // today are complete nightly results and stay; the /d dashboards keep it.
+  const trendDays = <P extends { date: string }>(points: P[]): P[] => (isPublic && isUsageMetric ? beforeDay(points, istToday()) : points);
+  const trendSeries = scores ? trendDays(scores.series) : [];
+  // The newest date of the root series: the trend's window ends there for every line.
+  const newestDate = trendSeries.length ? trendSeries[trendSeries.length - 1].date : undefined;
   const closeModal = useCallback(() => setModal(null), []);
   const closeReport = useCallback(() => setReportOpen(false), []);
 
@@ -786,7 +802,8 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates, va
             {/* teachers only: the referral link parents use to enrol under this teacher, right below the map card */}
             {!isPublic && profile.geo_entity?.type === "school" && <MvpShareBar shareLink={profile.share_link} t={t} />}
 
-            {scores && !emptyRoot && childType && (
+            {/* the donor page has no Performance section at any level (2026-11): /d only */}
+            {!isPublic && scores && !emptyRoot && childType && (
               <>
                 {/* Performance — trend + most improved */}
                 <section id="rep-perf" className="scroll-mt-16 bg-blue-50 py-10">
@@ -801,24 +818,56 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates, va
                       <MvpTimeWindowToggle window={pickedWindow} setWindow={setTimeWindow} label="Trend window" testId="trend-window-toggle" t={t} />
                     </div>
                     <div className={CARD + " space-y-6"}>
-                      {/* the trend graph was removed (2026-11); the CSV of the same data stays for signed-in users */}
-                      {!isPublic && (
-                        <div className="flex justify-end">
-                          <a
-                            href={withViewer(csvUrl(entity.id, pickedMetric, pickedRange, pickedWin), profile.id)}
-                            target="_blank"
-                            rel="noreferrer"
-                            data-testid="csv-link"
-                            className="hidden rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-600 shadow-sm hover:bg-zinc-50 sm:block"
-                          >
-                            {t("Download CSV")}
-                          </a>
+                      <div>
+                        <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                          <div className="text-base font-semibold text-zinc-800">
+                            {t("Trend")}
+                            <HoverLabel child={hoverId ? geoChildren.find((c) => c.id === hoverId) ?? null : null} time={timeMode} verdict={isVerdict} counts={metric === "aser_grade"} t={t} />
+                          </div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            {!isPublic && (
+                            <a
+                              href={withViewer(csvUrl(entity.id, pickedMetric, pickedRange, pickedWin), profile.id)}
+                              target="_blank"
+                              rel="noreferrer"
+                              data-testid="csv-link"
+                              className="hidden rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-600 shadow-sm hover:bg-zinc-50 sm:block"
+                            >
+                              {t("Download CSV")}
+                            </a>
+                            )}
+                          </div>
                         </div>
-                      )}
+                        <RepTrend
+                          series={lastDays(trendSeries, WINDOW_DAYS[pickedWindow])}
+                          label={isUsageMetric ? t("Total minutes") : isVerdict ? t("Schools passing the NIPUN proxy") : metric === "aser_grade" ? t("Students passing the ASER proxy") : t(METRIC_BY[metric].short)}
+                          metric={metric}
+                          passMark={scores.pass_mark}
+                          students={
+                            inClass
+                              ? (scores.students_series ?? []).map((ss) => ({
+                                  id: ss.student_id,
+                                  label: ((s) => withPhone(s?.name?.split(/\s+/)[0] ?? UNNAMED, s?.phone))(students.find((s) => s.student_id === ss.student_id)),
+                                  points: lastDays(trendDays(ss.points), WINDOW_DAYS[pickedWindow], newestDate),
+                                }))
+                              : // one faint line per child (area, or a teacher's class) — hover a marker / card to light it up
+                                (scores.children_series ?? []).map((cs) => ({
+                                  id: cs.id,
+                                  label: geoChildren.find((c) => c.id === cs.id)?.name ?? "",
+                                  points: lastDays(trendDays(cs.points), WINDOW_DAYS[pickedWindow], newestDate),
+                                }))
+                          }
+                          hoverId={hoverId}
+                          setHoverId={setHoverId}
+                          pinId={pinId}
+                          setPinId={setPinId}
+                          t={t}
+                        />
+                      </div>
                       {/* most improved (change vs the range / the Time window before) and top performing, side by side */}
                       {/* drilled in: which level to rank (the children by default, or any level below) */}
                       {rankOptions.length > 1 && entity && !isVerdict && (
-                        <div className="flex justify-center">
+                        <div className="flex justify-center border-t border-zinc-100 pt-5">
                           <div className="inline-flex flex-wrap justify-center gap-1 rounded-full bg-zinc-100 p-1 text-xs font-semibold ring-1 ring-zinc-200" role="group" aria-label="Ranking level" data-testid="rank-level-toggle">
                             {rankOptions.map((l) => (
                               <button
@@ -836,7 +885,7 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates, va
                       )}
                       {/* most improved (left) and top performing (right): both by the selected metric / Time window — not under the verdict (2026-10) */}
                       {!isVerdict && (
-                      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                      <div className={"grid grid-cols-1 gap-6 md:grid-cols-2" + (rankOptions.length > 1 ? "" : " border-t border-zinc-100 pt-5")}>
                         <div data-testid="most-improved">
                           <div className="mb-3 text-base font-semibold text-zinc-800">{t("Most improved")}</div>
                           {shownImproved.length === 0 && <p className="py-2 text-sm text-zinc-400">{t("No data")}</p>}
@@ -905,6 +954,24 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates, va
 }
 
 // ------------------------------------------------------------------ pieces
+
+function HoverLabel({ child, time = false, verdict = false, counts = false, t }: { child: Child | null; time?: boolean; verdict?: boolean; counts?: boolean; t: T }) {
+  if (!child) return null;
+  return (
+    <span className="ml-2 text-[11px] font-normal text-zinc-500">
+      · {child.name}
+      {child.using_lifteracy
+        ? time
+          ? ` — ${fmtDuration(child.time_sum, t)}`
+          : verdict && child.type === "school"
+            ? ` — ${verdictLabel(child.verdict?.school_passed, t)}`
+            : counts
+              ? ` — ${passCount(child.pass_rate, child.n) ?? "—"} ${t("of")} ${child.n} ${t("students pass")}`
+              : ` — ${fmtPct(child.pass_rate)} (${fmtDelta(child.delta)})`
+        : ` — ${t("not using LIFTeracy")}`}
+    </span>
+  );
+}
 
 // School level: mvp2's teacher row cards inside the map card — one tinted row
 // per teacher (avatar ring, name, "Teacher · N students", score, trend).

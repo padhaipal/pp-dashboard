@@ -137,12 +137,14 @@ export function shortDate(iso: string): string {
 // Daily series as served; "Monthly active students" and "DAU / MAU" are
 // per-month figures, so each day carries its month's values (blank for a month pp-sketch has
 // no row for). Header = the toggle labels. Rows are aggregates only.
+const hours2 = (v: number | null | undefined, scale: number) => (v == null ? v : Number((v * scale).toFixed(2)));
+
 export function tractionCsv(data: TractionResponse): string {
   const daily = TRACTION_METRICS.filter((m): m is TractionMetric & { key: TractionKey } => !isMonthlyChoice(m.key));
   const byMonth = new Map((data.monthly ?? []).map((m) => [m.month, m]));
   const header = [
     "Date",
-    ...daily.map((m) => (m.key === "minutes" ? "Usage (minutes)" : m.label)),
+    ...daily.map((m) => (m.key === "minutes" ? "Usage (hours)" : m.label)),
     "Monthly active students (whole month)",
     "Monthly active students: joined in an earlier month",
     "Monthly active students: joined this month",
@@ -157,7 +159,8 @@ export function tractionCsv(data: TractionResponse): string {
     const projected = m && m.projected_joined_earlier !== null && m.projected_joined_this_month !== null ? m.projected_joined_earlier + m.projected_joined_this_month : null;
     return [
       d.date,
-      ...daily.map((k) => cell(d[k.key])),
+      // usage is served in minutes: hours, to 2 decimals
+      ...daily.map((k) => cell(k.scale ? hours2(d[k.key], k.scale) : d[k.key])),
       cell(m && m.joined_earlier + m.joined_this_month),
       cell(m?.joined_earlier),
       cell(m?.joined_this_month),
