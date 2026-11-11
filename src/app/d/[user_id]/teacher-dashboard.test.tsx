@@ -864,22 +864,56 @@ describe("TeacherDashboard — public variant (the donor page)", () => {
     expect(calls.some((u) => u.includes("window=30d"))).toBe(false);
   });
 
-  it("the donor page has no Performance section (trend, rankings) at any level; /d keeps it", async () => {
-    const mount = async (public_: boolean) => {
-      const { fn } = makeFetch({ scores: SCORES });
-      vi.stubGlobal("fetch", vi.fn(fn));
-      render(public_ ? <TeacherDashboard profile={publicProfile(PROFILE.geo_entity!)} incompleteStates={[]} variant="public" /> : <TeacherDashboard profile={PROFILE} incompleteStates={[]} />);
-      await screen.findByTestId("bar-strip");
-    };
-    await mount(true);
-    expect(document.getElementById("rep-perf")).toBeNull();
+  it("donor page Performance: rankings only (no trend), with level / metric / window toggles opening on School · Usage · All time", async () => {
+    const base = makeFetch({ scores: SCORES }).fn;
+    const rankCalls: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (url.includes("/rankings?")) {
+          rankCalls.push(url);
+          return { ok: true, status: 200, json: async () => ({ level: "school", as_of: "2026-09-10", top: [{ id: "g-s9", name: "P.S. GWALPUR", sub: null, value: 150, delta: 2 }], most_improved: [{ id: "g-s9", name: "P.S. GWALPUR", sub: null, value: 150, delta: 2 }] }) } as unknown as Response;
+        }
+        return base(input, init);
+      }),
+    );
+    render(<TeacherDashboard profile={publicProfile(PROFILE.geo_entity!)} incompleteStates={[]} variant="public" />);
+    const box = await screen.findByTestId("public-rankings");
+    expect(document.getElementById("rep-perf")).toBeTruthy();
     expect(document.querySelector('svg[data-rep-chart="trend"]')).toBeNull();
-    expect(screen.queryByTestId("most-improved")).toBeNull();
-    expect(screen.queryByTestId("top-performing")).toBeNull();
-    cleanup();
-    await mount(false);
+    const pressed = (id: string) => within(screen.getByTestId(id)).getAllByRole("button").filter((b) => b.getAttribute("aria-pressed") === "true").map((b) => b.textContent);
+    expect(within(screen.getByTestId("public-rank-level")).getAllByRole("button").map((b) => b.textContent)).toEqual(["School", "Teacher", "Student"]);
+    expect(within(screen.getByTestId("public-rank-metric")).getAllByRole("button").map((b) => b.textContent)).toEqual(["Usage", "ASER proxy", "MPL-B proxy"]);
+    expect(within(screen.getByTestId("public-rank-window")).getAllByRole("button").map((b) => b.textContent)).toEqual(["Yesterday", "Last seven days", "Last 30 days", "All time"]);
+    expect(pressed("public-rank-level")).toEqual(["School"]);
+    expect(pressed("public-rank-metric")).toEqual(["Usage"]);
+    expect(pressed("public-rank-window")).toEqual(["All time"]);
+    await waitFor(() => expect(rankCalls[0]).toContain("/api/proxy/geo-entities/g-in/rankings?level=school&metric=usage&window=all"));
+    await waitFor(() => expect(within(box).getByTestId("top-performing").textContent).toContain("P.S. GWALPUR"));
+    // usage: hours for the total, a ratio for the change
+    expect(within(box).getByTestId("top-performing").textContent).toContain("2.5 hours");
+    expect(within(box).getByTestId("most-improved").textContent).toContain("×2");
+    // each toggle refetches
+    fireEvent.click(within(screen.getByTestId("public-rank-window")).getByRole("button", { name: "Last seven days" }));
+    await waitFor(() => expect(rankCalls.some((u) => u.includes("level=school&metric=usage&window=7d"))).toBe(true));
+    fireEvent.click(within(screen.getByTestId("public-rank-level")).getByRole("button", { name: "Student" }));
+    await waitFor(() => expect(rankCalls.some((u) => u.includes("level=student&metric=usage&window=7d"))).toBe(true));
+    // tests rank the latest results: no window sent, the window row dimmed with a note
+    expect(screen.queryByTestId("public-rank-window-note")).toBeNull();
+    fireEvent.click(within(screen.getByTestId("public-rank-metric")).getByRole("button", { name: "ASER proxy" }));
+    await waitFor(() => expect(rankCalls.some((u) => u.includes("level=student&metric=aser_grade") && !u.includes("window="))).toBe(true));
+    expect(screen.getByTestId("public-rank-window-wrap").getAttribute("aria-disabled")).toBe("true");
+    expect(screen.getByTestId("public-rank-window-note")).toBeTruthy();
+  });
+
+  it("/d keeps its Performance section (trend and rankings) unchanged", async () => {
+    const { fn } = makeFetch({ scores: SCORES });
+    vi.stubGlobal("fetch", vi.fn(fn));
+    render(<TeacherDashboard profile={PROFILE} incompleteStates={[]} />);
     await waitFor(() => expect(document.querySelector('svg[data-rep-chart="trend"]')).toBeTruthy());
     expect(document.getElementById("rep-perf")).toBeTruthy();
+    expect(screen.queryByTestId("public-rankings")).toBeNull();
   });
   it("donor page: ASER proxy in NIPUN's place — children aged 7 and under in the headline, levels on the tiles, the student's level graph; the /d dashboards keep NIPUN", async () => {
     const { fn, calls } = makeFetch({ scoresById: { "g-09": { ...SCORES, metric: "aser_grade", age_band: [0, 8], pass_mark: undefined }, "g-sch": SCORES_SCHOOL, "t-1": SCORES_CLASS_MASKED }, media: MEDIA_MASKED });
@@ -892,8 +926,8 @@ describe("TeacherDashboard — public variant (the donor page)", () => {
     await waitFor(() => expect(calls.some((u) => u.includes("/geo-entities/g-09/scores?metric=aser_grade"))).toBe(true));
     // a COUNT of students, never a percentage: 72% of 41 → 30
     await waitFor(() => expect(screen.getByTestId("kpi-pass").textContent).toBe("30students aged 7 and under pass the ASER proxy"));
-    // no Performance section on the donor page
-    expect(document.getElementById("rep-perf")).toBeNull();
+    // no trend graph on the donor page
+    expect(document.querySelector('[data-rep-chart="trend"]')).toBeNull();
     // no second toggle row for ASER
     expect(screen.queryByTestId("nipun-view-toggle")).toBeNull();
     expect(screen.getByTestId("top-sub-toggle-slot").getAttribute("data-empty")).toBe("1");
