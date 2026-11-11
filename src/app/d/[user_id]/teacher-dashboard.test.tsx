@@ -96,8 +96,8 @@ describe("TeacherDashboard", () => {
     const usingBig = screen.getByText("states using LIFTeracy").previousElementSibling as HTMLElement;
     expect(usingBig.textContent).toBe("2");
     expect(usingBig.style.color).toBe("rgb(24, 24, 27)");
-    // the trend graph is gone at every level (2026-11)
-    expect(document.querySelector('svg[data-rep-chart="trend"]')).toBeNull();
+    // one faint line per state on the trend, lit up by the shared hover
+    expect(document.querySelectorAll('[data-testid="student-line"]')).toHaveLength(2);
     // most improved and top performing side by side, under the trend
     // plain headings: the ranking follows the selected metric
     expect(screen.getByTestId("most-improved").textContent).toContain("Most improved");
@@ -467,8 +467,12 @@ describe("TeacherDashboard", () => {
     expect(tiles[1].textContent).toContain("Rename");
     // one bar per student in the class view, valued by score
     expect(document.querySelectorAll('[data-testid="bar-strip"] [data-testid="bar"]')).toHaveLength(2);
-    // no trend graph in the class view either
-    expect(document.querySelector('svg[data-rep-chart="trend"]')).toBeNull();
+    // the trend draws one faint line per student with data; hovering a tile lights its line
+    expect(document.querySelectorAll('[data-testid="student-line"]')).toHaveLength(1);
+    fireEvent.mouseEnter(tiles[0]);
+    expect(document.querySelector('[data-testid="student-line"][data-student-id="s-1"]')?.getAttribute("data-hot")).toBe("1");
+    fireEvent.mouseLeave(tiles[0]);
+    expect(document.querySelector('[data-testid="student-line"][data-student-id="s-1"]')?.getAttribute("data-hot")).toBeNull();
     expect(tiles[1].textContent).toContain("—");
     // the teacher renames a student in place: click the name → input → Enter → PATCH users/:id/profile
     fireEvent.click(tiles[1].querySelector('[data-testid="student-name"]')!);
@@ -860,6 +864,23 @@ describe("TeacherDashboard — public variant (the donor page)", () => {
     expect(calls.some((u) => u.includes("window=30d"))).toBe(false);
   });
 
+  it("the donor page has no Performance section (trend, rankings) at any level; /d keeps it", async () => {
+    const mount = async (public_: boolean) => {
+      const { fn } = makeFetch({ scores: SCORES });
+      vi.stubGlobal("fetch", vi.fn(fn));
+      render(public_ ? <TeacherDashboard profile={publicProfile(PROFILE.geo_entity!)} incompleteStates={[]} variant="public" /> : <TeacherDashboard profile={PROFILE} incompleteStates={[]} />);
+      await screen.findByTestId("bar-strip");
+    };
+    await mount(true);
+    expect(document.getElementById("rep-perf")).toBeNull();
+    expect(document.querySelector('svg[data-rep-chart="trend"]')).toBeNull();
+    expect(screen.queryByTestId("most-improved")).toBeNull();
+    expect(screen.queryByTestId("top-performing")).toBeNull();
+    cleanup();
+    await mount(false);
+    await waitFor(() => expect(document.querySelector('svg[data-rep-chart="trend"]')).toBeTruthy());
+    expect(document.getElementById("rep-perf")).toBeTruthy();
+  });
   it("donor page: ASER proxy in NIPUN's place — children aged 7 and under in the headline, levels on the tiles, the student's level graph; the /d dashboards keep NIPUN", async () => {
     const { fn, calls } = makeFetch({ scoresById: { "g-09": { ...SCORES, metric: "aser_grade", age_band: [0, 8], pass_mark: undefined }, "g-sch": SCORES_SCHOOL, "t-1": SCORES_CLASS_MASKED }, media: MEDIA_MASKED });
     vi.stubGlobal("fetch", vi.fn(fn));
@@ -871,8 +892,8 @@ describe("TeacherDashboard — public variant (the donor page)", () => {
     await waitFor(() => expect(calls.some((u) => u.includes("/geo-entities/g-09/scores?metric=aser_grade"))).toBe(true));
     // a COUNT of students, never a percentage: 72% of 41 → 30
     await waitFor(() => expect(screen.getByTestId("kpi-pass").textContent).toBe("30students aged 7 and under pass the ASER proxy"));
-    // no trend graph on the donor page
-    expect(document.querySelector('[data-rep-chart="trend"]')).toBeNull();
+    // no Performance section on the donor page
+    expect(document.getElementById("rep-perf")).toBeNull();
     // no second toggle row for ASER
     expect(screen.queryByTestId("nipun-view-toggle")).toBeNull();
     expect(screen.getByTestId("top-sub-toggle-slot").getAttribute("data-empty")).toBe("1");
@@ -1193,6 +1214,9 @@ describe("TeacherDashboard — Time metric", () => {
     expect(screen.queryByText(/Spotlight/, { selector: "div" })).toBeNull();
     expect(screen.queryByRole("link", { name: /Spotlight/ })).toBeNull();
     expect(calls.some((u) => u.includes("/rankings?"))).toBe(false);
+    // the trend is the share of schools passing, no pass mark
+    expect(document.querySelector('[data-testid="pass-mark"]')).toBeNull();
+    expect(screen.getByText("Schools passing the NIPUN proxy")).toBeDefined();
     // picking Grade 3 in the PERFORMANCE sub-toggle switches the top one too, and the metric sent
     fireEvent.click(within(screen.getByTestId("perf-nipun-view-toggle")).getByRole("button", { name: "Grade 3" }));
     expect(within(screen.getByTestId("nipun-view-toggle")).getByRole("button", { name: "Grade 3" }).getAttribute("aria-pressed")).toBe("true");

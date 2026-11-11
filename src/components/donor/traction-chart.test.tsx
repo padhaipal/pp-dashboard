@@ -125,8 +125,8 @@ describe("TractionChart", () => {
     expect(click).toHaveBeenCalledTimes(1);
     const blob = createObjectURL.mock.calls[0][0] as Blob;
     const text = await blob.text();
-    expect(text).toContain("Date,Usage (minutes),");
-    expect(text).toContain("2026-05-10,45,");
+    expect(text).toContain("Date,Usage (hours),");
+    expect(text).toContain("2026-05-10,0.75,");
     expect((click.mock.instances[0] as unknown as HTMLAnchorElement).download).toBe("lifteracy-traction-2026-05-11.csv");
     click.mockRestore();
     Object.assign(URL, { createObjectURL: origCreate, revokeObjectURL: origRevoke });
