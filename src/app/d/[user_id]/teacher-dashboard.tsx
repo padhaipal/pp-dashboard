@@ -94,7 +94,7 @@ import { ViewerProvider } from "./viewer-context";
 import { BarStrip, type BarItem } from "./bar-strip";
 import { DrillHint, GeoMap } from "./geo-map";
 import { isLang, LANG_STORAGE_KEY, makeT, type Lang, type T } from "./i18n";
-import { AvatarImg, EditableStudentName, MvpLangToggle, MvpMetricToggle, MvpNipunToggle, MvpShareBar, MvpSubSlot, MvpTeacherModal, MvpTimeWindowToggle, MvpTrend, VerdictSummary, type ModalSubject } from "./mvp-widgets";
+import { AvatarImg, EditableStudentName, MvpLangToggle, MvpMetricToggle, MvpNipunToggle, MvpShareBar, MvpSubSlot, MvpSubToggle, MvpTeacherModal, MvpTimeWindowToggle, MvpTrend, VerdictSummary, type ModalSubject } from "./mvp-widgets";
 import { ReportCardModal, RepKpis, RepQuote, RepTrend, type ImprovedRow, type ReportData } from "./report-card-modal";
 import { ShareMessageCard } from "./share-message-card";
 
@@ -802,7 +802,31 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates, va
             {/* teachers only: the referral link parents use to enrol under this teacher, right below the map card */}
             {!isPublic && profile.geo_entity?.type === "school" && <MvpShareBar shareLink={profile.share_link} t={t} />}
 
-            {/* the donor page has no Performance section at any level (2026-11): /d only */}
+            {/* the donor page: rankings only, with their own level / metric / window toggles (2026-11) */}
+            {isPublic && scores && !emptyRoot && childType && entity && (
+              <section id="rep-perf" className="scroll-mt-16 bg-blue-50 py-10">
+                <div className="mx-auto max-w-6xl px-6">
+                  <div className={"mb-6 " + H} style={{ color: ACCENT }}>
+                    {t(nounS)} {t("Performance")}
+                  </div>
+                  <PublicRankings
+                    entity={entity}
+                    viewerId={profile.id}
+                    onPick={(row) => {
+                      if (row.path?.length) {
+                        setStack((st) => [...st, ...row.path!.map(toRef)]);
+                        setHoverId(null);
+                        setSelId(null);
+                        return;
+                      }
+                      const st = students.find((x) => x.student_id === row.id);
+                      if (st) openStudent(st);
+                    }}
+                    t={t}
+                  />
+                </div>
+              </section>
+            )}
             {!isPublic && scores && !emptyRoot && childType && (
               <>
                 {/* Performance — trend + most improved */}
@@ -1328,6 +1352,92 @@ function SiteFooter({ t }: { t: T }) {
             </div>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+// The donor page's "{Noun} Performance": most improved / top performing
+// among the schools, teachers or students below the entity on screen, from
+// pp-sketch's rankings endpoint. Three toggle rows of its own (independent of
+// the map's): level, metric, time window. Opens on School · Usage · All time.
+// The window applies to Usage only — ASER / MPL-B rank the latest results
+// (pp-sketch ignores `window` for tests), so that row is dimmed for them.
+const PUBLIC_RANK_LEVELS: RankLevel[] = ["school", "teacher", "student"];
+type PublicRankMetric = "usage" | "aser_grade" | "mpl_b";
+const PUBLIC_RANK_METRICS: { key: PublicRankMetric; label: string }[] = [
+  { key: "usage", label: "Usage" },
+  { key: "aser_grade", label: "ASER proxy" },
+  { key: "mpl_b", label: "MPL-B proxy" },
+];
+function PublicRankings({ entity, viewerId, onPick, t }: { entity: { id: string; type: GeoRef["type"] }; viewerId: string; onPick: (r: RankRow) => void; t: T }) {
+  const levels = useMemo(() => {
+    const below = levelsBelow(entity.type);
+    return PUBLIC_RANK_LEVELS.filter((l) => below.includes(l));
+  }, [entity.type]);
+  const [pickedLevel, setLevel] = useState<RankLevel>("school");
+  const [metric, setMetric] = useState<PublicRankMetric>("usage");
+  const [win, setWin] = useState<TimeWindow>("all");
+  const [hoverId, setHoverId] = useState<string | null>(null);
+  // inside a school / a class the higher levels are gone: the nearest one left
+  const level: RankLevel | null = levels.includes(pickedLevel) ? pickedLevel : (levels[0] ?? null);
+  const isUsage = metric === "usage";
+  const key = level ? `${entity.id}|${level}|${metric}|${isUsage ? win : ""}` : null;
+  const [got, setGot] = useState<{ key: string; data: RankingsResponse | null } | null>(null);
+  useEffect(() => {
+    if (!key || !level) return;
+    let cancelled = false;
+    fetch(withViewer(rankingsUrl(entity.id, level, metric, isUsage ? win : undefined), viewerId))
+      .then(async (r) => (r.ok ? ((await r.json()) as RankingsResponse) : null))
+      .catch(() => null)
+      .then((data) => {
+        if (!cancelled) setGot({ key, data });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [key, entity.id, level, metric, isUsage, win, viewerId]);
+  const loading = !got || got.key !== key;
+  const data = loading ? null : got.data;
+  const rows = useMemo(() => [...(data?.top ?? []), ...(data?.most_improved ?? [])], [data]);
+  const name = (r: RankRow) => (r.sub ? `${r.name} · ${r.sub}` : r.name);
+  const top: ImprovedRow[] = (data?.top ?? []).map((r) => ({ id: r.id, name: name(r), delta: r.value }));
+  const improved: ImprovedRow[] = (data?.most_improved ?? []).map((r) => ({ id: r.id, name: name(r), delta: r.delta }));
+  // usage: minutes and the window ratio; a student's ASER: the level by name; else %
+  const fmtTop = (v: number) => (isUsage ? fmtDuration(v, t) : metric === "aser_grade" && level === "student" ? t(aserLevelName(v / 100) ?? "—") : `${Math.round(v)}%`);
+  const fmtChange = (v: number) => (isUsage ? fmtRatio(v) : `${v >= 0 ? "+" : ""}${v.toFixed(1)}%`);
+  const pick = (r: ImprovedRow) => {
+    const row = rows.find((x) => x.id === r.id);
+    if (row) onPick(row);
+  };
+  if (!level) return null;
+  return (
+    <div data-testid="public-rankings">
+      <div className="-mt-3 mb-5 flex flex-col items-center gap-2">
+        <MvpSubToggle value={level} setValue={setLevel} options={levels.map((l) => ({ key: l, label: RANK_LEVEL_LABEL[l] }))} label="Ranking level" testId="public-rank-level" t={t} />
+        <MvpSubToggle value={metric} setValue={setMetric} options={PUBLIC_RANK_METRICS} label="Ranking metric" testId="public-rank-metric" t={t} />
+        <div className={isUsage ? "" : "pointer-events-none opacity-40"} aria-disabled={!isUsage} data-testid="public-rank-window-wrap">
+          <MvpTimeWindowToggle window={win} setWindow={setWin} label="Ranking window" testId="public-rank-window" t={t} />
+        </div>
+        {!isUsage && <p className="text-[11px] leading-snug text-zinc-400" data-testid="public-rank-window-note">{t("Test rankings use the latest results.")}</p>}
+      </div>
+      <div className={CARD}>
+        {loading ? (
+          <p className="py-6 text-center text-sm text-zinc-400">{t("Loading…")}</p>
+        ) : (
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            <div data-testid="most-improved">
+              <div className="mb-3 text-base font-semibold text-zinc-800">{t("Most improved")}</div>
+              {improved.length === 0 && <p className="py-2 text-sm text-zinc-400">{t("No data")}</p>}
+              <RankBars rows={improved} kind="improved" format={fmtChange} hoverId={hoverId} setHoverId={setHoverId} selId={null} onSelect={() => {}} onPick={pick} />
+            </div>
+            <div data-testid="top-performing">
+              <div className="mb-3 text-base font-semibold text-zinc-800">{t("Top performing")}</div>
+              {top.length === 0 && <p className="py-2 text-sm text-zinc-400">{t("No data")}</p>}
+              <RankBars rows={top} kind="top" format={fmtTop} hoverId={hoverId} setHoverId={setHoverId} selId={null} onSelect={() => {}} onPick={pick} />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

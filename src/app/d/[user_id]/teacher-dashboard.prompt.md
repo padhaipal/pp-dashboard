@@ -150,3 +150,5 @@ Class tiles under ASER show every tested student's level, any age (pp-sketch
 `aserStudentPassed`), as NIPUN tiles do.
 
  - 2026-11: the donor page (`variant="public"`) renders NO "{Noun} Performance" section at any level (no trend, no rankings); /d is unchanged.
+
+ - 2026-11 (later): the donor page gets "{Noun} Performance" back as rankings only (`PublicRankings`, `data-testid="public-rankings"`): Most improved / Top performing from `rankingsUrl`, with three toggle rows of its own — level (School / Teacher / Student, limited to levels below the entity on screen), metric (Usage / ASER proxy / MPL-B proxy), window (Yesterday / Last seven days / Last 30 days / All time). Opens on School · Usage · All time. The window is sent for Usage only; for the tests the row is dimmed with the note "Test rankings use the latest results." No trend graph. /d unchanged.
