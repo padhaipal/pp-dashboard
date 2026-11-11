@@ -5,11 +5,16 @@
 // per environment so a staging teacher's link onboards onto the staging
 // bot). Cap the path segment at 15 chars so a pathological /r/<huge-string>
 // can't grow the message arbitrarily.
+//
+// Each human tap is recorded in pp-sketch first (track-click.ts): best
+// effort, at most TRACK_TIMEOUT_MS, never blocks or breaks the redirect.
+import { trackReferralClick } from "./track-click";
+
 const HINDI_TEMPLATE =
   'पढ़ना सीखना शुरू करने के लिए कृपया एक टेक्स्ट मैसेज भेजें। {phonenumber} ने आपको रेफर किया है। अगर आप चाहते हैं कि हमें इस बात का पता चले, तो अपने टेक्स्ट मैसेज में उनका नंबर ज़रूर शामिल करें।';
 
 export async function GET(
-  _req: Request,
+  req: Request,
   { params }: { params: Promise<{ externalId: string }> },
 ): Promise<Response> {
   const waDest = process.env.WHATSAPP_BOT_NUMBER;
@@ -21,6 +26,7 @@ export async function GET(
   const { externalId } = await params;
   const safeId = externalId.slice(0, 15);
   const text = HINDI_TEMPLATE.replace('{phonenumber}', safeId);
+  await trackReferralClick(safeId, req);
   const url = `https://wa.me/${waDest}?text=${encodeURIComponent(text)}`;
 
   return new Response(null, {
