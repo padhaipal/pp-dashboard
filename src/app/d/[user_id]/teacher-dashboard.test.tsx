@@ -880,7 +880,7 @@ describe("TeacherDashboard — public variant (the donor page)", () => {
     );
     render(<TeacherDashboard profile={publicProfile(PROFILE.geo_entity!)} incompleteStates={[]} variant="public" />);
     const box = await screen.findByTestId("public-rankings");
-    expect(document.getElementById("rep-perf")).toBeTruthy();
+    expect(screen.getByTestId("public-rank-title").textContent).toBe("Leaderboard");
     expect(document.querySelector('svg[data-rep-chart="trend"]')).toBeNull();
     const pressed = (id: string) => within(screen.getByTestId(id)).getAllByRole("button").filter((b) => b.getAttribute("aria-pressed") === "true").map((b) => b.textContent);
     expect(within(screen.getByTestId("public-rank-level")).getAllByRole("button").map((b) => b.textContent)).toEqual(["School", "Teacher", "Student"]);

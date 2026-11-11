@@ -806,8 +806,8 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates, va
             {isPublic && scores && !emptyRoot && childType && entity && (
               <section id="rep-perf" className="scroll-mt-16 bg-blue-50 py-10">
                 <div className="mx-auto max-w-6xl px-6">
-                  <div className={"mb-6 " + H} style={{ color: ACCENT }}>
-                    {t(nounS)} {t("Performance")}
+                  <div className={"mb-6 " + H} style={{ color: ACCENT }} data-testid="public-rank-title">
+                    {t("Leaderboard")}
                   </div>
                   <PublicRankings
                     entity={entity}
