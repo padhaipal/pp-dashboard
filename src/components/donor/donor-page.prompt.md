@@ -53,7 +53,7 @@ users/traction.prompt.md). One series at a time from 1 Apr, one point per
 IST day, x labels on each month's 1st ("1 April"; phones: short names, at
 most four), brand-ink line on a nice 0-based axis titled with its unit; hover =
 date + value; chart text ≥ 12 px. Toggle: `MvpMetricToggle` (brand-ink
-selected pill via `selectedClass`) with `TRACTION_METRICS` ("Minutes spent"
+selected pill via `selectedClass`) with `TRACTION_METRICS` ("Usage", in hours — served minutes ÷ 60; was "Minutes spent"
 first = default). "Monthly active students" (`monthly`) is `MonthlyBars`:
 one stacked bar per month of students with ≥ 1 five-minute day — brand-ink
 = joined in an earlier month, brand-mute = joined that month, total on top;

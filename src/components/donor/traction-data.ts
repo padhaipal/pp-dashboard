@@ -59,6 +59,9 @@ const fmtInt = (v: number) => Math.round(v).toLocaleString("en-IN");
 // "23.6" → "24%"; under 10 keeps a decimal ("7.4%")
 export const fmtPct = (v: number) => `${v < 10 ? Number(v.toFixed(1)) : Math.round(v)}%`;
 
+// hours: one decimal under 10 ("7.4"), whole above
+const fmtHours = (v: number) => (v < 10 ? String(Number(v.toFixed(1))) : fmtInt(v));
+
 // Toggle order = the order asked for; the first is the default. `unit` is
 // the y-axis title.
 export interface TractionMetric {
@@ -67,6 +70,8 @@ export interface TractionMetric {
   short: string;
   unit: string;
   format: (v: number) => string;
+  // Multiplies the served values for the chart (minutes → hours).
+  scale?: number;
   // Shown under the chart while this toggle is selected.
   note?: string;
 }
@@ -75,7 +80,7 @@ export interface TractionMetric {
 export const STUDENTS_NOTE = "Students who have finished onboarding and spent at least 5 active minutes on tests or lessons.";
 
 export const TRACTION_METRICS: TractionMetric[] = [
-  { key: "minutes", label: "Minutes spent", short: "Minutes", unit: "Minutes", format: fmtInt },
+  { key: "minutes", label: "Usage", short: "Usage", unit: "Hours", format: fmtHours, scale: 1 / 60 },
   { key: "users_over_5min", label: "Users over 5 min", short: "Users 5+ min", unit: "Users", format: fmtInt },
   { key: "students_onboarded", label: "Students onboarded", short: "Students", unit: "Students", format: fmtInt, note: STUDENTS_NOTE },
   {
@@ -96,7 +101,7 @@ export const TRACTION_METRICS: TractionMetric[] = [
   { key: "dau_mau", label: "DAU / MAU", short: "DAU/MAU", unit: "DAU / MAU", format: fmtPct },
 ];
 
-export const seriesOf = (daily: TractionDay[], key: TractionKey): (number | null)[] => daily.map((d) => d[key] ?? null);
+export const seriesOf = (daily: TractionDay[], key: TractionKey, scale = 1): (number | null)[] => daily.map((d) => (d[key] == null ? null : d[key] * scale));
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -137,7 +142,7 @@ export function tractionCsv(data: TractionResponse): string {
   const byMonth = new Map((data.monthly ?? []).map((m) => [m.month, m]));
   const header = [
     "Date",
-    ...daily.map((m) => m.label),
+    ...daily.map((m) => (m.key === "minutes" ? "Usage (minutes)" : m.label)),
     "Monthly active students (whole month)",
     "Monthly active students: joined in an earlier month",
     "Monthly active students: joined this month",
