@@ -1,15 +1,15 @@
 "use client";
 
 // The donor page's live stream of student interactions, under the Traction
-// chart: the /user/[id] table's columns for the public — time (the Student
-// column is left empty: pp-sketch sends no student name), voice note or tap, the answer (a voice note's transcript
+// chart: the /user/[id] table's columns for the public, minus the student
+// (pp-sketch sends no student name) — time, voice note or tap, the answer (a voice note's transcript
 // masked to its first and last character), the expected answer, the mark
 // and reading speed. No audio. Polls pp-sketch once a minute (paused while
 // the tab is hidden); turns are at least two minutes old (shown as "N min
 // ago", refreshed every 30 s), and new ones are
 // revealed one by one over the minute, the oldest rotating out, so the
 // table always shows the latest STREAM_SIZE. Phones get the same rows as a
-// compact feed instead of the seven-column table. Speeds over MAX_WPM show
+// compact feed instead of the six-column table. Speeds over MAX_WPM show
 // as "--".
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
@@ -155,7 +155,6 @@ export function InteractionStream() {
               <thead>
                 <tr className="border-b border-zinc-200 text-xs uppercase tracking-wide text-zinc-500">
                   <th className="px-4 py-3 font-medium">When</th>
-                  <th className="px-4 py-3 font-medium">Student</th>
                   <th className="px-4 py-3 font-medium">Question Type</th>
                   <th className="px-4 py-3 font-medium">Answer</th>
                   <th className="px-4 py-3 font-medium">Correct Answer</th>
@@ -175,7 +174,6 @@ export function InteractionStream() {
                     <td className="whitespace-nowrap px-4 py-2.5 text-zinc-600" title={new Date(row.at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}>
                       {timeAgo(row.at, now)}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-2.5 text-zinc-700" />
                     <td className="px-4 py-2.5">
                       {row.kind === "tap" ? (
                         <span className="inline-block whitespace-nowrap rounded bg-brand-soft px-2 py-0.5 text-xs font-medium text-brand-deep">{QUESTION_TYPE.tap}</span>
