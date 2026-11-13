@@ -1,12 +1,12 @@
 // The donor page's interaction stream: what pp-sketch serves (GET
-// users/dashboard/interactions, via the public proxy — names and
-// transcripts masked to first and last character, no audio, no ids) and the
+// users/dashboard/interactions, via the public proxy — no student names or
+// phone numbers, transcripts masked to first and last character, no audio,
+// no ids) and the
 // pure helpers the table runs on. No React, no DOM.
 
 export interface StreamRow {
   key: string; // opaque, stable per turn
   at: string; // ISO time of the student's message
-  student: string; // masked name
   kind: "voice" | "tap";
   answer: string | null;
   correct_answer: string | null;
