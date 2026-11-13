@@ -1371,16 +1371,14 @@ const PUBLIC_RANK_METRICS: { key: PublicRankMetric; label: string }[] = [
   { key: "mpl_b", label: "MPL-B proxy" },
 ];
 function PublicRankings({ entity, viewerId, onPick, t }: { entity: { id: string; type: GeoRef["type"] }; viewerId: string; onPick: (r: RankRow) => void; t: T }) {
-  const levels = useMemo(() => {
-    const below = levelsBelow(entity.type);
-    return PUBLIC_RANK_LEVELS.filter((l) => below.includes(l));
-  }, [entity.type]);
+  // always all three levels, whatever the entity on screen (a drill must not
+  // collapse the toggle to just "Student")
+  const levels = PUBLIC_RANK_LEVELS;
   const [pickedLevel, setLevel] = useState<RankLevel>("school");
   const [metric, setMetric] = useState<PublicRankMetric>("usage");
   const [win, setWin] = useState<TimeWindow>("all");
   const [hoverId, setHoverId] = useState<string | null>(null);
-  // inside a school / a class the higher levels are gone: the nearest one left
-  const level: RankLevel | null = levels.includes(pickedLevel) ? pickedLevel : (levels[0] ?? null);
+  const level: RankLevel | null = pickedLevel;
   const isUsage = metric === "usage";
   const key = level ? `${entity.id}|${level}|${metric}|${isUsage ? win : ""}` : null;
   const [got, setGot] = useState<{ key: string; data: RankingsResponse | null } | null>(null);
