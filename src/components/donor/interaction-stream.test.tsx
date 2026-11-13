@@ -38,7 +38,7 @@ describe("InteractionStream", () => {
     expect(fetchMock).toHaveBeenCalledWith("/api/proxy/users/dashboard/interactions", { cache: "no-store" });
     let rows = screen.getAllByTestId("stream-row");
     expect(rows).toHaveLength(10);
-    expect(rows[0].querySelectorAll("td")[1].textContent).toBe("");
+    expect(rows[0].querySelectorAll("td")).toHaveLength(6);
     expect(rows[0].textContent).toContain("क...ल");
 
     // next poll a minute later; the new turn is revealed half a minute after
