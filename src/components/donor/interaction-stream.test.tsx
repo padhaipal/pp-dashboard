@@ -6,7 +6,6 @@ import type { StreamRow } from "./interaction-stream-data";
 const row = (n: number, o: Partial<StreamRow> = {}): StreamRow => ({
   key: `k${n}`,
   at: new Date(Date.UTC(2026, 9, 22, 12, n)).toISOString(),
-  student: "R...i",
   kind: "voice",
   answer: "क...ल",
   correct_answer: "कमल",
@@ -39,7 +38,7 @@ describe("InteractionStream", () => {
     expect(fetchMock).toHaveBeenCalledWith("/api/proxy/users/dashboard/interactions", { cache: "no-store" });
     let rows = screen.getAllByTestId("stream-row");
     expect(rows).toHaveLength(10);
-    expect(rows[0].textContent).toContain("R...i");
+    expect(rows[0].querySelectorAll("td")[1].textContent).toBe("");
     expect(rows[0].textContent).toContain("क...ल");
 
     // next poll a minute later; the new turn is revealed half a minute after

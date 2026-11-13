@@ -1,8 +1,8 @@
 "use client";
 
 // The donor page's live stream of student interactions, under the Traction
-// chart: the /user/[id] table's columns for the public — masked student
-// name, time, voice note or tap, the answer (a voice note's transcript
+// chart: the /user/[id] table's columns for the public — time (the Student
+// column is left empty: pp-sketch sends no student name), voice note or tap, the answer (a voice note's transcript
 // masked to its first and last character), the expected answer, the mark
 // and reading speed. No audio. Polls pp-sketch once a minute (paused while
 // the tab is hidden); turns are at least two minutes old (shown as "N min
@@ -102,7 +102,7 @@ export function InteractionStream() {
         <h3 className="text-lg font-bold text-zinc-900">Student interactions, live</h3>
         <span className="flex items-center gap-1.5 text-xs text-zinc-500">
           <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" aria-hidden="true" />
-          Names and student transcripts masked for child privacy reasons.
+          Student transcripts masked for child privacy reasons.
         </span>
       </div>
       {error && <p className="py-10 text-center text-sm text-zinc-500">Interactions are unavailable right now.</p>}
@@ -124,7 +124,7 @@ export function InteractionStream() {
               return (
                 <li key={row.key} data-testid="stream-item" className="px-3 py-2.5 text-sm" style={row.key === fresh ? { animation: "ppFresh 2.5s ease-out" } : undefined}>
                   <div className="flex items-center gap-1.5 text-xs text-zinc-500">
-                    <span>{timeAgo(row.at, now)}</span>·<span className="text-zinc-700">{row.student}</span>·<span>{row.kind === "tap" ? "Multi-choice" : "Reading"}</span>
+                    <span>{timeAgo(row.at, now)}</span>·<span>{row.kind === "tap" ? "Multi-choice" : "Reading"}</span>
                     {wpm !== null && (
                       <>
                         ·<span>{wpm} wpm</span>
@@ -175,7 +175,7 @@ export function InteractionStream() {
                     <td className="whitespace-nowrap px-4 py-2.5 text-zinc-600" title={new Date(row.at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}>
                       {timeAgo(row.at, now)}
                     </td>
-                    <td className="whitespace-nowrap px-4 py-2.5 text-zinc-700">{row.student}</td>
+                    <td className="whitespace-nowrap px-4 py-2.5 text-zinc-700" />
                     <td className="px-4 py-2.5">
                       {row.kind === "tap" ? (
                         <span className="inline-block whitespace-nowrap rounded bg-brand-soft px-2 py-0.5 text-xs font-medium text-brand-deep">{QUESTION_TYPE.tap}</span>

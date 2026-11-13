@@ -4,7 +4,6 @@ import { initialRows, isDevanagari, QUESTION_TYPE, reveal, revealGapMs, STREAM_S
 const row = (n: number): StreamRow => ({
   key: `k${n}`,
   at: new Date(Date.UTC(2026, 9, 22, 12, n)).toISOString(),
-  student: "R...i",
   kind: "voice",
   answer: "क...ल",
   correct_answer: "कमल",

@@ -76,9 +76,10 @@ InteractionStream: graded turns only (pp-sketch filters). GET
 users/interaction-stream.prompt.md) on load and every 60 s while the tab is
 visible. Newest `STREAM_SIZE` (10) turns; unseen turns revealed one by one
 over the next minute (`revealGapMs`), oldest rotating out. From sm up the
-/user/[id] table: When, Student (masked), Question Type ("Reading
+/user/[id] table: When, Student (always empty — pp-sketch sends no student
+name or phone), Question Type ("Reading
 Question" / "Comprehension Multi-choice", brand-soft tint), Answer, Correct
-Answer, Answer Status, WPM. Below sm a compact feed: "2 min ago · S...a ·
+Answer, Answer Status, WPM. Below sm a compact feed: "2 min ago ·
 Reading · 42 wpm", then ✓/✗ and the answer (+ "expected …" when wrong).
 WPM over 200 (`MAX_WPM`) shows "--" like a missing speed. Loading = ten
 skeleton rows. No audio.
