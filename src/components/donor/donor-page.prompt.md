@@ -86,8 +86,9 @@ skeleton rows. No audio.
 
 "Measuring Every Child": intro on the band ("… daily basis with full
 transparency, allowing a much larger & richer sample than current
-once-a-year tests with a random sample of students."; "Names and phone
-numbers are masked."), then
+once-a-year tests with a random sample of students."; "Teacher names and
+phone numbers are masked; student names and phone numbers are not shown."
+— pp-sketch sends anonymous viewers empty student name / phone), then
 `TeacherDashboard variant="public"` opened on India (resolved server-side
 via geo-entities/search with the badge; "unavailable" when that fails). The
 public variant renders the location title as an h3 (no h1 under the page's
