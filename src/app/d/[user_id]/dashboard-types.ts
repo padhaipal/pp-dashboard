@@ -372,6 +372,10 @@ export const CHILD_OFFICER: Record<ChildType, string> = {
 // `children` is StudentChild[] exactly when child_type is "student".
 export const geoChildrenOf = (s: ScoresResponse): Child[] => (s.child_type === "student" ? [] : (s.children as Child[]));
 export const studentChildrenOf = (s: ScoresResponse): StudentChild[] => (s.child_type === "student" ? (s.children as StudentChild[]) : []);
+// The donor page (public variant) never shows a student's name or number,
+// whatever the API sends (pp-sketch already blanks them for anonymous
+// viewers): every student reads as `label` ("Student"), no phone.
+export const anonStudent = (s: StudentChild, label: string): StudentChild => ({ ...s, name: label, label, phone: undefined });
 
 // ------------------------------------------------------------------ colours
 
