@@ -82,10 +82,8 @@ export function DonorFooter() {
         ))}
       </div>
       <div className="mt-6 space-y-1 border-t border-zinc-200 pt-4 text-xs leading-relaxed text-zinc-500">
-        <div className="font-bold text-zinc-700">LIFTeracy</div>
-        <p>LIFTeracy is a project of Development Consortium, a society registered under the Societies Registration Act 1860 (Reg. No. S/57363 of 2006).</p>
-        <p>Registered office: Narmada 7, Flat No. 6, Nelson Mandela Marg, Vasant Kunj, New Delhi 110070, India</p>
-        <p>FCRA Registration Number: 231661457</p>
+        <p>LIFTeracy is undergoing registration as a nonprofit in the state of Massachusetts, USA.</p>
+        <p>Address: 13 Wigglesworth St, Roxbury, Boston</p>
       </div>
     </footer>
   );

@@ -15,7 +15,8 @@ describe("DonorFooter", () => {
     expect(screen.getByText("Privacy Policy").getAttribute("href")).toBe("/privacy");
     expect(screen.getByText("Terms of Use").getAttribute("href")).toBe("/terms");
     expect(screen.getByText("Child Protection Policy").getAttribute("href")).toBe("/child-protection");
-    expect(screen.getByText(/FCRA Registration Number: 231661457/)).toBeTruthy();
+    expect(screen.getByText(/undergoing registration as a nonprofit in the state of Massachusetts/)).toBeTruthy();
+    expect(screen.queryByText(/FCRA|Development Consortium/)).toBeNull();
     const text = screen.getByTestId("donor-footer").textContent ?? "";
     expect(text).not.toMatch(/padhai/i);
     expect(text).not.toMatch(/Lifteracy/); // always "LIFTeracy"
