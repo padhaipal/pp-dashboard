@@ -73,6 +73,7 @@ import {
   type SpotlightResponse,
   type StudentChild,
   UNNAMED,
+  anonStudent,
   isPiiFull,
   rangeForWindow,
   beforeDay,
@@ -334,7 +335,10 @@ export function TeacherDashboard({ profile: initialProfile, incompleteStates, va
   const dismissPublicHint = useCallback(() => {
     if (entity) setPublicHintDismissed((s) => new Set(s).add(entity.id));
   }, [entity]);
-  const students: StudentChild[] = useMemo(() => (scores ? studentChildrenOf(scores) : []), [scores]);
+  const students: StudentChild[] = useMemo(
+    () => (scores ? studentChildrenOf(scores).map((s) => (isPublic ? anonStudent(s, t("Student")) : s)) : []),
+    [scores, isPublic, t],
+  );
   const emptyRoot = !!scores && scores.root.n == null;
   const usingN = geoChildren.filter((c) => c.using_lifteracy).length;
   // mvp2's `inClass`: a drilled class (the children are students) hides Detail + Spotlight.
@@ -1398,7 +1402,11 @@ function PublicRankings({ entity, viewerId, onPick, t }: { entity: { id: string;
   const loading = !got || got.key !== key;
   const data = loading ? null : got.data;
   const rows = useMemo(() => [...(data?.top ?? []), ...(data?.most_improved ?? [])], [data]);
-  const name = (r: RankRow) => (r.sub ? `${r.name} · ${r.sub}` : r.name);
+  // students: never a name, even a masked one (anonStudent)
+  const name = (r: RankRow) => {
+    const n = level === "student" ? t("Student") : r.name;
+    return r.sub ? `${n} · ${r.sub}` : n;
+  };
   const top: ImprovedRow[] = (data?.top ?? []).map((r) => ({ id: r.id, name: name(r), delta: r.value }));
   const improved: ImprovedRow[] = (data?.most_improved ?? []).map((r) => ({ id: r.id, name: name(r), delta: r.delta }));
   // usage: minutes and the window ratio; a student's ASER: the level by name; else %

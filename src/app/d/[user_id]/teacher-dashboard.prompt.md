@@ -117,7 +117,12 @@ the bar strip — share-message-card.prompt.md.
 
 `variant="public"` + `profile = publicProfile(country)` (id `PUBLIC_VIEWER`
 = "public", viewer-url.ts): the donor page's "Measuring Every Child" map
-for the general public. Every fetch carries `?viewer=public` — not a uuid,
+for the general public. Students are never named here: `anonStudent`
+(dashboard-types.ts) rewrites every student to name/label "Student" with no
+phone (tiles, bars, trend lines, most improved / top), the student modal
+title is just "Student" (no "· Student" / number), and student-level
+`PublicRankings` rows read "Student" — whatever pp-sketch sends (it blanks
+them for anonymous viewers too). Every fetch carries `?viewer=public` — not a uuid,
 so the proxy sends no viewer header and never upgrades a staff browser —
 and pp-sketch answers as to an anonymous viewer: students, teachers and
 officials all masked (first…last), no spotlight messages, no transcripts.

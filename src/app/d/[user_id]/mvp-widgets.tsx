@@ -1107,6 +1107,8 @@ export function MvpTeacherModal({
                       {subject.student.name ?? UNNAMED}
                     </span>
                   )}
+                  {/* public: the name already reads "Student" (anonStudent), no number */}
+                  {!isPublic && (
                   <span className="whitespace-nowrap font-normal text-zinc-400">
                     · {t("Student")}
                     {subject.student.phone && (
@@ -1115,6 +1117,7 @@ export function MvpTeacherModal({
                       </span>
                     )}
                   </span>
+                  )}
                 </div>
                 {st?.media && <MvpStudentActivity series={activitySeries(studentModalRows(st.media))} />}
               </>

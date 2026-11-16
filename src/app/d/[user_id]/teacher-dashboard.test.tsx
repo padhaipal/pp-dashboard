@@ -864,6 +864,38 @@ describe("TeacherDashboard — public variant (the donor page)", () => {
     expect(calls.some((u) => u.includes("window=30d"))).toBe(false);
   });
 
+  it("donor page: no student name or phone anywhere, even if the API sends masked ones (tiles, modal, student rankings)", async () => {
+    const base = makeFetch({ scoresById: { "g-sch": SCORES_SCHOOL, "t-1": SCORES_CLASS_MASKED }, media: MEDIA_MASKED }).fn;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (url.includes("/rankings?level=student"))
+          return { ok: true, status: 200, json: async () => ({ level: "student", as_of: "2026-09-10", top: [{ id: "s-1", name: "R...i", sub: null, value: 150, delta: 2 }], most_improved: [{ id: "s-1", name: "R...i", sub: null, value: 150, delta: 2 }] }) } as unknown as Response;
+        return base(input, init);
+      }),
+    );
+    render(<TeacherDashboard profile={publicProfile(PROFILE_SCHOOL.geo_entity!)} incompleteStates={[]} variant="public" />);
+    const cards = await screen.findAllByTestId("teacher-card");
+    fireEvent.dblClick(cards[0]);
+    const tiles = await screen.findAllByTestId("student-tile");
+    for (const tile of tiles) {
+      expect(tile.textContent).toContain("Student");
+      expect(tile.textContent).not.toContain("R...i");
+      expect(tile.querySelector('[data-testid="tile-phone"]')).toBeNull();
+    }
+    expect(document.body.textContent).not.toMatch(/R\.\.\.i|9\.\.\.1/);
+    fireEvent.click(tiles[0]);
+    const dialog = await screen.findByRole("dialog");
+    expect(within(dialog).getByTestId("student-modal-title").textContent).toBe("Student");
+    expect(within(dialog).queryByTestId("student-modal-phone")).toBeNull();
+    fireEvent.click(within(dialog).getByRole("button", { name: /Close/ }));
+    fireEvent.click(within(screen.getByTestId("public-rank-level")).getByRole("button", { name: "Student" }));
+    const box = screen.getByTestId("public-rankings");
+    await waitFor(() => expect(within(box).getByTestId("top-performing").textContent).toContain("Student"));
+    expect(box.textContent).not.toContain("R...i");
+  });
+
   it("donor page Performance: rankings only (no trend), with level / metric / window toggles opening on School · Usage · All time", async () => {
     const base = makeFetch({ scores: SCORES }).fn;
     const rankCalls: string[] = [];
