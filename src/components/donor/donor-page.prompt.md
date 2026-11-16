@@ -146,8 +146,9 @@ Footer (`DonorFooter`): no partners block (the page's partners section
 has the logos); Privacy Policy / Terms of
 Use / Child Protection Policy at /privacy, /terms,
 /child-protection (next.config.ts rewrites to public/legal/*.pdf, the PDFs
-LIFTeracy versions, Oct 2026); Development Consortium
-registration.
+LIFTeracy versions, Oct 2026); registration line: Massachusetts nonprofit
+registration in progress, 13 Wigglesworth St, Roxbury, Boston (replaced
+the Development Consortium / FCRA block, 2026-11).
 The team photo's caption names Tom Delaney (left) and David Nelson (right).
 
 2026-11: Traction gains "Passed ASER proxy" (`aser_passed`, before "Passed
