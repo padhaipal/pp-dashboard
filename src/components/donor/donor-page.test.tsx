@@ -57,4 +57,20 @@ describe("DonorPage", () => {
     // partners sit just above What LIFTeracy Does
     expect(screen.getByTestId("partners").nextElementSibling?.id).toBe("what-does");
   });
+
+  it("tech providers: Sarvam, Microsoft Azure, ElevenLabs and Bodhan, each with a logo, between What we built and Team", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 503, json: async () => ({}) }));
+    render(<DonorPage country={null} incompleteStates={[]} />);
+    await act(async () => {});
+    const section = screen.getByTestId("tech-providers");
+    expect(section.textContent).toContain("LIFTeracy is made possible by several tech providers:");
+    const cards = screen.getAllByTestId("tech-provider");
+    expect(cards.map((c) => c.querySelector("a")?.getAttribute("aria-label"))).toEqual(["Sarvam", "Microsoft Azure", "ElevenLabs", "Bodhan"]);
+    for (const c of cards) expect(c.querySelector("img")).not.toBeNull();
+    expect(cards[0].textContent).toContain("Sarvam startup program");
+    expect(cards[2].textContent).toContain("free text-to-speech");
+    expect(cards[3].textContent).toContain("lowest cost off-the-shelf Hindi speech-to-text engine");
+    expect(section.previousElementSibling?.id).toBe("roadmap");
+    expect(section.nextElementSibling?.id).toBe("team");
+  });
 });

@@ -80,6 +80,44 @@ const PARTNERS: { logo: string; w: number; h: number; name: string; text: string
   },
 ];
 
+// tech providers (2026-11): logos are each company's own (Sarvam, ElevenLabs:
+// their site's wordmark SVGs; Azure: Microsoft's product icon + name; Bodhan:
+// their site's swan icon + "Bodhan.AI" set in text as on bodhan.ai)
+const TECH_PROVIDERS: { name: string; url: string; logo: ReactNode; text: string }[] = [
+  {
+    name: "Sarvam",
+    url: "https://www.sarvam.ai/",
+    logo: <Image src="/donor/tech/sarvam.svg" unoptimized alt="Sarvam" width={202} height={32} className="h-7 w-auto" />,
+    text: "We are part of the Sarvam startup program, and thank them for free speech-to-text.",
+  },
+  {
+    name: "Microsoft Azure",
+    url: "https://azure.microsoft.com/",
+    logo: <Image src="/donor/tech/microsoft-azure.svg" unoptimized alt="Microsoft Azure" width={300} height={96} className="h-12 w-auto" />,
+    text: "We are part of the Microsoft Azure nonprofit program, and thank them for free speech-to-text.",
+  },
+  {
+    name: "ElevenLabs",
+    url: "https://elevenlabs.io/",
+    logo: <Image src="/donor/tech/elevenlabs.svg" unoptimized alt="ElevenLabs" width={234} height={30} className="h-6 w-auto" />,
+    text: "We are part of the ElevenLabs nonprofit program, and thank them for free text-to-speech.",
+  },
+  {
+    name: "Bodhan",
+    url: "https://bodhan.ai/",
+    logo: (
+      <span className="flex items-center gap-1.5" role="img" aria-label="Bodhan.AI">
+        <Image src="/donor/tech/bodhan-icon.webp" alt="" width={128} height={131} className="h-11 w-auto" />
+        <span className="whitespace-nowrap text-2xl leading-none tracking-tight text-[#0a0a0a]" aria-hidden="true">
+          Bodhan<span className="text-[#ff6207]">.</span>
+          <span className="font-extralight text-[#ff6207]">AI</span>
+        </span>
+      </span>
+    ),
+    text: "We are in dialogue with Bodhan, and thank them for the lowest cost off-the-shelf Hindi speech-to-text engine in the market.",
+  },
+];
+
 // the founders (www.lifteracy.ai bios, expanded 2026-10)
 const GITHUB_URL = "https://github.com/orgs/padhaipal/repositories";
 const TEAM: { name: string; role: string; linkedin: string; points: ReactNode[] }[] = [
@@ -273,6 +311,24 @@ export function DonorPage({ country, incompleteStates }: { country: GeoRef | nul
           {/* no overflow-hidden: hover cards below the bottom lane must spill past the track */}
           <div className="rounded-2xl border border-zinc-200 bg-white shadow-sm">
             <TechRoadmap />
+          </div>
+        </div>
+      </section>
+
+      {/* 6b · tech providers — the free / low-cost speech engines LIFTeracy runs on */}
+      <section id="tech-providers" className="scroll-mt-20 bg-white py-10" data-testid="tech-providers">
+        <div className="mx-auto max-w-6xl px-6">
+          <h2 className={"mb-4 " + H}>Our tech providers</h2>
+          <p className="mb-8 max-w-3xl text-lg leading-relaxed text-zinc-700">LIFTeracy is made possible by several tech providers:</p>
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            {TECH_PROVIDERS.map((t) => (
+              <div key={t.name} className="flex flex-col gap-4 rounded-2xl border border-zinc-200 bg-zinc-50 p-6" data-testid="tech-provider">
+                <a href={t.url} target="_blank" rel="noreferrer" className="flex h-14 items-center" aria-label={t.name}>
+                  {t.logo}
+                </a>
+                <p className="leading-relaxed text-zinc-700">{t.text}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
