@@ -6,8 +6,8 @@ What we built / Team; "Try it Out" outline button → the referral link
 dashboard.padhaipal.com/r/919565897842 (new tab); "Talk to us" button →
 #contact; GitHub, hidden on phones) — no donate flow, no sign-in;
 ValueStatement; learner photos; partners; "What LIFTeracy Does"; Traction;
-"Measuring Every Child"; "What we built in 8 months"; "Our tech
-providers"; Team; "Help us
+"Measuring Every Child"; "What we built in 8 months"; "Our Tech
+Providers"; Team; "Help us
 measure what works" (#contact); footer. No mention of PadhaiPal anywhere
 visible (GitHub URLs keep the org name). The brand is written "LIFTeracy",
 the test "MPL-B", everywhere user-facing.
@@ -132,14 +132,14 @@ LIFTeracy report (PDF)" → public/donor/lifteracy-report.pdf (a copy of
 24 Feb – 24 Oct 2026, labels in lanes, story on hover; below md a vertical
 timeline grouped by month (newest first) with every story visible.
 
-"Our tech providers" (#tech-providers, white band, 2026-11): "LIFTeracy is
+"Our Tech Providers" (#tech-providers, white band, 2026-11): "LIFTeracy is
 made possible by several tech providers:", then four cards (one row from
 lg, two from sm), each a logo linking the company's site and one sentence:
 Sarvam (startup program, free speech-to-text), Microsoft Azure (nonprofit
 program, free speech-to-text), ElevenLabs (nonprofit program, free
 text-to-speech), Bodhan (in dialogue; lowest-cost off-the-shelf Hindi
-speech-to-text engine). Logos in public/donor/tech/: Sarvam's and
-ElevenLabs' wordmark SVGs from their sites, Azure's product icon + name,
+speech-to-text engine). Logos in public/donor/tech/: Sarvam's mark + wordmark and
+ElevenLabs' wordmark, SVGs from their sites; Azure's product icon + name,
 Bodhan's swan icon (bodhan-icon.webp) with "Bodhan.AI" set in text as on
 bodhan.ai.
 

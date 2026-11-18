@@ -80,14 +80,19 @@ const PARTNERS: { logo: string; w: number; h: number; name: string; text: string
   },
 ];
 
-// tech providers (2026-11): logos are each company's own (Sarvam, ElevenLabs:
-// their site's wordmark SVGs; Azure: Microsoft's product icon + name; Bodhan:
+// tech providers (2026-11): logos are each company's own (Sarvam: its mark +
+// wordmark SVGs; ElevenLabs: its wordmark SVG; Azure: Microsoft's product icon + name; Bodhan:
 // their site's swan icon + "Bodhan.AI" set in text as on bodhan.ai)
 const TECH_PROVIDERS: { name: string; url: string; logo: ReactNode; text: string }[] = [
   {
     name: "Sarvam",
     url: "https://www.sarvam.ai/",
-    logo: <Image src="/donor/tech/sarvam.svg" unoptimized alt="Sarvam" width={202} height={32} className="h-7 w-auto" />,
+    logo: (
+      <span className="flex items-center gap-2.5" role="img" aria-label="Sarvam">
+        <Image src="/donor/tech/sarvam-mark.svg" unoptimized alt="" width={86} height={85} className="h-10 w-auto" />
+        <Image src="/donor/tech/sarvam.svg" unoptimized alt="" width={202} height={32} className="h-6 w-auto" />
+      </span>
+    ),
     text: "We are part of the Sarvam startup program, and thank them for free speech-to-text.",
   },
   {
@@ -318,7 +323,7 @@ export function DonorPage({ country, incompleteStates }: { country: GeoRef | nul
       {/* 6b · tech providers — the free / low-cost speech engines LIFTeracy runs on */}
       <section id="tech-providers" className="scroll-mt-20 bg-white py-10" data-testid="tech-providers">
         <div className="mx-auto max-w-6xl px-6">
-          <h2 className={"mb-4 " + H}>Our tech providers</h2>
+          <h2 className={"mb-4 " + H}>Our Tech Providers</h2>
           <p className="mb-8 max-w-3xl text-lg leading-relaxed text-zinc-700">LIFTeracy is made possible by several tech providers:</p>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {TECH_PROVIDERS.map((t) => (
